@@ -1,53 +1,97 @@
-import { useEffect } from "react";
-import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
+import './lib/i18n';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { WebSocketProvider } from './contexts/WebSocketContext';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+// Layout
+import { MainLayout } from './components/layout/MainLayout';
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
+// Pages
+import { LoginPage } from './pages/LoginPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { LivePage } from './pages/LivePage';
+import { HistoryPage } from './pages/HistoryPage';
+import { SensorsPage } from './pages/SensorsPage';
+import { SitesPage } from './pages/SitesPage';
+import { RulesPage } from './pages/RulesPage';
+import { UsersPage } from './pages/UsersPage';
+import { NotificationsPage } from './pages/NotificationsPage';
+import { SimulatorPage } from './pages/SimulatorPage';
+import { SettingsPage } from './pages/SettingsPage';
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
+// Protected Route wrapper
+function ProtectedRoute({ children }) {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+}
 
+// App Routes
+function AppRoutes() {
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <WebSocketProvider>
+              <MainLayout />
+            </WebSocketProvider>
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="live" element={<LivePage />} />
+        <Route path="history" element={<HistoryPage />} />
+        <Route path="sensors" element={<SensorsPage />} />
+        <Route path="sites" element={<SitesPage />} />
+        <Route path="rules" element={<RulesPage />} />
+        <Route path="users" element={<UsersPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="simulator" element={<SimulatorPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+      </Route>
+      
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
   );
-};
+}
 
 function App() {
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </div>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
+          <Toaster 
+            position="top-right" 
+            richColors 
+            closeButton
+            toastOptions={{
+              className: 'font-sans'
+            }}
+          />
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
