@@ -939,6 +939,190 @@ async def get_stats_overview(current_user: UserInDB = Depends(get_current_user))
         }
     }
 
+@api_router.get("/stats/events-by-type")
+async def get_events_by_type(current_user: UserInDB = Depends(get_current_user)):
+    """Get event distribution by type"""
+    query = {}
+    if current_user.role != "SUPER_ADMIN":
+        query["tenant_id"] = current_user.tenant_id
+    
+    pipeline = [
+        {"$match": query},
+        {"$group": {"_id": "$type", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    
+    results = await db.events.aggregate(pipeline).to_list(100)
+    return [{"type": r["_id"], "count": r["count"]} for r in results]
+
+@api_router.get("/stats/events-by-severity")
+async def get_events_by_severity(current_user: UserInDB = Depends(get_current_user)):
+    """Get event distribution by severity"""
+    query = {}
+    if current_user.role != "SUPER_ADMIN":
+        query["tenant_id"] = current_user.tenant_id
+    
+    pipeline = [
+        {"$match": query},
+        {"$group": {"_id": "$severity", "count": {"$sum": 1}}},
+        {"$sort": {"_id": 1}}
+    ]
+    
+    results = await db.events.aggregate(pipeline).to_list(100)
+    return [{"severity": r["_id"], "count": r["count"]} for r in results]
+
+@api_router.get("/stats/events-by-status")
+async def get_events_by_status(current_user: UserInDB = Depends(get_current_user)):
+    """Get event distribution by status"""
+    query = {}
+    if current_user.role != "SUPER_ADMIN":
+        query["tenant_id"] = current_user.tenant_id
+    
+    pipeline = [
+        {"$match": query},
+        {"$group": {"_id": "$status", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    
+    results = await db.events.aggregate(pipeline).to_list(100)
+    return [{"status": r["_id"], "count": r["count"]} for r in results]
+
+@api_router.get("/stats/events-by-site")
+async def get_events_by_site(current_user: UserInDB = Depends(get_current_user)):
+    """Get event distribution by site"""
+    query = {}
+    if current_user.role != "SUPER_ADMIN":
+        query["tenant_id"] = current_user.tenant_id
+    
+    pipeline = [
+        {"$match": query},
+        {"$group": {"_id": "$site_id", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    
+    results = await db.events.aggregate(pipeline).to_list(100)
+    
+    # Get site names
+    site_ids = [r["_id"] for r in results]
+    sites = await db.sites.find({"id": {"$in": site_ids}}, {"_id": 0, "id": 1, "name": 1}).to_list(100)
+    site_map = {s["id"]: s["name"] for s in sites}
+    
+    return [{"site_id": r["_id"], "site_name": site_map.get(r["_id"], "Unknown"), "count": r["count"]} for r in results]
+
+@api_router.get("/stats/events-timeline")
+async def get_events_timeline(
+    days: int = Query(7, le=30),
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Get events count per day for the last N days"""
+    query = {}
+    if current_user.role != "SUPER_ADMIN":
+        query["tenant_id"] = current_user.tenant_id
+    
+    # Get all events and group by date in Python (MongoDB aggregation with dates is complex)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
+    query["timestamp"] = {"$gte": start_date.isoformat()}
+    
+    events = await db.events.find(query, {"_id": 0, "timestamp": 1, "type": 1}).to_list(10000)
+    
+    # Group by date
+    from collections import defaultdict
+    daily_counts = defaultdict(lambda: {"total": 0, "FALL": 0, "PRE_FALL": 0, "UNKNOWN": 0})
+    
+    for event in events:
+        date_str = event["timestamp"][:10]  # Extract YYYY-MM-DD
+        daily_counts[date_str]["total"] += 1
+        event_type = event.get("type", "UNKNOWN")
+        daily_counts[date_str][event_type] += 1
+    
+    # Generate all dates in range
+    result = []
+    for i in range(days):
+        date = start_date + timedelta(days=i)
+        date_str = date.strftime("%Y-%m-%d")
+        counts = daily_counts.get(date_str, {"total": 0, "FALL": 0, "PRE_FALL": 0, "UNKNOWN": 0})
+        result.append({
+            "date": date_str,
+            "total": counts["total"],
+            "fall": counts["FALL"],
+            "pre_fall": counts["PRE_FALL"],
+            "unknown": counts["UNKNOWN"]
+        })
+    
+    return result
+
+@api_router.get("/stats/sensors-status")
+async def get_sensors_status(current_user: UserInDB = Depends(get_current_user)):
+    """Get sensor status distribution"""
+    query = {}
+    if current_user.role != "SUPER_ADMIN":
+        query["tenant_id"] = current_user.tenant_id
+    
+    pipeline = [
+        {"$match": query},
+        {"$group": {"_id": "$status", "count": {"$sum": 1}}},
+        {"$sort": {"_id": 1}}
+    ]
+    
+    results = await db.sensors.aggregate(pipeline).to_list(100)
+    return [{"status": r["_id"], "count": r["count"]} for r in results]
+
+@api_router.get("/stats/sensors-by-type")
+async def get_sensors_by_type(current_user: UserInDB = Depends(get_current_user)):
+    """Get sensor distribution by type"""
+    query = {}
+    if current_user.role != "SUPER_ADMIN":
+        query["tenant_id"] = current_user.tenant_id
+    
+    pipeline = [
+        {"$match": query},
+        {"$group": {"_id": "$type", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    
+    results = await db.sensors.aggregate(pipeline).to_list(100)
+    return [{"type": r["_id"], "count": r["count"]} for r in results]
+
+@api_router.get("/stats/response-time")
+async def get_response_time_stats(current_user: UserInDB = Depends(get_current_user)):
+    """Get average response time statistics (mock data for demo)"""
+    # In real implementation, this would calculate time between event creation and ACK/RESOLVE
+    return {
+        "avg_ack_time_minutes": 3.5,
+        "avg_resolve_time_minutes": 12.8,
+        "fastest_response_minutes": 0.5,
+        "slowest_response_minutes": 45.2
+    }
+
+@api_router.get("/stats/widget")
+async def get_widget_stats(current_user: UserInDB = Depends(get_current_user)):
+    """Compact stats for widget display"""
+    query = {}
+    if current_user.role != "SUPER_ADMIN":
+        query["tenant_id"] = current_user.tenant_id
+    
+    # Get critical stats
+    new_events = await db.events.count_documents({**query, "status": "NEW"})
+    high_severity = await db.events.count_documents({**query, "status": "NEW", "severity": "HIGH"})
+    online_sensors = await db.sensors.count_documents({**query, "status": "ONLINE"})
+    total_sensors = await db.sensors.count_documents(query)
+    
+    # Recent events (last 5)
+    recent = await db.events.find(query, {"_id": 0}).sort("timestamp", -1).limit(5).to_list(5)
+    
+    return {
+        "alerts": {
+            "new": new_events,
+            "critical": high_severity
+        },
+        "sensors": {
+            "online": online_sensors,
+            "total": total_sensors,
+            "health_percent": round((online_sensors / total_sensors * 100) if total_sensors > 0 else 0)
+        },
+        "recent_events": recent
+    }
+
 # ==================== HEALTH CHECK ====================
 
 @api_router.get("/health")
