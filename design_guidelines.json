@@ -1,0 +1,170 @@
+{
+  "identity": {
+    "name": "E1: The Anti-AI Designer",
+    "mission": "Create a 'Clinical Guardian' aesthetic that fuses medical precision with security operation center (SOC) urgency. Avoid generic SaaS tropes.",
+    "principles": [
+      "Fusion: Medical Sterile (Light) x Cyber-Security (Dark)",
+      "Density: Data over decoration. Every pixel must earn its place.",
+      "Tension: Use asymmetry in layout to keep operators alert.",
+      "Contrast: High-contrast alerts against muted backgrounds."
+    ]
+  },
+  "typography": {
+    "fonts": {
+      "headings": {
+        "family": "Manrope",
+        "weights": ["600", "700", "800"],
+        "usage": "Page titles, widget headers, alert banners. Tracking tight."
+      },
+      "body": {
+        "family": "IBM Plex Sans",
+        "weights": ["400", "500"],
+        "usage": "Data tables, logs, general text. Excellent for numbers."
+      },
+      "mono": {
+        "family": "JetBrains Mono",
+        "weights": ["400"],
+        "usage": "Sensor IDs, IP addresses, timestamps, raw logs."
+      }
+    },
+    "rules": [
+      "Never use Inter for headings.",
+      "Headings > 32px must use tracking-tight.",
+      "Labels must be Uppercase + tracking-widest + text-xs."
+    ]
+  },
+  "colors": {
+    "palette": {
+      "primary": {
+        "name": "Alert Orange",
+        "hex": "#F97316",
+        "usage": "Critical actions, active alarms, 'danger' states."
+      },
+      "secondary": {
+        "name": "Medical Blue",
+        "hex": "#0EA5E9",
+        "usage": "Information, status 'normal', primary navigation."
+      },
+      "neutral": {
+        "name": "Slate",
+        "hex": "#64748B",
+        "usage": "Borders, secondary text, inactive icons."
+      },
+      "success": {
+        "name": "Vital Green",
+        "hex": "#22C55E",
+        "usage": "System healthy, resolved incidents."
+      }
+    },
+    "themes": {
+      "light": {
+        "background": "#F8FAFC",
+        "surface": "#FFFFFF",
+        "border": "#E2E8F0",
+        "text_primary": "#0F172A",
+        "text_secondary": "#64748B"
+      },
+      "dark": {
+        "background": "#020617",
+        "surface": "#0F172A",
+        "border": "#1E293B",
+        "text_primary": "#F8FAFC",
+        "text_secondary": "#94A3B8"
+      }
+    },
+    "forbidden": [
+      "#1B93A4",
+      "#7351B7",
+      "Gradients on text"
+    ]
+  },
+  "layout": {
+    "grid_system": {
+      "dashboard": "Bento Mode B (High Density)",
+      "marketing": "Bento Mode A (Tetris/Asymmetry)"
+    },
+    "spacing": {
+      "base": "p-6",
+      "container_padding": "p-6 or p-8",
+      "gap": "gap-4 (Dashboard) / gap-12 (Marketing)"
+    },
+    "rules": [
+      "Dashboard widgets must stretch (h-full).",
+      "No jagged bottoms in grid layouts.",
+      "Use 'subgrid' where possible for nested alignment."
+    ]
+  },
+  "components": {
+    "cards": {
+      "style": "Grid Borders (The Technical Look)",
+      "border": "1px solid border-border",
+      "shadow": "none (Flat) or shadow-sm",
+      "radius": "rounded-lg"
+    },
+    "buttons": {
+      "style": "Sharp or Small Radius",
+      "radius": "rounded-md",
+      "interaction": "transform active:scale-95 transition-transform"
+    },
+    "glassmorphism": {
+      "usage": "Sticky headers, modal overlays, toast notifications",
+      "classes": "bg-background/80 backdrop-blur-xl border-b border-border/50"
+    },
+    "visual_enhancers": [
+      "Scanlines (CSS repeating-linear-gradient) for 'Live Feed' containers.",
+      "Pulsing dots (animate-pulse) for 'Real-time' status indicators."
+    ]
+  },
+  "assets": {
+    "icons": {
+      "primary": "lucide-react",
+      "dashboard_specific": "@phosphor-icons/react (Duotone weight for visual hierarchy)"
+    },
+    "images": [
+      {
+        "category": "Seniors/Patients",
+        "url": "https://images.unsplash.com/photo-1612001965590-4bb99b3d6350?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "description": "Woman in black coat walking on hallway (Use for 'Patient Monitoring' demo)"
+      },
+      {
+        "category": "Facility/Hospital",
+        "url": "https://images.unsplash.com/photo-1584876981516-db6024a82322?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "description": "Modern hospital corridor clean (Use for 'Site Management' or Login background)"
+      },
+      {
+        "category": "Security/Tech",
+        "url": "https://images.unsplash.com/photo-1767059439630-ca3844d07d77?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "description": "Security camera ceiling mount (Use for 'Sensor Configuration')"
+      },
+      {
+        "category": "Context/Lifestyle",
+        "url": "https://images.unsplash.com/photo-1544367945-627c2fc65ac5?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "description": "Old Couple walking (Use for 'Marketing' or 'Success Stories')"
+      }
+    ]
+  },
+  "universal_guidelines": {
+    "anti_patterns": [
+      "Do not use 'Inter' for headings.",
+      "Do not use Teal (#1B93A4).",
+      "Do not center-align dashboard widgets.",
+      "Do not use generic 'Lorem Ipsum' - use realistic medical/security data."
+    ],
+    "accessibility": [
+      "Ensure 4.5:1 contrast ratio for text.",
+      "Interactive elements must have :focus-visible styles.",
+      "Use data-testid attributes for all interactive elements."
+    ],
+    "motion": [
+      "Use 'sonner' for toasts.",
+      "Micro-interactions on all clickable elements.",
+      "No 'transition: all'."
+    ],
+    "instructions_to_main_agent": [
+      "Implement the Dark/Light mode toggle immediately.",
+      "Use the 'Grid Borders' style for the dashboard - it should look like a cockpit.",
+      "Prioritize the 'Live Dashboard' view - it is the heart of the app.",
+      "Use the provided image URLs for the respective sections."
+    ]
+  }
+}
