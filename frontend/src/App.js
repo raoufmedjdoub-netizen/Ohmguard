@@ -21,6 +21,8 @@ import { UsersPage } from '@/pages/UsersPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import { SimulatorPage } from '@/pages/SimulatorPage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { StatisticsPage } from '@/pages/StatisticsPage';
+import { WidgetPage } from '@/components/widgets/DashboardWidget';
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
@@ -67,6 +69,8 @@ function AppRoutes() {
         <Route path="users" element={<UsersPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="simulator" element={<SimulatorPage />} />
+        <Route path="statistics" element={<StatisticsPage />} />
+        <Route path="widgets" element={<WidgetPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
       
