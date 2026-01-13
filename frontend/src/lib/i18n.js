@@ -35,6 +35,7 @@ const resources = {
         dashboard: 'Dashboard',
         live: 'Live',
         history: 'History',
+        statistics: 'Statistics',
         sensors: 'Sensors',
         sites: 'Sites & Zones',
         rules: 'Alert Rules',
@@ -42,6 +43,7 @@ const resources = {
         notifications: 'Notifications',
         settings: 'Settings',
         simulator: 'Simulator',
+        widgets: 'Widgets',
         logout: 'Logout'
       },
       
@@ -298,6 +300,7 @@ const resources = {
         dashboard: 'Tableau de bord',
         live: 'En direct',
         history: 'Historique',
+        statistics: 'Statistiques',
         sensors: 'Capteurs',
         sites: 'Sites & Zones',
         rules: 'Règles d\'alerte',
@@ -305,6 +308,7 @@ const resources = {
         notifications: 'Notifications',
         settings: 'Paramètres',
         simulator: 'Simulateur',
+        widgets: 'Widgets',
         logout: 'Déconnexion'
       },
       
