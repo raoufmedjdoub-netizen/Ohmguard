@@ -155,7 +155,7 @@ async def seed():
     users = [
         {
             "id": str(uuid.uuid4()),
-            "email": "admin@fallguard.local",
+            "email": "admin@fallguard.io",
             "full_name": "Admin Système",
             "role": "SUPER_ADMIN",
             "tenant_id": None,
@@ -166,7 +166,7 @@ async def seed():
         },
         {
             "id": str(uuid.uuid4()),
-            "email": "directeur@jardins.ehpad",
+            "email": "directeur@jardins-ehpad.fr",
             "full_name": "Marie Dupont",
             "role": "TENANT_ADMIN",
             "tenant_id": tenant_id,
@@ -177,7 +177,7 @@ async def seed():
         },
         {
             "id": str(uuid.uuid4()),
-            "email": "superviseur@jardins.ehpad",
+            "email": "superviseur@jardins-ehpad.fr",
             "full_name": "Jean Martin",
             "role": "SUPERVISOR",
             "tenant_id": tenant_id,
@@ -188,7 +188,7 @@ async def seed():
         },
         {
             "id": str(uuid.uuid4()),
-            "email": "operateur@jardins.ehpad",
+            "email": "operateur@jardins-ehpad.fr",
             "full_name": "Sophie Bernard",
             "role": "OPERATOR",
             "tenant_id": tenant_id,
@@ -199,7 +199,7 @@ async def seed():
         },
         {
             "id": str(uuid.uuid4()),
-            "email": "viewer@jardins.ehpad",
+            "email": "viewer@jardins-ehpad.fr",
             "full_name": "Pierre Leroy",
             "role": "VIEWER",
             "tenant_id": tenant_id,
@@ -268,11 +268,11 @@ async def seed():
     print("="*50)
     print("\n📋 Test Accounts:")
     print("-"*50)
-    print("Super Admin:    admin@fallguard.local / admin123")
-    print("Tenant Admin:   directeur@jardins.ehpad / directeur123")
-    print("Supervisor:     superviseur@jardins.ehpad / super123")
-    print("Operator:       operateur@jardins.ehpad / oper123")
-    print("Viewer:         viewer@jardins.ehpad / view123")
+    print("Super Admin:    admin@fallguard.io / admin123")
+    print("Tenant Admin:   directeur@jardins-ehpad.fr / directeur123")
+    print("Supervisor:     superviseur@jardins-ehpad.fr / super123")
+    print("Operator:       operateur@jardins-ehpad.fr / oper123")
+    print("Viewer:         viewer@jardins-ehpad.fr / view123")
     print("-"*50)
     print(f"\n📊 Data Summary:")
     print(f"   Tenants: 1")
