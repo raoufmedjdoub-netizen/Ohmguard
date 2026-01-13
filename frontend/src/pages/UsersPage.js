@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { usersAPI } from '../../lib/api';
-import { useAuth } from '../../contexts/AuthContext';
-import { Card, CardContent } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Switch } from '../ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { Avatar, AvatarFallback } from '../ui/avatar';
-import { cn, getInitials } from '../../lib/utils';
+import { usersAPI } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { cn, getInitials } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
   Users,
@@ -84,7 +83,6 @@ export function UsersPage() {
 
   return (
     <div data-testid="users-page" className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Users className="h-6 w-6 text-primary" />
@@ -97,7 +95,6 @@ export function UsersPage() {
         </div>
       </div>
 
-      {/* Users Table */}
       <Card>
         <CardContent className="p-0">
           {users.length === 0 ? (

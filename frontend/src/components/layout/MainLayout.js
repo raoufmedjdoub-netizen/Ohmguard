@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
-import { cn } from '../../lib/utils';
-import { useWebSocket } from '../../contexts/WebSocketContext';
+import { cn } from '@/lib/utils';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import { Wifi, WifiOff } from 'lucide-react';
 
 export function MainLayout() {
@@ -19,7 +19,6 @@ export function MainLayout() {
           collapsed ? 'ml-16' : 'ml-64'
         )}
       >
-        {/* Connection status indicator */}
         <div className="fixed top-4 right-4 z-50">
           <div
             className={cn(

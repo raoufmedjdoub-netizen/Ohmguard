@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { sitesAPI, zonesAPI, sensorsAPI } from '../../lib/api';
-import { useAuth } from '../../contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
-import { Label } from '../ui/label';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
-import { cn, getSensorStatusColor } from '../../lib/utils';
+import { sitesAPI, zonesAPI, sensorsAPI } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { cn, getSensorStatusColor } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
   MapPin,
@@ -46,8 +46,6 @@ export function SitesPage() {
       setSites(sitesRes.data);
       setZones(zonesRes.data);
       setSensors(sensorsRes.data);
-      
-      // Expand all sites by default
       setExpandedSites(new Set(sitesRes.data.map(s => s.id)));
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -113,7 +111,6 @@ export function SitesPage() {
 
   return (
     <div data-testid="sites-page" className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <MapPin className="h-6 w-6 text-primary" />
@@ -239,7 +236,6 @@ export function SitesPage() {
         )}
       </div>
 
-      {/* Sites Hierarchy */}
       <div className="space-y-4">
         {sites.length === 0 ? (
           <Card>

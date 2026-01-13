@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { sensorsAPI, simulatorAPI } from '../../lib/api';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
-import { Button } from '../ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Slider } from '../ui/slider';
-import { Label } from '../ui/label';
+import { sensorsAPI, simulatorAPI } from '@/lib/api';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import {
   Play,
@@ -70,7 +70,6 @@ export function SimulatorPage() {
 
   return (
     <div data-testid="simulator-page" className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <Play className="h-6 w-6 text-primary" />
         <div>
@@ -80,7 +79,6 @@ export function SimulatorPage() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Configuration */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -170,7 +168,6 @@ export function SimulatorPage() {
           </CardContent>
         </Card>
 
-        {/* Preview */}
         <Card className="bg-muted/30">
           <CardHeader>
             <CardTitle>Event Preview</CardTitle>

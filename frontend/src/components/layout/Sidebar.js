@@ -1,10 +1,10 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
-import { cn } from '../../lib/utils';
-import { Button } from '../ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
   Radio,
@@ -67,7 +67,6 @@ export function Sidebar({ collapsed, setCollapsed }) {
         collapsed ? 'w-16' : 'w-64'
       )}
     >
-      {/* Logo */}
       <div className="flex items-center justify-between h-16 px-4 border-b border-border">
         {!collapsed && (
           <div className="flex items-center gap-2">
@@ -87,7 +86,6 @@ export function Sidebar({ collapsed, setCollapsed }) {
         </Button>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto h-[calc(100vh-180px)]">
         {filteredNavItems.map((item) => (
           <NavLink
@@ -110,7 +108,6 @@ export function Sidebar({ collapsed, setCollapsed }) {
         ))}
       </nav>
 
-      {/* Bottom actions */}
       <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-border bg-card space-y-2">
         <div className={cn('flex gap-2', collapsed ? 'flex-col items-center' : 'justify-between')}>
           <Button

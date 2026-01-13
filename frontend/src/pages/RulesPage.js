@@ -1,21 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { rulesAPI, sitesAPI } from '../../lib/api';
-import { useAuth } from '../../contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Switch } from '../ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
-import { Label } from '../ui/label';
-import { Checkbox } from '../ui/checkbox';
+import { rulesAPI, sitesAPI } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import {
   Bell,
   Plus,
   Trash2,
-  Settings,
   Loader2,
   AlertTriangle,
   Mail,
@@ -129,7 +128,6 @@ export function RulesPage() {
 
   return (
     <div data-testid="rules-page" className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Bell className="h-6 w-6 text-primary" />
@@ -282,7 +280,6 @@ export function RulesPage() {
         )}
       </div>
 
-      {/* Rules List */}
       {rules.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">

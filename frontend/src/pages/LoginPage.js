@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Shield, Loader2, Sun, Moon, AlertCircle } from 'lucide-react';
 
 export function LoginPage() {
@@ -57,10 +57,8 @@ export function LoginPage() {
         backgroundPosition: 'center'
       }}
     >
-      {/* Overlay */}
       <div className="absolute inset-0 bg-background/90 backdrop-blur-sm" />
       
-      {/* Theme toggle */}
       <Button
         variant="ghost"
         size="icon"
@@ -99,7 +97,7 @@ export function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@fallguard.local"
+                placeholder="admin@fallguard.io"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -137,7 +135,6 @@ export function LoginPage() {
             </Button>
           </form>
           
-          {/* Demo credentials */}
           <div className="mt-6 p-4 rounded-lg bg-muted/50 text-sm">
             <p className="font-medium mb-2 text-muted-foreground">Demo credentials:</p>
             <div className="space-y-1 font-mono text-xs">

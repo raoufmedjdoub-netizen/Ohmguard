@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { notificationsAPI } from '../../lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { formatDate } from '../../lib/utils';
+import { notificationsAPI } from '@/lib/api';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { formatDate } from '@/lib/utils';
 import {
   Bell,
   Mail,
@@ -46,7 +46,6 @@ export function NotificationsPage() {
 
   return (
     <div data-testid="notifications-page" className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <Bell className="h-6 w-6 text-primary" />
         <div>
@@ -57,7 +56,6 @@ export function NotificationsPage() {
         </div>
       </div>
 
-      {/* Notifications List */}
       <Card>
         <CardContent className="p-0">
           {notifications.length === 0 ? (

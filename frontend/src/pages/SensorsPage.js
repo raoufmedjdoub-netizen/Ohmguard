@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { sensorsAPI, sitesAPI, zonesAPI } from '../../lib/api';
-import { useAuth } from '../../contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
-import { Label } from '../ui/label';
-import { cn, formatRelativeTime, getSensorStatusColor } from '../../lib/utils';
+import { sensorsAPI, sitesAPI, zonesAPI } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { cn, formatRelativeTime, getSensorStatusColor } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
   Cpu,
@@ -21,7 +21,6 @@ import {
   Copy,
   Wifi,
   WifiOff,
-  Settings,
   Loader2
 } from 'lucide-react';
 
@@ -70,7 +69,6 @@ export function SensorsPage() {
 
   const handleCreateSensor = async () => {
     try {
-      const zone = zones.find(z => z.id === newSensor.zone_id);
       const site = sites.find(s => s.id === newSensor.site_id);
       
       await sensorsAPI.create({
@@ -91,7 +89,6 @@ export function SensorsPage() {
     try {
       const result = await sensorsAPI.rotateKey(sensorId);
       toast.success(t('sensors.key_rotated'));
-      // Update local state
       setSensors(prev => prev.map(s => 
         s.id === sensorId ? { ...s, api_key: result.data.api_key } : s
       ));
@@ -116,7 +113,6 @@ export function SensorsPage() {
 
   return (
     <div data-testid="sensors-page" className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Cpu className="h-6 w-6 text-primary" />
@@ -246,7 +242,6 @@ export function SensorsPage() {
         </div>
       </div>
 
-      {/* Filters */}
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center gap-4">
@@ -276,7 +271,6 @@ export function SensorsPage() {
         </CardContent>
       </Card>
 
-      {/* Sensors Table */}
       <Card>
         <CardContent className="p-0">
           {loading ? (

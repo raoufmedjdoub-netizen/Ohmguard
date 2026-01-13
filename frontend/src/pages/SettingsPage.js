@@ -1,14 +1,14 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
-import { Label } from '../ui/label';
-import { Switch } from '../ui/switch';
-import { Avatar, AvatarFallback } from '../ui/avatar';
-import { Badge } from '../ui/badge';
-import { getInitials } from '../../lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { getInitials } from '@/lib/utils';
 import {
   Settings,
   Sun,
@@ -29,14 +29,12 @@ export function SettingsPage() {
 
   return (
     <div data-testid="settings-page" className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <Settings className="h-6 w-6 text-primary" />
         <h1 className="text-3xl font-bold tracking-tight">{t('settings.title')}</h1>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Profile */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -60,7 +58,6 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Appearance */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
