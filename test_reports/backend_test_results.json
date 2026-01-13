@@ -1,0 +1,122 @@
+{
+  "summary": {
+    "tests_run": 16,
+    "tests_passed": 16,
+    "success_rate": 100.0,
+    "timestamp": "2026-01-13T17:31:23.490462"
+  },
+  "results": [
+    {
+      "test": "Health Check",
+      "success": true,
+      "details": "Status: ok",
+      "response_data": null,
+      "timestamp": "2026-01-13T17:31:22.864979"
+    },
+    {
+      "test": "Admin Login",
+      "success": true,
+      "details": "Successfully authenticated",
+      "response_data": null,
+      "timestamp": "2026-01-13T17:31:23.145048"
+    },
+    {
+      "test": "Get Current User",
+      "success": true,
+      "details": "User: admin@fallguard.io",
+      "response_data": null,
+      "timestamp": "2026-01-13T17:31:23.157485"
+    },
+    {
+      "test": "Stats Overview",
+      "success": true,
+      "details": "Events: 51, Sensors: 10, Sites: 2",
+      "response_data": null,
+      "timestamp": "2026-01-13T17:31:23.176454"
+    },
+    {
+      "test": "List Events",
+      "success": true,
+      "details": "Retrieved 10 events",
+      "response_data": null,
+      "timestamp": "2026-01-13T17:31:23.190974"
+    },
+    {
+      "test": "Event Count",
+      "success": true,
+      "details": "Total events: 51",
+      "response_data": null,
+      "timestamp": "2026-01-13T17:31:23.242786"
+    },
+    {
+      "test": "Get Specific Event",
+      "success": true,
+      "details": "Event ID: 4ffaa785-2c7d-407d-b86d-5e7b450a5ae7",
+      "response_data": null,
+      "timestamp": "2026-01-13T17:31:23.253973"
+    },
+    {
+      "test": "List Sensors",
+      "success": true,
+      "details": "Retrieved 10 sensors",
+      "response_data": null,
+      "timestamp": "2026-01-13T17:31:23.267623"
+    },
+    {
+      "test": "Get Specific Sensor",
+      "success": true,
+      "details": "Sensor ID: 5d8eedbe-1f77-43f0-b7ae-5b6bd6fb924a",
+      "response_data": null,
+      "timestamp": "2026-01-13T17:31:23.319619"
+    },
+    {
+      "test": "List Sites",
+      "success": true,
+      "details": "Retrieved 2 sites",
+      "response_data": null,
+      "timestamp": "2026-01-13T17:31:23.330085"
+    },
+    {
+      "test": "Get Specific Site",
+      "success": true,
+      "details": "Site ID: 18bef086-0af7-4b06-8e5a-9d2588851f70",
+      "response_data": null,
+      "timestamp": "2026-01-13T17:31:23.381755"
+    },
+    {
+      "test": "List Zones",
+      "success": true,
+      "details": "Retrieved 5 zones",
+      "response_data": null,
+      "timestamp": "2026-01-13T17:31:23.393151"
+    },
+    {
+      "test": "List Alert Rules",
+      "success": true,
+      "details": "Retrieved 2 alert rules",
+      "response_data": null,
+      "timestamp": "2026-01-13T17:31:23.407152"
+    },
+    {
+      "test": "List Users",
+      "success": true,
+      "details": "Retrieved 5 users",
+      "response_data": null,
+      "timestamp": "2026-01-13T17:31:23.458543"
+    },
+    {
+      "test": "Event Simulator",
+      "success": true,
+      "details": "Simulated fall event for sensor 5d8eedbe-1f77-43f0-b7ae-5b6bd6fb924a",
+      "response_data": null,
+      "timestamp": "2026-01-13T17:31:23.478919"
+    },
+    {
+      "test": "List Notifications",
+      "success": true,
+      "details": "Retrieved 10 notifications",
+      "response_data": null,
+      "timestamp": "2026-01-13T17:31:23.490327"
+    }
+  ]
+}
