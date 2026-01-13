@@ -21,19 +21,23 @@ import {
   Shield,
   ChevronLeft,
   ChevronRight,
-  Globe
+  Globe,
+  BarChart3,
+  LayoutGrid
 } from 'lucide-react';
 
 const navItems = [
   { path: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard' },
   { path: '/live', icon: Radio, labelKey: 'nav.live' },
   { path: '/history', icon: History, labelKey: 'nav.history' },
+  { path: '/statistics', icon: BarChart3, labelKey: 'nav.statistics' },
   { path: '/sensors', icon: Cpu, labelKey: 'nav.sensors' },
   { path: '/sites', icon: MapPin, labelKey: 'nav.sites' },
   { path: '/rules', icon: Bell, labelKey: 'nav.rules', requireAdmin: true },
   { path: '/users', icon: Users, labelKey: 'nav.users', requireAdmin: true },
   { path: '/notifications', icon: Bell, labelKey: 'nav.notifications' },
   { path: '/simulator', icon: Play, labelKey: 'nav.simulator', requireOperator: true },
+  { path: '/widgets', icon: LayoutGrid, labelKey: 'nav.widgets' },
   { path: '/settings', icon: Settings, labelKey: 'nav.settings' }
 ];
 
