@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { eventsAPI, sitesAPI, sensorsAPI } from '../../lib/api';
-import { useWebSocket } from '../../contexts/WebSocketContext';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { cn, formatRelativeTime, getEventTypeColor, getSeverityColor, getStatusColor } from '../../lib/utils';
+import { eventsAPI, sitesAPI } from '@/lib/api';
+import { useWebSocket } from '@/contexts/WebSocketContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn, formatRelativeTime, getEventTypeColor, getSeverityColor, getStatusColor } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
   Radio,
@@ -56,7 +56,6 @@ export function LivePage() {
         setEvents(prev => [message.event, ...prev.slice(0, 49)]);
         
         if (soundEnabled && message.event.type === 'FALL') {
-          // Play alert sound (browser notification)
           if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('FallGuard Alert', {
               body: `${message.event.type} detected - ${message.event.severity}`,

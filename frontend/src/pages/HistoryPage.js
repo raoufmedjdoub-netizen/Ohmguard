@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { eventsAPI, sitesAPI } from '../../lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { cn, formatDate, getEventTypeColor, getSeverityColor, getStatusColor } from '../../lib/utils';
+import { eventsAPI, sitesAPI } from '@/lib/api';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { cn, formatDate, getEventTypeColor, getSeverityColor, getStatusColor } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
   History,
@@ -27,14 +27,12 @@ export function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   
-  // Filters
   const [selectedSite, setSelectedSite] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedSeverity, setSelectedSeverity] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Pagination
   const [page, setPage] = useState(0);
   const limit = 20;
 
@@ -72,7 +70,6 @@ export function HistoryPage() {
   }, [fetchData]);
 
   const handleExport = () => {
-    // Simple CSV export
     const headers = ['ID', 'Type', 'Severity', 'Status', 'Confidence', 'Timestamp'];
     const rows = events.map(e => [
       e.id,
@@ -98,7 +95,6 @@ export function HistoryPage() {
 
   return (
     <div data-testid="history-page" className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <History className="h-6 w-6 text-primary" />
@@ -116,7 +112,6 @@ export function HistoryPage() {
         </Button>
       </div>
 
-      {/* Filters */}
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center gap-4 flex-wrap">
@@ -188,7 +183,6 @@ export function HistoryPage() {
         </CardContent>
       </Card>
 
-      {/* Events Table */}
       <Card>
         <CardContent className="p-0">
           {loading ? (
@@ -258,7 +252,6 @@ export function HistoryPage() {
             </Table>
           )}
           
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between p-4 border-t border-border">
               <span className="text-sm text-muted-foreground">

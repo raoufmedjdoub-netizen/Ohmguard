@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { statsAPI, eventsAPI } from '../../lib/api';
-import { useWebSocket } from '../../contexts/WebSocketContext';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { cn, formatRelativeTime, getEventTypeColor, getSeverityColor, getStatusColor } from '../../lib/utils';
+import { statsAPI, eventsAPI } from '@/lib/api';
+import { useWebSocket } from '@/contexts/WebSocketContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { cn, formatRelativeTime, getEventTypeColor, getSeverityColor, getStatusColor } from '@/lib/utils';
 import {
   AlertTriangle,
   CheckCircle,
