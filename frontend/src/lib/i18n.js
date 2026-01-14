@@ -395,6 +395,7 @@ const resources = {
         notifications: 'Notifications',
         settings: 'Paramètres',
         simulator: 'Simulateur',
+        presence_simulator: 'Simulateur Présence',
         widgets: 'Widgets',
         logout: 'Déconnexion'
       },
