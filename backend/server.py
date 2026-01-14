@@ -252,6 +252,9 @@ class Event(EventBase):
     status: EventStatus = "NEW"
     assigned_to: Optional[str] = None
     notes: Optional[str] = None
+    # Location fields (enriched from sensor assignment)
+    location_path: Optional[str] = None
+    location: Optional[dict] = None
 
 class AlertRuleBase(BaseModel):
     name: str
