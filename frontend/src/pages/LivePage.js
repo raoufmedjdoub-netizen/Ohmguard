@@ -184,9 +184,34 @@ export function LivePage() {
     navigate(`/events/${eventId}`);
   };
 
-  // Filtrage
+  // Filtrage par client et bâtiment
   const filteredEvents = events.filter(event => {
-    if (selectedSite !== 'all' && event.site_id !== selectedSite) return false;
+    // Filtre par client
+    if (selectedClient !== 'all') {
+      if (event.location?.client_name) {
+        const client = clients.find(c => c.id === selectedClient);
+        if (client && event.location.client_name !== client.name) return false;
+      } else if (event.location_path) {
+        const client = clients.find(c => c.id === selectedClient);
+        if (client && !event.location_path.includes(client.name)) return false;
+      } else {
+        return false; // Pas de localisation, on l'exclut si un filtre client est actif
+      }
+    }
+    
+    // Filtre par bâtiment
+    if (selectedBuilding !== 'all') {
+      if (event.location?.building_name) {
+        const building = buildings.find(b => b.id === selectedBuilding);
+        if (building && event.location.building_name !== building.name) return false;
+      } else if (event.location_path) {
+        const building = buildings.find(b => b.id === selectedBuilding);
+        if (building && !event.location_path.includes(building.name)) return false;
+      } else {
+        return false;
+      }
+    }
+    
     return true;
   });
 
