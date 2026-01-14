@@ -186,23 +186,39 @@ class VayyarConfigService:
     
     async def publish_config(
         self,
-        device_id: str,
+        sensor_id: str,
         config: dict,
         options: MqttPublishOptions,
         tenant_id: Optional[str] = None
     ) -> ConfigVersionResponse:
-        """Publish configuration to device via MQTT"""
+        """Publish configuration to device via MQTT
+        
+        Args:
+            sensor_id: The platform sensor ID (uses device_id field for MQTT topic)
+            config: The configuration payload
+            options: MQTT publish options
+            tenant_id: Optional tenant ID
+        """
+        
+        # Get the sensor to find the MQTT device_id
+        sensor = await self.db.sensors.find_one({"id": sensor_id}, {"_id": 0})
+        if not sensor:
+            raise ValueError(f"Sensor {sensor_id} not found")
+        
+        # Use the device_id field for MQTT communications, fallback to sensor id
+        mqtt_device_id = sensor.get("device_id") or sensor.get("model") or sensor_id
+        serial_product = sensor.get("serial_product", "")
         
         # Generate correlation ID if not provided
         correlation_id = options.correlationId or str(uuid.uuid4())
         
-        # Get topic
-        pub_topic = options.topic or self._get_pub_topic(device_id)
-        ack_topic = self._get_ack_topic(device_id)
+        # Get topic using the MQTT device_id
+        pub_topic = options.topic or self._get_pub_topic(mqtt_device_id)
+        ack_topic = self._get_ack_topic(mqtt_device_id)
         
-        # Get next version number
+        # Get next version number (stored by sensor_id for platform tracking)
         last_version = await self.db.config_versions.find_one(
-            {"deviceId": device_id},
+            {"sensorId": sensor_id},
             sort=[("versionNumber", -1)]
         )
         version_number = (last_version["versionNumber"] + 1) if last_version else 1
@@ -213,7 +229,9 @@ class VayyarConfigService:
         
         version_doc = {
             "id": version_id,
-            "deviceId": device_id,
+            "sensorId": sensor_id,  # Platform sensor ID
+            "deviceId": mqtt_device_id,  # MQTT device ID
+            "serialProduct": serial_product,  # Serial number
             "tenantId": tenant_id,
             "versionNumber": version_number,
             "config": config,
