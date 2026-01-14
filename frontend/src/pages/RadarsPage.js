@@ -483,9 +483,9 @@ export function RadarsPage() {
                         </div>
                         <div>
                           <p className="font-medium">{radar.name}</p>
-                          {radar.serial_product && (
-                            <p className="text-xs text-muted-foreground font-mono">SN: {radar.serial_product}</p>
-                          )}
+                          <p className="text-xs text-primary font-mono">
+                            {radar.device_id ? `MQTT: ${radar.device_id.substring(0, 20)}...` : 'No Device ID'}
+                          </p>
                         </div>
                       </div>
                     </TableCell>
