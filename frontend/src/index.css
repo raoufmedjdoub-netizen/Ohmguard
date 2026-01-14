@@ -6,21 +6,21 @@
 
 @layer base {
   :root {
-    /* Light Theme - Clinical/Sterile */
+    /* Light Theme - Clinical/Modern Blue */
     --background: 210 40% 98%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 24 95% 53%;
+    --primary: 174 72% 40%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 199 89% 48%;
+    --secondary: 187 85% 43%;
     --secondary-foreground: 0 0% 100%;
     --muted: 210 40% 96%;
     --muted-foreground: 215 16% 47%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 174 40% 92%;
+    --accent-foreground: 174 72% 25%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --success: 142 71% 45%;
@@ -29,33 +29,33 @@
     --warning-foreground: 0 0% 0%;
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 24 95% 53%;
+    --ring: 174 72% 40%;
     --radius: 0.5rem;
     
-    /* Chart colors */
-    --chart-1: 24 95% 53%;
-    --chart-2: 199 89% 48%;
+    /* Chart colors - Turquoise palette */
+    --chart-1: 174 72% 40%;
+    --chart-2: 187 85% 43%;
     --chart-3: 142 71% 45%;
-    --chart-4: 38 92% 50%;
+    --chart-4: 199 89% 48%;
     --chart-5: 0 84% 60%;
   }
 
   .dark {
-    /* Dark Theme - Tactical/SOC */
+    /* Dark Theme - Tactical/SOC Turquoise */
     --background: 222 47% 2%;
     --foreground: 210 40% 98%;
     --card: 222 47% 5%;
     --card-foreground: 210 40% 98%;
     --popover: 222 47% 5%;
     --popover-foreground: 210 40% 98%;
-    --primary: 24 95% 53%;
+    --primary: 174 72% 45%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 199 89% 48%;
+    --secondary: 187 85% 43%;
     --secondary-foreground: 0 0% 100%;
     --muted: 217 33% 17%;
     --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 174 40% 15%;
+    --accent-foreground: 174 72% 70%;
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
     --success: 142 71% 45%;
@@ -64,7 +64,7 @@
     --warning-foreground: 0 0% 0%;
     --border: 217 33% 17%;
     --input: 217 33% 17%;
-    --ring: 24 95% 53%;
+    --ring: 174 72% 45%;
   }
 }
 

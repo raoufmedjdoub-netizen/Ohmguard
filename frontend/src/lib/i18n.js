@@ -6,7 +6,7 @@ const resources = {
   en: {
     translation: {
       // Common
-      app_name: 'FallGuard',
+      app_name: 'OhmGuard',
       app_tagline: 'Fall Detection Management Platform',
       loading: 'Loading...',
       save: 'Save',
@@ -312,7 +312,7 @@ const resources = {
   fr: {
     translation: {
       // Common
-      app_name: 'FallGuard',
+      app_name: 'OhmGuard',
       app_tagline: 'Plateforme de Gestion de Détection de Chutes',
       loading: 'Chargement...',
       save: 'Enregistrer',
