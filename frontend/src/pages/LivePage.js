@@ -126,7 +126,7 @@ function EventCard({ event, onAcknowledge, onResolve, onFalseAlarm, onViewDetail
           <Badge variant="outline" className={getSeverityColor(event.severity)}>
             {t(`events.severity_${event.severity?.toLowerCase()}`)}
           </Badge>
-          <span className="font-mono">{event.sensor_id?.substring(0, 8)}...</span>
+          <span className="font-mono">{event.device_id?.substring(0, 15) || event.sensor_id?.substring(0, 8)}...</span>
         </div>
         
         <div className="flex items-center gap-1">
