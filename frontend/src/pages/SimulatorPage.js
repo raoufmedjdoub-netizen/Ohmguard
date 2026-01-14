@@ -90,19 +90,25 @@ export function SimulatorPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label>{t('simulator.select_sensor')}</Label>
+              <Label>{t('simulator.select_sensor')} (deviceId pour MQTT)</Label>
               <Select value={selectedSensor} onValueChange={setSelectedSensor}>
                 <SelectTrigger data-testid="simulator-sensor-select">
                   <SelectValue placeholder={t('simulator.select_sensor')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {sensors.map(sensor => (
-                    <SelectItem key={sensor.id} value={sensor.id}>
-                      {sensor.name} ({sensor.type})
-                    </SelectItem>
-                  ))}
+                  {sensors.map(sensor => {
+                    const deviceId = sensor.device_id || sensor.serial_product || sensor.id;
+                    return (
+                      <SelectItem key={sensor.id} value={deviceId}>
+                        {sensor.name} - deviceId: {deviceId.substring(0, 20)}...
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                deviceId: <code className="bg-muted px-1 rounded">{selectedSensor}</code>
+              </p>
             </div>
             
             <div className="space-y-2">
