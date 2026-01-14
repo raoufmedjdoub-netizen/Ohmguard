@@ -193,11 +193,23 @@ class SensorBase(BaseModel):
     type: SensorType
     model: Optional[str] = None
     firmware: Optional[str] = None
-    zone_id: str
-    site_id: str
-    tenant_id: str
+    # Legacy location fields (deprecated - use new hierarchy)
+    zone_id: Optional[str] = None
+    site_id: Optional[str] = None
+    tenant_id: Optional[str] = None
+    # MQTT identifiers
     device_id: Optional[str] = None  # MQTT Device ID for communications
     serial_product: Optional[str] = None  # Physical serial number
+    serial_radar: Optional[str] = None
+    hardware: Optional[str] = None
+    product_type: Optional[str] = None
+    # New location hierarchy (Clients & Buildings)
+    client_id: Optional[str] = None
+    building_id: Optional[str] = None
+    floor_id: Optional[str] = None
+    room_id: Optional[str] = None
+    room_space_id: Optional[str] = None
+    assignment_status: Optional[str] = "PENDING"  # PENDING | ASSIGNED
 
 class SensorCreate(SensorBase):
     pass
