@@ -281,6 +281,24 @@ export function RadarsPage() {
                     onChange={(e) => setNewRadar({...newRadar, name: e.target.value})}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>{t('radars.serialProduct')} *</Label>
+                  <Input 
+                    placeholder="VPRD-XXXX-XXXX"
+                    value={newRadar.serial_product}
+                    onChange={(e) => setNewRadar({...newRadar, serial_product: e.target.value})}
+                  />
+                  <p className="text-xs text-muted-foreground">{t('radars.serialProductHelp')}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('radars.mqttDeviceId')}</Label>
+                  <Input 
+                    placeholder="id_QTg6MDM6MkE6..."
+                    value={newRadar.device_id}
+                    onChange={(e) => setNewRadar({...newRadar, device_id: e.target.value})}
+                  />
+                  <p className="text-xs text-muted-foreground">{t('radars.mqttDeviceIdHelp')}</p>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>{t('radars.model')}</Label>
