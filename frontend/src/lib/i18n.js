@@ -161,6 +161,7 @@ const resources = {
         confidence: 'Confidence',
         timestamp: 'Timestamp',
         sensor: 'Sensor',
+        location: 'Location',
         site: 'Site',
         zone: 'Zone',
         assigned_to: 'Assigned To',
