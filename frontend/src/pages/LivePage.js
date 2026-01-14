@@ -57,7 +57,7 @@ export function LivePage() {
         
         if (soundEnabled && message.event.type === 'FALL') {
           if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('FallGuard Alert', {
+            new Notification('OhmGuard Alert', {
               body: `${message.event.type} detected - ${message.event.severity}`,
               icon: '/favicon.ico'
             });

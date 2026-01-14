@@ -77,7 +77,7 @@ export function Sidebar({ collapsed, setCollapsed }) {
         {!collapsed && (
           <div className="flex items-center gap-2">
             <Shield className="h-8 w-8 text-primary" />
-            <span className="font-bold text-xl tracking-tight">FallGuard</span>
+            <span className="font-bold text-xl tracking-tight">OhmGuard</span>
           </div>
         )}
         {collapsed && <Shield className="h-8 w-8 text-primary mx-auto" />}

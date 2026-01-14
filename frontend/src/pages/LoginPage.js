@@ -97,7 +97,7 @@ export function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@fallguard.io"
+                placeholder="admin@ohmguard.io"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -138,7 +138,7 @@ export function LoginPage() {
           <div className="mt-6 p-4 rounded-lg bg-muted/50 text-sm">
             <p className="font-medium mb-2 text-muted-foreground">Demo credentials:</p>
             <div className="space-y-1 font-mono text-xs">
-              <p>admin@fallguard.io / admin123</p>
+              <p>admin@ohmguard.io / admin123</p>
               <p>directeur@jardins-ehpad.fr / directeur123</p>
             </div>
           </div>
