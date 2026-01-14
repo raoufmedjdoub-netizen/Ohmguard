@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { 
   Wifi, WifiOff, Radio, RefreshCw, Settings, Activity, 
   Thermometer, Clock, MemoryStick, Plus, Copy, Key, 
-  Trash2, Edit, Search, MapPin
+  Trash2, Edit, Search, MapPin, Sliders
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ export function RadarsPage() {
   const { t } = useTranslation();
   const { lastMessage } = useWebSocket();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [mqttStatus, setMqttStatus] = useState(null);
   const [radars, setRadars] = useState([]);
   const [sites, setSites] = useState([]);
