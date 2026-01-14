@@ -36,14 +36,41 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - ✅ **Vayyar Config Service** - MQTT publish/subscribe for device configuration
 - ✅ **Config versioning with rollback support**
 - ✅ **ACK handling with timeout detection**
+- ✅ **NEW: Radar Event Processing** (January 14, 2026)
+  - POST /api/events/radar endpoint
+  - RadarEventType enum (FALL, PRE_FALL, INACTIVITY, PRESENCE, UNKNOWN)
+  - Payload normalization (presenceDetected, presenceRegionMap, trackerTargets)
+  - Active regions extraction
+  - Target count tracking
+  - Epoch to ISO timestamp conversion
+  - Raw payload storage for audit
 
 ### Frontend Features
 - ✅ Login page with demo credentials
 - ✅ Dashboard with real-time stats
-- ✅ Live Events page with filters
-- ✅ Event History with pagination
+- ✅ **Live Events page** (Enhanced January 14, 2026)
+  - Event cards with presence/no presence display
+  - Active regions and target count info
+  - Stats cards (New, Acknowledged, Presence, Presence detected)
+  - Grid layout for event cards
+- ✅ **Event History** (Enhanced January 14, 2026)
+  - New columns: Presence (Yes/No), Active Regions, Target Count
+  - PRESENCE filter option
+  - CSV export with new fields
+- ✅ **Event Detail Page** (NEW January 14, 2026)
+  - Presence status display
+  - Active regions visualization
+  - Target count
+  - Raw payload JSON viewer
+- ✅ **Presence Simulator** (NEW January 14, 2026)
+  - Form to configure event parameters
+  - Toggle presence detection
+  - Region selector (0-5)
+  - Target count slider
+  - JSON preview/editor mode
+  - Direct POST to /api/events/radar
 - ✅ **Radars Management** (unified CRUD + MQTT)
-- ✅ **Radar Configuration Page** (NEW)
+- ✅ **Radar Configuration Page**
   - Basic form with tabs (App, Walabot, RF, System, Regions)
   - Monaco JSON editor with validation
   - MQTT options (QoS, Retain)
@@ -70,6 +97,7 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - ✅ WebSocket broadcast to frontend
 - ✅ `/api/mqtt/status` endpoint
 - ✅ `/api/mqtt/register-device` endpoint
+- ✅ **NEW: RadarEvent normalization in MQTT handler**
 
 ## API Endpoints Summary
 - `/api/auth/*` - Authentication
@@ -78,13 +106,15 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - `/api/zones/*` - Zone management
 - `/api/sensors/*` - Sensor CRUD + key rotation
 - `/api/events/*` - Event list/update/count
+- `/api/events/radar` - **NEW: Radar event ingestion**
+- `/api/events/{id}/detail` - **NEW: Event detail with enriched data**
 - `/api/rules/*` - Alert rules
 - `/api/users/*` - User management
 - `/api/notifications/*` - Notification log
 - `/api/device/*` - Device API (heartbeat, events)
 - `/api/simulator/*` - Test event generation
 - `/api/stats/*` - Dashboard statistics
-- `/api/mqtt/*` - MQTT service management (NEW)
+- `/api/mqtt/*` - MQTT service management
 - `/api/health` - Health check
 
 ## Demo Credentials
@@ -101,6 +131,28 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
   - `/devices/{deviceId}/event` - Fall detection events
 - **Auto-registered Radars:** 2 Vayyar radars detected
 
+## Radar Event Model (NEW)
+```json
+{
+  "payload": {
+    "presenceDetected": false,
+    "presenceRegionMap": {"0": 0, "1": 0, "2": 0, "3": 0, "4": 0, "5": 0},
+    "presenceTargetType": 0,
+    "roomPresenceIndication": 0,
+    "timestamp": 1768397944445,
+    "trackerTargets": []
+  },
+  "type": 4
+}
+```
+
+### Event Type Codes
+- 1 = FALL
+- 2 = PRE_FALL
+- 3 = INACTIVITY
+- 4 = PRESENCE
+- default = UNKNOWN
+
 ## Prioritized Backlog
 
 ### P0 - Critical (DONE)
@@ -109,6 +161,7 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - [x] Real-time updates
 - [x] Sensor management
 - [x] MQTT Radar Integration
+- [x] **Radar Event Processing (January 14, 2026)**
 
 ### P1 - High Priority (Next)
 - [ ] Full RBAC with granular permissions
@@ -116,41 +169,30 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - [ ] Webhook delivery with HMAC signature
 - [ ] Escalation automation
 - [ ] Data export (CSV/Excel)
+- [ ] Config ACKs MQTT UI (History/Rollback modal)
 
 ### P2 - Medium Priority
-- [ ] Event detail view with timeline
-- [ ] Snapshot image viewing
-- [ ] Advanced analytics/charts
-- [ ] Mobile responsive improvements
-
-### P3 - Nice to Have
-- [ ] Push notifications
-- [ ] Event grouping/correlation
-- [ ] Sensor firmware OTA updates
+- [ ] Device MQTT simulator (Node.js)
+- [ ] Configuration templates
+- [ ] Mobile responsive polish
+- [ ] Offline mode (PWA)
 - [ ] API rate limiting
-- [ ] PDF report export
 
-## Test Reports
-- `/app/test_reports/iteration_1.json` - Initial MVP (95% frontend, 100% backend)
-- `/app/test_reports/iteration_2.json` - MQTT Integration (100% all tests)
+### P3 - Low Priority / Future
+- [ ] Multi-language admin panel
+- [ ] Advanced analytics
+- [ ] Audit log export
+- [ ] Data retention policies
+- [ ] SSO integration
 
-## Files Structure
-```
-/app/
-├── backend/
-│   ├── .env
-│   ├── mqtt_service.py      # NEW - MQTT integration
-│   ├── requirements.txt
-│   ├── seed.py
-│   ├── server.py
-│   └── tests/
-│       └── test_mqtt_integration.py
-└── frontend/
-    └── src/
-        ├── pages/
-        │   ├── RadarsPage.js   # NEW - MQTT radars management
-        │   └── ... (12 other pages)
-        ├── components/
-        ├── contexts/
-        └── lib/
-```
+## Key Files Reference
+- `backend/server.py` - Main FastAPI app with all endpoints
+- `backend/mqtt_service.py` - MQTT integration with RadarEvent support
+- `backend/radar_event_models.py` - **NEW: RadarEvent enums and models**
+- `backend/vayyar_config_service.py` - Config publish/versioning
+- `frontend/src/pages/LivePage.js` - Live event wall with cards
+- `frontend/src/pages/HistoryPage.js` - Event history table
+- `frontend/src/pages/EventDetailPage.js` - **NEW: Event detail view**
+- `frontend/src/pages/PresenceSimulatorPage.js` - **NEW: Presence simulator**
+- `frontend/src/lib/api.js` - API client with new endpoints
+- `frontend/src/lib/i18n.js` - Translations (FR/EN)
