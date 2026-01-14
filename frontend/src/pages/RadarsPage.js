@@ -488,6 +488,14 @@ export function RadarsPage() {
                         <Button 
                           variant="ghost" 
                           size="icon"
+                          onClick={() => navigate(`/radars/${radar.id}/config`)}
+                          title={t('radars.configure', 'Configure')}
+                        >
+                          <Sliders className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
                           onClick={() => copyApiKey(radar.api_key)}
                           title={t('radars.copyKey')}
                         >
