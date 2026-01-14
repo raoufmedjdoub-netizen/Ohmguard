@@ -226,9 +226,12 @@ export function EventDetailPage() {
                 </div>
                 <div>
                   <p className="font-medium">{event.sensor_name || 'Unknown Sensor'}</p>
-                  <p className="text-sm text-muted-foreground font-mono">
-                    {event.sensor_serial || event.device_id || event.sensor_id?.substring(0, 12)}
+                  <p className="text-sm text-primary font-mono">
+                    Device ID: {event.device_id || event.sensor_id?.substring(0, 12)}
                   </p>
+                  {event.sensor_serial && (
+                    <p className="text-xs text-muted-foreground font-mono">SN: {event.sensor_serial}</p>
+                  )}
                 </div>
               </div>
             </div>
