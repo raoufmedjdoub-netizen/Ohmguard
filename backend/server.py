@@ -1694,6 +1694,15 @@ async def delete_template(
     raise HTTPException(status_code=404, detail="Template not found")
 
 # Include the router in the main app
+# Create and include Clients & Buildings router
+clients_buildings_router = create_clients_buildings_router(
+    get_current_user=get_current_user,
+    check_permission=check_permission,
+    db=db,
+    pwd_context=pwd_context
+)
+api_router.include_router(clients_buildings_router)
+
 app.include_router(api_router)
 
 app.add_middleware(
