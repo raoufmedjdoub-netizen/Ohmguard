@@ -325,7 +325,7 @@ export function RadarConfigPage() {
               <Switch checked={mqttOptions.retain} onCheckedChange={v => setMqttOptions(o => ({...o, retain: v}))} />
             </div>
             <div className="text-sm text-muted-foreground">
-              Topic: <code className="bg-muted px-2 py-1 rounded">devices/{deviceId}/config</code>
+              Topic: <code className="bg-muted px-2 py-1 rounded">/devices/{deviceId}/config</code>
             </div>
           </div>
         </CardContent>
