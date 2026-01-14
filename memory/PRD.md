@@ -3,6 +3,13 @@
 ## Original Problem Statement
 Build FallGuard - a SaaS platform for fall detection management centralizing events from sensors (radar/camera/IoT) installed in facilities (nursing homes, hospitals, airports).
 
+## Technology Stack (Final)
+- **Frontend:** React (JavaScript) + Tailwind CSS + shadcn/ui
+- **Backend:** FastAPI (Python) + Motor (async MongoDB)
+- **Database:** MongoDB
+- **Real-time:** WebSocket (native FastAPI) + MQTT (aiomqtt)
+- **Auth:** JWT + Refresh tokens
+
 ## User Personas
 1. **Super Admin** - Platform administrator with full access
 2. **Tenant Admin** - Facility director managing their organization
@@ -10,50 +17,50 @@ Build FallGuard - a SaaS platform for fall detection management centralizing eve
 4. **Operator** - Staff handling alert acknowledgment/resolution
 5. **Viewer** - Read-only access to dashboards
 
-## Core Requirements
-- Multi-tenant architecture with data isolation
-- Real-time event streaming via WebSocket
-- RBAC (Role-Based Access Control)
-- JWT authentication with refresh tokens
-- Bilingual interface (FR/EN)
-- Dark/Light theme toggle
-- Event deduplication (10s window)
-
 ## What's Been Implemented (January 2026)
 
-### Backend (FastAPI + MongoDB)
-- ✅ Complete REST API with 25+ endpoints
+### Backend Features
+- ✅ Complete REST API with 30+ endpoints
 - ✅ JWT authentication with refresh tokens
 - ✅ Multi-tenant data isolation
 - ✅ WebSocket for real-time events
-- ✅ Event deduplication logic
-- ✅ Alert rules engine
+- ✅ Event deduplication logic (10s window)
+- ✅ Alert rules engine with notifications
 - ✅ Audit logging
 - ✅ Device API (heartbeat, event ingestion)
 - ✅ Seed script with demo data
+- ✅ **MQTT Service for Vayyar Radar integration**
+- ✅ **Auto-registration of MQTT devices as sensors**
 
-### Frontend (React + Tailwind + shadcn/ui)
+### Frontend Features
 - ✅ Login page with demo credentials
 - ✅ Dashboard with real-time stats
 - ✅ Live Events page with filters
 - ✅ Event History with pagination
 - ✅ Sensors Management (CRUD)
+- ✅ **Vayyar Radars page** (NEW - MQTT management)
 - ✅ Sites & Zones hierarchy view
 - ✅ Alert Rules configuration
 - ✅ User Management with role editing
 - ✅ Notification Log viewer
 - ✅ Event Simulator for demos
+- ✅ Statistics page with charts
+- ✅ Widgets page (embeddable dashboards)
 - ✅ Settings (theme, language)
 - ✅ Responsive sidebar navigation
+- ✅ Bilingual (FR/EN) interface
+- ✅ Dark/Light theme
 
-### Data Seeded
-- 1 Tenant (EHPAD Les Jardins)
-- 2 Sites
-- 5 Zones
-- 10 Sensors (Radar, Camera, IoT)
-- 50+ Events
-- 5 Users (all roles)
-- 2 Alert Rules
+### MQTT Integration (January 14, 2026)
+- ✅ Connection to Vayyar MQTT broker (38.242.254.49:1883)
+- ✅ Subscription to `/devices/+/state` and `/devices/+/event` topics
+- ✅ Auto-registration of unknown devices as new sensors
+- ✅ Real-time sensor status updates
+- ✅ Fall event creation from radar payloads
+- ✅ Deduplication of MQTT events
+- ✅ WebSocket broadcast to frontend
+- ✅ `/api/mqtt/status` endpoint
+- ✅ `/api/mqtt/register-device` endpoint
 
 ## API Endpoints Summary
 - `/api/auth/*` - Authentication
@@ -68,6 +75,7 @@ Build FallGuard - a SaaS platform for fall detection management centralizing eve
 - `/api/device/*` - Device API (heartbeat, events)
 - `/api/simulator/*` - Test event generation
 - `/api/stats/*` - Dashboard statistics
+- `/api/mqtt/*` - MQTT service management (NEW)
 - `/api/health` - Health check
 
 ## Demo Credentials
@@ -77,15 +85,24 @@ Build FallGuard - a SaaS platform for fall detection management centralizing eve
 - Operator: operateur@jardins-ehpad.fr / oper123
 - Viewer: viewer@jardins-ehpad.fr / view123
 
+## MQTT Configuration
+- **Broker:** 38.242.254.49:1883
+- **Topics:**
+  - `/devices/{deviceId}/state` - Device status updates
+  - `/devices/{deviceId}/event` - Fall detection events
+- **Auto-registered Radars:** 2 Vayyar radars detected
+
 ## Prioritized Backlog
 
-### P0 - Critical (Done)
+### P0 - Critical (DONE)
 - [x] Authentication system
 - [x] Event ingestion and display
 - [x] Real-time updates
 - [x] Sensor management
+- [x] MQTT Radar Integration
 
-### P1 - High Priority (Future)
+### P1 - High Priority (Next)
+- [ ] Full RBAC with granular permissions
 - [ ] Email integration (currently mocked)
 - [ ] Webhook delivery with HMAC signature
 - [ ] Escalation automation
@@ -102,10 +119,29 @@ Build FallGuard - a SaaS platform for fall detection management centralizing eve
 - [ ] Event grouping/correlation
 - [ ] Sensor firmware OTA updates
 - [ ] API rate limiting
+- [ ] PDF report export
 
-## Next Tasks
-1. Implement real email integration (SendGrid/Resend)
-2. Add webhook delivery with retry logic
-3. Build event detail modal with timeline
-4. Add data export functionality
-5. Implement escalation automation
+## Test Reports
+- `/app/test_reports/iteration_1.json` - Initial MVP (95% frontend, 100% backend)
+- `/app/test_reports/iteration_2.json` - MQTT Integration (100% all tests)
+
+## Files Structure
+```
+/app/
+├── backend/
+│   ├── .env
+│   ├── mqtt_service.py      # NEW - MQTT integration
+│   ├── requirements.txt
+│   ├── seed.py
+│   ├── server.py
+│   └── tests/
+│       └── test_mqtt_integration.py
+└── frontend/
+    └── src/
+        ├── pages/
+        │   ├── RadarsPage.js   # NEW - MQTT radars management
+        │   └── ... (12 other pages)
+        ├── components/
+        ├── contexts/
+        └── lib/
+```
