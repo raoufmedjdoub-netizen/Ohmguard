@@ -76,7 +76,7 @@ export function HistoryPage() {
   }, [fetchData]);
 
   const handleExport = () => {
-    const headers = ['ID', 'Type', 'Severity', 'Status', 'Presence', 'Active Regions', 'Targets', 'Timestamp', 'Device'];
+    const headers = ['ID', 'Type', 'Severity', 'Status', 'Presence', 'Active Regions', 'Targets', 'Location', 'Timestamp', 'Device'];
     const rows = events.map(e => [
       e.id,
       e.type,
@@ -85,6 +85,7 @@ export function HistoryPage() {
       e.presence_detected ? 'Yes' : 'No',
       (e.active_regions || []).join(';') || '-',
       e.target_count || 0,
+      e.location_path || '-',
       e.timestamp || e.occurred_at,
       e.device_id || e.sensor_id
     ]);
