@@ -33,6 +33,7 @@ const navItems = [
   { path: '/history', icon: History, labelKey: 'nav.history' },
   { path: '/statistics', icon: BarChart3, labelKey: 'nav.statistics' },
   { path: '/radars', icon: Radar, labelKey: 'nav.radars' },
+  { path: '/clients', icon: Building2, labelKey: 'nav.clients' },
   { path: '/sites', icon: MapPin, labelKey: 'nav.sites' },
   { path: '/rules', icon: Bell, labelKey: 'nav.rules', requireAdmin: true },
   { path: '/users', icon: Users, labelKey: 'nav.users', requireAdmin: true },
