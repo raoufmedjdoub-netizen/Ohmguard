@@ -18,6 +18,16 @@ import asyncio
 # MQTT Service import
 from mqtt_service import init_mqtt_service, stop_mqtt_service
 
+# Vayyar Config Service import
+from vayyar_config_service import (
+    init_vayyar_config_service, stop_vayyar_config_service,
+    vayyar_config_service, VayyarConfigService
+)
+from vayyar_config_schema import (
+    VayyarConfig, MqttPublishOptions, ConfigVersionResponse,
+    get_default_config_dict
+)
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
