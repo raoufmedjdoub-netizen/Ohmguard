@@ -168,12 +168,12 @@ class MQTTService:
             if cache_time and (now - cache_time).total_seconds() < self._cache_ttl:
                 return self._device_sensor_cache[device_id]
         
-        # Query database - look for sensor with matching device_id in name or model
+        # Query database - look for sensor with matching deviceId or serialProduct
         sensor = await self.db.sensors.find_one(
             {"$or": [
-                {"model": device_id},
-                {"name": {"$regex": device_id, "$options": "i"}},
-                {"firmware": device_id}
+                {"device_id": device_id},
+                {"serial_product": device_id},
+                {"model": device_id}
             ]},
             {"_id": 0}
         )
@@ -181,7 +181,7 @@ class MQTTService:
         if sensor:
             self._device_sensor_cache[device_id] = sensor
             self._cache_timestamp[device_id] = now
-            logger.info(f"Mapped device {device_id} to sensor {sensor['id']}")
+            logger.info(f"Mapped device {device_id} to sensor {sensor['id']} (serial: {sensor.get('serial_product', 'N/A')})")
         
         return sensor
     
@@ -210,13 +210,18 @@ class MQTTService:
             }
             await self.db.zones.insert_one(zone)
         
-        # Create sensor
+        # Extract serial product and device info from payload
+        serial_product = payload.get("serialProduct", "")
         model_info = payload.get("model", "Vayyar Radar")
+        
+        # Create sensor with both serialProduct and deviceId
         sensor = {
             "id": str(uuid.uuid4()),
-            "name": f"Radar Vayyar - {device_id[:8]}",
+            "name": f"Radar {serial_product[:12] if serial_product else device_id[:8]}",
             "type": "RADAR",
-            "model": device_id,
+            "serial_product": serial_product or device_id,  # serialProduct as main identifier
+            "device_id": device_id,  # deviceId for MQTT communications
+            "model": model_info,
             "firmware": payload.get("versionName", "unknown"),
             "zone_id": zone['id'],
             "site_id": site['id'],
