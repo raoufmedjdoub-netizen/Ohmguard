@@ -27,6 +27,13 @@ import { SettingsPage } from '@/pages/SettingsPage';
 import { StatisticsPage } from '@/pages/StatisticsPage';
 import { WidgetPage } from '@/components/widgets/DashboardWidget';
 
+// Clients & Buildings Pages
+import { ClientsPage } from '@/pages/ClientsPage';
+import { ClientDetailPage } from '@/pages/ClientDetailPage';
+import { BuildingDetailPage } from '@/pages/BuildingDetailPage';
+import { FloorDetailPage } from '@/pages/FloorDetailPage';
+import { RoomDetailPage } from '@/pages/RoomDetailPage';
+
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
