@@ -140,9 +140,9 @@ export const healthAPI = {
 
 // Simulator API
 export const simulatorAPI = {
-  createEvent: (sensorId, eventType, severity, confidence) => 
+  createEvent: (deviceId, eventType, severity, confidence) => 
     api.post('/simulator/event', null, {
-      params: { sensor_id: sensorId, event_type: eventType, severity, confidence }
+      params: { device_id: deviceId, event_type: eventType, severity, confidence }
     })
 };
 
