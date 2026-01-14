@@ -444,8 +444,8 @@ async def init_vayyar_config_service(
         db=db,
         broker_host=broker_host,
         broker_port=broker_port,
-        pub_topic_pattern=os.environ.get("MQTT_PUB_TOPIC", "devices/{deviceId}/config"),
-        ack_topic_pattern=os.environ.get("MQTT_ACK_TOPIC", "devices/{deviceId}/config/ack"),
+        pub_topic_pattern=os.environ.get("MQTT_PUB_TOPIC", "/devices/{deviceId}/config"),
+        ack_topic_pattern=os.environ.get("MQTT_ACK_TOPIC", "/devices/{deviceId}/config/ack"),
         default_qos=int(os.environ.get("MQTT_QOS", "1")),
         ack_timeout_sec=int(os.environ.get("MQTT_ACK_TIMEOUT", "60"))
     )
