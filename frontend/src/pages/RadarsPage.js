@@ -483,8 +483,8 @@ export function RadarsPage() {
                         </div>
                         <div>
                           <p className="font-medium">{radar.name}</p>
-                          {radar.model?.startsWith('id_') && (
-                            <p className="text-xs text-muted-foreground font-mono">{radar.model.slice(0, 20)}...</p>
+                          {radar.serial_product && (
+                            <p className="text-xs text-muted-foreground font-mono">SN: {radar.serial_product}</p>
                           )}
                         </div>
                       </div>
@@ -498,8 +498,11 @@ export function RadarsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        <p>{radar.model?.startsWith('id_') ? 'Vayyar MQTT' : (radar.model || '-')}</p>
+                        <p>{radar.model || 'Vayyar Home'}</p>
                         {radar.firmware && <p className="text-xs text-muted-foreground">{radar.firmware}</p>}
+                        {radar.device_id && (
+                          <p className="text-xs text-muted-foreground font-mono">MQTT: {radar.device_id.slice(0, 15)}...</p>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(radar.status)}</TableCell>
