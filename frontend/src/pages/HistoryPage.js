@@ -218,14 +218,14 @@ export function HistoryPage() {
                   <TableHead>{t('status')}</TableHead>
                   <TableHead>
                     <div className="flex items-center gap-1">
-                      <User className="h-4 w-4" />
-                      {t('events.presence')}
+                      <Building className="h-4 w-4" />
+                      {t('events.location')}
                     </div>
                   </TableHead>
                   <TableHead>
                     <div className="flex items-center gap-1">
-                      <MapPin className="h-4 w-4" />
-                      {t('events.active_regions')}
+                      <User className="h-4 w-4" />
+                      {t('events.presence')}
                     </div>
                   </TableHead>
                   <TableHead>
@@ -234,7 +234,6 @@ export function HistoryPage() {
                       {t('events.target_count')}
                     </div>
                   </TableHead>
-                  <TableHead>{t('events.sensor')}</TableHead>
                   <TableHead>{t('events.timestamp')}</TableHead>
                   <TableHead className="text-right">{t('actions')}</TableHead>
                 </TableRow>
