@@ -1288,15 +1288,24 @@ async def get_latest_config(
     device_id: str,
     current_user: UserInDB = Depends(get_current_user)
 ):
-    """Get the latest configuration version for a device"""
+    """Get the latest configuration version for a sensor"""
     from vayyar_config_service import vayyar_config_service
     
     if not vayyar_config_service:
         raise HTTPException(status_code=503, detail="Config service not available")
     
+    # Get sensor info to show device_id
+    sensor = await db.sensors.find_one({"id": device_id}, {"_id": 0})
+    
     version = await vayyar_config_service.get_latest_config(device_id)
     if not version:
-        return {"config": get_default_config_dict(), "isDefault": True}
+        return {
+            "config": get_default_config_dict(), 
+            "isDefault": True,
+            "sensorId": device_id,
+            "deviceId": sensor.get("device_id") if sensor else None,
+            "serialProduct": sensor.get("serial_product") if sensor else None
+        }
     
     return version
 
@@ -1327,7 +1336,11 @@ async def send_config(
     payload: ConfigPayload,
     current_user: UserInDB = Depends(get_current_user)
 ):
-    """Send configuration to device via MQTT"""
+    """Send configuration to device via MQTT
+    
+    device_id here is the platform sensor ID. The service will lookup
+    the MQTT device_id from the sensor record.
+    """
     check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN", "SUPERVISOR"])
     
     from vayyar_config_service import vayyar_config_service
@@ -1346,7 +1359,7 @@ async def send_config(
     
     try:
         result = await vayyar_config_service.publish_config(
-            device_id=device_id,
+            sensor_id=device_id,  # Platform sensor ID
             config=validated.model_dump(),
             options=mqtt_opts,
             tenant_id=current_user.tenant_id
