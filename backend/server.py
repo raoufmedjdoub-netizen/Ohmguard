@@ -88,9 +88,17 @@ manager = ConnectionManager()
 
 # ==================== MODELS ====================
 
+# Radar Event Models import
+from radar_event_models import (
+    RadarEventType, PresenceStatus, EventSeverity, EventStatus as RadarEventStatus,
+    RadarEventPayload, RadarEventRequest, RadarEventResponse,
+    normalize_radar_event, extract_active_regions, epoch_ms_to_iso,
+    format_active_regions_display, format_target_count_display
+)
+
 # Role enum
 RoleType = Literal["SUPER_ADMIN", "TENANT_ADMIN", "SUPERVISOR", "OPERATOR", "VIEWER"]
-EventType = Literal["FALL", "PRE_FALL", "UNKNOWN"]
+EventType = Literal["FALL", "PRE_FALL", "PRESENCE", "INACTIVITY", "UNKNOWN"]
 SeverityType = Literal["LOW", "MED", "HIGH"]
 EventStatus = Literal["NEW", "ACK", "RESOLVED", "FALSE_ALARM"]
 SensorType = Literal["RADAR"]
