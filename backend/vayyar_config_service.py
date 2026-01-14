@@ -333,10 +333,10 @@ class VayyarConfigService:
                 )
                 logger.warning(f"Config version {version_id} timed out")
     
-    async def get_latest_config(self, device_id: str) -> Optional[dict]:
-        """Get latest configuration for a device"""
+    async def get_latest_config(self, sensor_id: str) -> Optional[dict]:
+        """Get latest configuration for a sensor"""
         version = await self.db.config_versions.find_one(
-            {"deviceId": device_id},
+            {"sensorId": sensor_id},
             sort=[("versionNumber", -1)],
             projection={"_id": 0}
         )
@@ -344,13 +344,13 @@ class VayyarConfigService:
     
     async def get_config_versions(
         self,
-        device_id: str,
+        sensor_id: str,
         limit: int = 20,
         skip: int = 0
     ) -> List[dict]:
-        """Get configuration versions for a device"""
+        """Get configuration versions for a sensor"""
         cursor = self.db.config_versions.find(
-            {"deviceId": device_id},
+            {"sensorId": sensor_id},
             projection={"_id": 0}
         ).sort("versionNumber", -1).skip(skip).limit(limit)
         
@@ -358,18 +358,18 @@ class VayyarConfigService:
     
     async def rollback_to_version(
         self,
-        device_id: str,
+        sensor_id: str,
         version_number: int,
         tenant_id: Optional[str] = None
     ) -> ConfigVersionResponse:
         """Rollback to a specific version"""
         version = await self.db.config_versions.find_one({
-            "deviceId": device_id,
+            "sensorId": sensor_id,
             "versionNumber": version_number
         })
         
         if not version:
-            raise ValueError(f"Version {version_number} not found for device {device_id}")
+            raise ValueError(f"Version {version_number} not found for sensor {sensor_id}")
         
         # Republish the config
         options = MqttPublishOptions(
@@ -378,7 +378,7 @@ class VayyarConfigService:
         )
         
         return await self.publish_config(
-            device_id,
+            sensor_id,
             version["config"],
             options,
             tenant_id
