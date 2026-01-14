@@ -222,7 +222,7 @@ async def seed():
             "event_types": ["FALL"],
             "min_severity": "HIGH",
             "channels": ["in_app", "email", "webhook"],
-            "webhook_url": "https://webhook.site/fallguard-demo",
+            "webhook_url": "https://webhook.site/ohmguard-demo",
             "escalation_minutes": 5,
             "escalation_group": "superviseurs",
             "is_active": True,
@@ -268,7 +268,7 @@ async def seed():
     print("="*50)
     print("\n📋 Test Accounts:")
     print("-"*50)
-    print("Super Admin:    admin@fallguard.io / admin123")
+    print("Super Admin:    admin@ohmguard.io / admin123")
     print("Tenant Admin:   directeur@jardins-ehpad.fr / directeur123")
     print("Supervisor:     superviseur@jardins-ehpad.fr / super123")
     print("Operator:       operateur@jardins-ehpad.fr / oper123")
