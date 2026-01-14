@@ -1,15 +1,16 @@
 # OhmGuard - Product Requirements Document
 
 ## Original Problem Statement
-Build OhmGuard - a SaaS platform for fall detection management centralizing events from sensors (radar/camera/IoT) installed in facilities (nursing homes, hospitals, airports).
+Build OhmGuard - a SaaS platform for fall detection management using **Vayyar radar sensors exclusively**. The platform centralizes events from Vayyar radars installed in facilities (nursing homes, hospitals, airports).
 
-## Technology Stack (Final)
+## Technology Stack
 - **Frontend:** React (JavaScript) + Tailwind CSS + shadcn/ui
 - **Backend:** FastAPI (Python) + Motor (async MongoDB)
 - **Database:** MongoDB
 - **Real-time:** WebSocket (native FastAPI) + MQTT (aiomqtt)
 - **Auth:** JWT + Refresh tokens
 - **Theme:** Turquoise/Blue color scheme
+- **Sensors:** Vayyar Radars only (MQTT integration)
 
 ## User Personas
 1. **Super Admin** - Platform administrator with full access
