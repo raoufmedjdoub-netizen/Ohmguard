@@ -91,7 +91,7 @@ export function RadarsPage() {
   }, [lastMessage]);
 
   const handleAddRadar = async () => {
-    if (!newRadar.name || !newRadar.site_id || !newRadar.zone_id) {
+    if (!newRadar.serial_product || !newRadar.site_id || !newRadar.zone_id) {
       toast.error(t('radars.fillRequired'));
       return;
     }
@@ -99,13 +99,19 @@ export function RadarsPage() {
     try {
       const tenantId = user?.tenant_id || sites.find(s => s.id === newRadar.site_id)?.tenant_id;
       await sensorsAPI.create({
-        ...newRadar,
+        name: newRadar.name || `Radar ${newRadar.serial_product.slice(0, 12)}`,
+        serial_product: newRadar.serial_product,
+        device_id: newRadar.device_id || newRadar.serial_product,  // Use serial as device_id if not provided
+        model: newRadar.model || 'Vayyar Home',
+        firmware: newRadar.firmware,
+        site_id: newRadar.site_id,
+        zone_id: newRadar.zone_id,
         type: 'RADAR',
         tenant_id: tenantId
       });
       toast.success(t('radars.radarAdded'));
       setAddDialogOpen(false);
-      setNewRadar({ name: '', model: '', firmware: '', site_id: '', zone_id: '' });
+      setNewRadar({ name: '', serial_product: '', device_id: '', model: '', firmware: '', site_id: '', zone_id: '' });
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.detail || t('radars.addError'));
