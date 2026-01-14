@@ -84,7 +84,6 @@ function AppRoutes() {
         <Route path="floors/:floorId" element={<FloorDetailPage />} />
         <Route path="rooms/:roomId" element={<RoomDetailPage />} />
         
-        <Route path="sites" element={<SitesPage />} />
         <Route path="rules" element={<RulesPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
