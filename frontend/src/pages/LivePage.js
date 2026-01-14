@@ -10,7 +10,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { eventsAPI, sitesAPI } from '@/lib/api';
+import { eventsAPI } from '@/lib/api';
+import api from '@/lib/api';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +34,8 @@ import {
   Wifi,
   WifiOff,
   LayoutGrid,
-  List
+  List,
+  Building2
 } from 'lucide-react';
 
 // Import du nouveau composant LiveEventCard
@@ -46,9 +48,11 @@ export function LivePage() {
   
   // États
   const [events, setEvents] = useState([]);
-  const [sites, setSites] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [buildings, setBuildings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedSite, setSelectedSite] = useState('all');
+  const [selectedClient, setSelectedClient] = useState('all');
+  const [selectedBuilding, setSelectedBuilding] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -67,12 +71,12 @@ export function LivePage() {
         ...(selectedType !== 'all' && { event_type: selectedType })
       };
       
-      const [eventsRes, sitesRes] = await Promise.all([
+      const [eventsRes, clientsRes] = await Promise.all([
         eventsAPI.list(params),
-        sitesAPI.list()
+        api.get('/clients')
       ]);
       setEvents(eventsRes.data);
-      setSites(sitesRes.data);
+      setClients(clientsRes.data);
     } catch (error) {
       console.error('Failed to fetch data:', error);
       toast.error(t('errors.generic'));
@@ -80,6 +84,18 @@ export function LivePage() {
       setLoading(false);
     }
   }, [selectedStatus, selectedType, t]);
+
+  // Charger les bâtiments quand un client est sélectionné
+  useEffect(() => {
+    if (selectedClient && selectedClient !== 'all') {
+      api.get(`/clients/${selectedClient}/buildings`).then(res => {
+        setBuildings(res.data);
+      }).catch(() => setBuildings([]));
+    } else {
+      setBuildings([]);
+      setSelectedBuilding('all');
+    }
+  }, [selectedClient]);
 
   useEffect(() => {
     fetchData();
