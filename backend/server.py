@@ -1195,14 +1195,17 @@ async def get_events_timeline(
     
     events = await db.events.find(query, {"_id": 0, "timestamp": 1, "type": 1}).to_list(10000)
     
-    # Group by date
+    # Group by date - include all event types
     from collections import defaultdict
-    daily_counts = defaultdict(lambda: {"total": 0, "FALL": 0, "PRE_FALL": 0, "UNKNOWN": 0})
+    daily_counts = defaultdict(lambda: {"total": 0, "FALL": 0, "PRE_FALL": 0, "PRESENCE": 0, "INACTIVITY": 0, "UNKNOWN": 0})
     
     for event in events:
         date_str = event["timestamp"][:10]  # Extract YYYY-MM-DD
         daily_counts[date_str]["total"] += 1
         event_type = event.get("type", "UNKNOWN")
+        # Ensure we handle any event type
+        if event_type not in daily_counts[date_str]:
+            daily_counts[date_str][event_type] = 0
         daily_counts[date_str][event_type] += 1
     
     # Generate all dates in range
@@ -1210,13 +1213,15 @@ async def get_events_timeline(
     for i in range(days):
         date = start_date + timedelta(days=i)
         date_str = date.strftime("%Y-%m-%d")
-        counts = daily_counts.get(date_str, {"total": 0, "FALL": 0, "PRE_FALL": 0, "UNKNOWN": 0})
+        counts = daily_counts.get(date_str, {"total": 0, "FALL": 0, "PRE_FALL": 0, "PRESENCE": 0, "INACTIVITY": 0, "UNKNOWN": 0})
         result.append({
             "date": date_str,
             "total": counts["total"],
-            "fall": counts["FALL"],
-            "pre_fall": counts["PRE_FALL"],
-            "unknown": counts["UNKNOWN"]
+            "fall": counts.get("FALL", 0),
+            "pre_fall": counts.get("PRE_FALL", 0),
+            "presence": counts.get("PRESENCE", 0),
+            "inactivity": counts.get("INACTIVITY", 0),
+            "unknown": counts.get("UNKNOWN", 0)
         })
     
     return result
