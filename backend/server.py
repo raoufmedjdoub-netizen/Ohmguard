@@ -192,6 +192,8 @@ class SensorBase(BaseModel):
     zone_id: str
     site_id: str
     tenant_id: str
+    device_id: Optional[str] = None  # MQTT Device ID for communications
+    serial_product: Optional[str] = None  # Physical serial number
 
 class SensorCreate(SensorBase):
     pass
@@ -201,6 +203,8 @@ class SensorUpdate(BaseModel):
     model: Optional[str] = None
     firmware: Optional[str] = None
     status: Optional[SensorStatus] = None
+    device_id: Optional[str] = None
+    serial_product: Optional[str] = None
 
 class Sensor(SensorBase):
     model_config = ConfigDict(extra="ignore")
