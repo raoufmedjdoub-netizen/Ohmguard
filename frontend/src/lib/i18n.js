@@ -515,6 +515,7 @@ const resources = {
         confidence: 'Confiance',
         timestamp: 'Horodatage',
         sensor: 'Capteur',
+        location: 'Emplacement',
         site: 'Site',
         zone: 'Zone',
         assigned_to: 'Assigné à',
