@@ -185,7 +185,7 @@ export function DashboardPage() {
                       {event.severity}
                     </Badge>
                     <span className="text-sm text-muted-foreground font-mono">
-                      {event.sensor_id?.substring(0, 8)}...
+                      {event.device_id?.substring(0, 15) || event.sensor_id?.substring(0, 8)}...
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
