@@ -826,6 +826,22 @@ async def get_event(event_id: str, current_user: UserInDB = Depends(get_current_
     if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != event['tenant_id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
+    # Enrich with location
+    try:
+        service = get_clients_buildings_service()
+        if event.get("sensor_id"):
+            location_path = await service.get_event_location_path(event["sensor_id"])
+            event["location_path"] = location_path.full_path
+            event["location"] = {
+                "client_name": location_path.client_name,
+                "building_name": location_path.building_name,
+                "floor_name": location_path.floor_name,
+                "room_number": location_path.room_number,
+                "zone_name": location_path.zone_name
+            }
+    except Exception:
+        pass
+    
     return event
 
 @api_router.patch("/events/{event_id}", response_model=Event)
