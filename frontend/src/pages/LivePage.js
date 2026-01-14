@@ -31,6 +31,7 @@ function EventCard({ event, onAcknowledge, onResolve, onFalseAlarm, onViewDetail
   const presenceDetected = event.presence_detected;
   const activeRegions = event.active_regions || [];
   const targetCount = event.target_count || 0;
+  const locationPath = event.location_path;
   
   // Get icon based on event type
   const getEventIcon = (type) => {
