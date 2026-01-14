@@ -210,7 +210,7 @@ export function RadarsPage() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={fetchData} disabled={loading} data-testid="refresh-btn">
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            {t('common.refresh')}
+            {t('refresh')}
           </Button>
           <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
             <DialogTrigger asChild>
