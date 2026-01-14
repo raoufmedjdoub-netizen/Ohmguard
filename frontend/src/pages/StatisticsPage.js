@@ -235,6 +235,10 @@ export function StatisticsPage() {
                   <stop offset="5%" stopColor={COLORS.warning} stopOpacity={0.3}/>
                   <stop offset="95%" stopColor={COLORS.warning} stopOpacity={0}/>
                 </linearGradient>
+                <linearGradient id="colorPresence" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={COLORS.secondary} stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor={COLORS.secondary} stopOpacity={0}/>
+                </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis 
@@ -260,6 +264,14 @@ export function StatisticsPage() {
                 stroke={COLORS.warning} 
                 fillOpacity={1} 
                 fill="url(#colorPreFall)" 
+              />
+              <Area 
+                type="monotone" 
+                dataKey="presence" 
+                name="Présence" 
+                stroke={COLORS.secondary} 
+                fillOpacity={1} 
+                fill="url(#colorPresence)" 
               />
             </AreaChart>
           </ResponsiveContainer>
