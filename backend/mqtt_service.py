@@ -1,6 +1,7 @@
 """
 MQTT Service for Vayyar Radar Integration
 Connects to MQTT broker and processes fall detection events from radar devices
+Enhanced with RadarEvent model support for normalized event processing
 """
 
 import asyncio
@@ -13,15 +14,23 @@ import uuid
 import aiomqtt
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+# Import radar event models
+from radar_event_models import (
+    RadarEventType, PresenceStatus, EventSeverity, EventStatus,
+    RadarEventPayload, RadarEventRequest,
+    normalize_radar_event, extract_active_regions, epoch_ms_to_iso,
+    format_active_regions_display, format_target_count_display
+)
+
 logger = logging.getLogger(__name__)
 
-# Vayyar event type mapping
+# Vayyar event type mapping (for legacy support)
 VAYYAR_EVENT_TYPES = {
-    0: "PRESENCE",      # Presence detection
-    1: "ENTRY",         # Room entry
-    2: "EXIT",          # Room exit
-    3: "PRE_FALL",      # Pre-fall detected (posture change)
-    4: "FALL",          # Fall detected
+    0: "PRESENCE",      # Presence detection  
+    1: "FALL",          # Fall detected
+    2: "PRE_FALL",      # Pre-fall detected
+    3: "INACTIVITY",    # Inactivity detected
+    4: "PRESENCE",      # Presence event
     5: "LYING",         # Person lying down
     6: "SITTING",       # Person sitting
     7: "STANDING",      # Person standing
