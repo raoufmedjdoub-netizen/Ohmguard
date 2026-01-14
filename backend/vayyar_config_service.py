@@ -400,7 +400,7 @@ class VayyarConfigService:
         )
         
         return await self.publish_config(
-            version["deviceId"],
+            version["sensorId"],
             version["config"],
             options,
             version.get("tenantId")
