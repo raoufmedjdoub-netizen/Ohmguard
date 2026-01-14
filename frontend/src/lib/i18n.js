@@ -37,6 +37,7 @@ const resources = {
         history: 'History',
         statistics: 'Statistics',
         radars: 'Radars',
+        clients: 'Clients & Buildings',
         sites: 'Sites & Zones',
         rules: 'Alert Rules',
         users: 'Users',
