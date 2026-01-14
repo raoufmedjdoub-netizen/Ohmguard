@@ -1,0 +1,568 @@
+"""
+Clients & Buildings API Routes
+Multi-tenant hierarchical structure management endpoints
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Optional, List
+
+from clients_buildings_models import (
+    ClientCreate, ClientUpdate,
+    BuildingCreate, BuildingUpdate,
+    FloorCreate, FloorUpdate,
+    RoomCreate, RoomUpdate,
+    RoomSpaceCreate, RoomSpaceUpdate,
+    ZoneCreateNew, ZoneUpdateNew,
+    RadarAssignRequest, ClientUserCreate, ClientUserUpdate
+)
+from clients_buildings_service import get_clients_buildings_service, ClientsBuildingsService
+
+
+def create_clients_buildings_router(get_current_user, check_permission, db, pwd_context):
+    """Factory function to create router with dependencies"""
+    
+    router = APIRouter(tags=["Clients & Buildings"])
+    
+    def get_service() -> ClientsBuildingsService:
+        return get_clients_buildings_service()
+    
+    # ==================== CLIENTS ====================
+    
+    @router.get("/clients")
+    async def list_clients(current_user = Depends(get_current_user)):
+        """List all clients (SUPER_ADMIN only)"""
+        check_permission(current_user, ["SUPER_ADMIN"])
+        service = get_service()
+        return await service.list_clients()
+    
+    @router.post("/clients")
+    async def create_client(data: ClientCreate, current_user = Depends(get_current_user)):
+        """Create a new client (SUPER_ADMIN only)"""
+        check_permission(current_user, ["SUPER_ADMIN"])
+        service = get_service()
+        return await service.create_client(data)
+    
+    @router.get("/clients/{client_id}")
+    async def get_client(client_id: str, current_user = Depends(get_current_user)):
+        """Get client details"""
+        # Allow SUPER_ADMIN or users belonging to this client
+        if current_user.role != "SUPER_ADMIN":
+            # Check if user belongs to this client
+            client_user = await db.client_users.find_one({
+                "user_id": current_user.id,
+                "client_id": client_id,
+                "is_active": True
+            })
+            if not client_user and current_user.tenant_id != client_id:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        service = get_service()
+        client = await service.get_client(client_id)
+        if not client:
+            raise HTTPException(status_code=404, detail="Client not found")
+        return client
+    
+    @router.patch("/clients/{client_id}")
+    async def update_client(client_id: str, data: ClientUpdate, current_user = Depends(get_current_user)):
+        """Update a client"""
+        # SUPER_ADMIN or CLIENT_ADMIN of this client
+        if current_user.role != "SUPER_ADMIN":
+            client_user = await db.client_users.find_one({
+                "user_id": current_user.id,
+                "client_id": client_id,
+                "role": "CLIENT_ADMIN",
+                "is_active": True
+            })
+            if not client_user:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        service = get_service()
+        result = await service.update_client(client_id, data)
+        if not result:
+            raise HTTPException(status_code=404, detail="Client not found")
+        return result
+    
+    @router.get("/clients/{client_id}/tree")
+    async def get_client_tree(client_id: str, current_user = Depends(get_current_user)):
+        """Get hierarchical tree view for a client"""
+        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != client_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        service = get_service()
+        return await service.get_client_tree(client_id)
+    
+    # ==================== BUILDINGS ====================
+    
+    @router.get("/clients/{client_id}/buildings")
+    async def list_buildings(client_id: str, current_user = Depends(get_current_user)):
+        """List buildings for a client"""
+        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != client_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        service = get_service()
+        return await service.list_buildings(client_id)
+    
+    @router.post("/clients/{client_id}/buildings")
+    async def create_building(client_id: str, data: BuildingCreate, current_user = Depends(get_current_user)):
+        """Create a new building"""
+        if current_user.role != "SUPER_ADMIN":
+            check_permission(current_user, ["TENANT_ADMIN"])
+            if current_user.tenant_id != client_id:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Override client_id from path
+        data.client_id = client_id
+        service = get_service()
+        return await service.create_building(client_id, data)
+    
+    @router.get("/buildings/{building_id}")
+    async def get_building(building_id: str, current_user = Depends(get_current_user)):
+        """Get building details"""
+        service = get_service()
+        building = await service.get_building(building_id)
+        if not building:
+            raise HTTPException(status_code=404, detail="Building not found")
+        
+        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != building["client_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        return building
+    
+    @router.patch("/buildings/{building_id}")
+    async def update_building(building_id: str, data: BuildingUpdate, current_user = Depends(get_current_user)):
+        """Update a building"""
+        service = get_service()
+        building = await service.get_building(building_id, include_stats=False)
+        if not building:
+            raise HTTPException(status_code=404, detail="Building not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            check_permission(current_user, ["TENANT_ADMIN"])
+            if current_user.tenant_id != building["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        return await service.update_building(building_id, data)
+    
+    @router.delete("/buildings/{building_id}")
+    async def delete_building(building_id: str, current_user = Depends(get_current_user)):
+        """Delete a building and all its contents"""
+        service = get_service()
+        building = await service.get_building(building_id, include_stats=False)
+        if not building:
+            raise HTTPException(status_code=404, detail="Building not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            check_permission(current_user, ["TENANT_ADMIN"])
+            if current_user.tenant_id != building["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        await service.delete_building(building_id)
+        return {"message": "Building deleted"}
+    
+    # ==================== FLOORS ====================
+    
+    @router.get("/buildings/{building_id}/floors")
+    async def list_floors(building_id: str, current_user = Depends(get_current_user)):
+        """List floors for a building"""
+        service = get_service()
+        building = await service.get_building(building_id, include_stats=False)
+        if not building:
+            raise HTTPException(status_code=404, detail="Building not found")
+        
+        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != building["client_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        return await service.list_floors(building_id)
+    
+    @router.post("/buildings/{building_id}/floors")
+    async def create_floor(building_id: str, data: FloorCreate, current_user = Depends(get_current_user)):
+        """Create a new floor"""
+        service = get_service()
+        building = await service.get_building(building_id, include_stats=False)
+        if not building:
+            raise HTTPException(status_code=404, detail="Building not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            check_permission(current_user, ["TENANT_ADMIN"])
+            if current_user.tenant_id != building["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        return await service.create_floor(building_id, data)
+    
+    @router.get("/floors/{floor_id}")
+    async def get_floor(floor_id: str, current_user = Depends(get_current_user)):
+        """Get floor details"""
+        service = get_service()
+        floor = await service.get_floor(floor_id)
+        if not floor:
+            raise HTTPException(status_code=404, detail="Floor not found")
+        
+        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != floor["client_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        return floor
+    
+    @router.patch("/floors/{floor_id}")
+    async def update_floor(floor_id: str, data: FloorUpdate, current_user = Depends(get_current_user)):
+        """Update a floor"""
+        service = get_service()
+        floor = await service.get_floor(floor_id, include_stats=False)
+        if not floor:
+            raise HTTPException(status_code=404, detail="Floor not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            check_permission(current_user, ["TENANT_ADMIN"])
+            if current_user.tenant_id != floor["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        return await service.update_floor(floor_id, data)
+    
+    @router.delete("/floors/{floor_id}")
+    async def delete_floor(floor_id: str, current_user = Depends(get_current_user)):
+        """Delete a floor"""
+        service = get_service()
+        floor = await service.get_floor(floor_id, include_stats=False)
+        if not floor:
+            raise HTTPException(status_code=404, detail="Floor not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            check_permission(current_user, ["TENANT_ADMIN"])
+            if current_user.tenant_id != floor["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        await service.delete_floor(floor_id)
+        return {"message": "Floor deleted"}
+    
+    # ==================== ROOMS ====================
+    
+    @router.get("/floors/{floor_id}/rooms")
+    async def list_rooms(floor_id: str, current_user = Depends(get_current_user)):
+        """List rooms for a floor"""
+        service = get_service()
+        floor = await service.get_floor(floor_id, include_stats=False)
+        if not floor:
+            raise HTTPException(status_code=404, detail="Floor not found")
+        
+        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != floor["client_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        return await service.list_rooms(floor_id)
+    
+    @router.post("/floors/{floor_id}/rooms")
+    async def create_room(floor_id: str, data: RoomCreate, current_user = Depends(get_current_user)):
+        """Create a new room"""
+        service = get_service()
+        floor = await service.get_floor(floor_id, include_stats=False)
+        if not floor:
+            raise HTTPException(status_code=404, detail="Floor not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            check_permission(current_user, ["TENANT_ADMIN"])
+            if current_user.tenant_id != floor["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        try:
+            return await service.create_room(floor_id, data)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    
+    @router.get("/rooms/{room_id}")
+    async def get_room(room_id: str, current_user = Depends(get_current_user)):
+        """Get room details with spaces"""
+        service = get_service()
+        room = await service.get_room(room_id)
+        if not room:
+            raise HTTPException(status_code=404, detail="Room not found")
+        
+        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != room["client_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        return room
+    
+    @router.patch("/rooms/{room_id}")
+    async def update_room(room_id: str, data: RoomUpdate, current_user = Depends(get_current_user)):
+        """Update a room"""
+        service = get_service()
+        room = await service.get_room(room_id, include_spaces=False)
+        if not room:
+            raise HTTPException(status_code=404, detail="Room not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            check_permission(current_user, ["TENANT_ADMIN"])
+            if current_user.tenant_id != room["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        try:
+            return await service.update_room(room_id, data)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    
+    @router.delete("/rooms/{room_id}")
+    async def delete_room(room_id: str, current_user = Depends(get_current_user)):
+        """Delete a room"""
+        service = get_service()
+        room = await service.get_room(room_id, include_spaces=False)
+        if not room:
+            raise HTTPException(status_code=404, detail="Room not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            check_permission(current_user, ["TENANT_ADMIN"])
+            if current_user.tenant_id != room["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        await service.delete_room(room_id)
+        return {"message": "Room deleted"}
+    
+    # ==================== ROOM SPACES ====================
+    
+    @router.post("/rooms/{room_id}/spaces")
+    async def add_room_space(room_id: str, data: RoomSpaceCreate, current_user = Depends(get_current_user)):
+        """Add a space to a room"""
+        service = get_service()
+        room = await service.get_room(room_id, include_spaces=False)
+        if not room:
+            raise HTTPException(status_code=404, detail="Room not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            check_permission(current_user, ["TENANT_ADMIN"])
+            if current_user.tenant_id != room["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        try:
+            return await service.add_room_space(room_id, data)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    
+    @router.patch("/room-spaces/{space_id}")
+    async def update_room_space(space_id: str, data: RoomSpaceUpdate, current_user = Depends(get_current_user)):
+        """Update a room space"""
+        space = await db.room_spaces.find_one({"id": space_id}, {"_id": 0})
+        if not space:
+            raise HTTPException(status_code=404, detail="Space not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            check_permission(current_user, ["TENANT_ADMIN"])
+            if current_user.tenant_id != space["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        service = get_service()
+        return await service.update_room_space(space_id, data)
+    
+    @router.delete("/room-spaces/{space_id}")
+    async def delete_room_space(space_id: str, current_user = Depends(get_current_user)):
+        """Delete a room space"""
+        space = await db.room_spaces.find_one({"id": space_id}, {"_id": 0})
+        if not space:
+            raise HTTPException(status_code=404, detail="Space not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            check_permission(current_user, ["TENANT_ADMIN"])
+            if current_user.tenant_id != space["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        service = get_service()
+        await service.delete_room_space(space_id)
+        return {"message": "Space deleted"}
+    
+    # ==================== ZONES ====================
+    
+    @router.get("/buildings/{building_id}/zones")
+    async def list_zones(
+        building_id: str, 
+        floor_id: Optional[str] = None,
+        current_user = Depends(get_current_user)
+    ):
+        """List zones for a building"""
+        service = get_service()
+        building = await service.get_building(building_id, include_stats=False)
+        if not building:
+            raise HTTPException(status_code=404, detail="Building not found")
+        
+        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != building["client_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        return await service.list_zones(building_id, floor_id)
+    
+    @router.post("/buildings/{building_id}/zones")
+    async def create_zone(building_id: str, data: ZoneCreateNew, current_user = Depends(get_current_user)):
+        """Create a new zone"""
+        service = get_service()
+        building = await service.get_building(building_id, include_stats=False)
+        if not building:
+            raise HTTPException(status_code=404, detail="Building not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            check_permission(current_user, ["TENANT_ADMIN"])
+            if current_user.tenant_id != building["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        return await service.create_zone(building_id, data)
+    
+    @router.get("/zones/{zone_id}")
+    async def get_zone(zone_id: str, current_user = Depends(get_current_user)):
+        """Get zone details"""
+        service = get_service()
+        zone = await service.get_zone(zone_id)
+        if not zone:
+            raise HTTPException(status_code=404, detail="Zone not found")
+        
+        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != zone["client_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        return zone
+    
+    @router.patch("/zones/{zone_id}")
+    async def update_zone(zone_id: str, data: ZoneUpdateNew, current_user = Depends(get_current_user)):
+        """Update a zone"""
+        service = get_service()
+        zone = await service.get_zone(zone_id)
+        if not zone:
+            raise HTTPException(status_code=404, detail="Zone not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            check_permission(current_user, ["TENANT_ADMIN"])
+            if current_user.tenant_id != zone["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        return await service.update_zone(zone_id, data)
+    
+    @router.delete("/zones/{zone_id}")
+    async def delete_zone(zone_id: str, current_user = Depends(get_current_user)):
+        """Delete a zone"""
+        service = get_service()
+        zone = await service.get_zone(zone_id)
+        if not zone:
+            raise HTTPException(status_code=404, detail="Zone not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            check_permission(current_user, ["TENANT_ADMIN"])
+            if current_user.tenant_id != zone["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        await service.delete_zone(zone_id)
+        return {"message": "Zone deleted"}
+    
+    # ==================== RADAR ASSIGNMENT ====================
+    
+    @router.get("/clients/{client_id}/radars")
+    async def list_client_radars(
+        client_id: str,
+        building_id: Optional[str] = None,
+        floor_id: Optional[str] = None,
+        unassigned: bool = False,
+        current_user = Depends(get_current_user)
+    ):
+        """List radars for a client with optional filters"""
+        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != client_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        query = {"client_id": client_id}
+        if building_id:
+            query["building_id"] = building_id
+        if floor_id:
+            query["floor_id"] = floor_id
+        if unassigned:
+            query["$and"] = [
+                {"room_id": None},
+                {"room_space_id": None},
+                {"zone_id": None}
+            ]
+        
+        radars = await db.sensors.find(query, {"_id": 0}).to_list(1000)
+        
+        # Add location info
+        service = get_service()
+        for radar in radars:
+            location = await service.get_radar_location(radar["id"])
+            radar["location"] = location.model_dump()
+            radar["location_path"] = location.get_path()
+        
+        return radars
+    
+    @router.post("/radars/{radar_id}/assign")
+    async def assign_radar(radar_id: str, data: RadarAssignRequest, current_user = Depends(get_current_user)):
+        """Assign a radar to a location"""
+        radar = await db.sensors.find_one({"id": radar_id}, {"_id": 0})
+        if not radar:
+            raise HTTPException(status_code=404, detail="Radar not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            check_permission(current_user, ["TENANT_ADMIN", "SUPERVISOR"])
+            if current_user.tenant_id != radar.get("client_id"):
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        service = get_service()
+        try:
+            return await service.assign_radar(radar_id, data, current_user.id)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    
+    @router.post("/radars/{radar_id}/unassign")
+    async def unassign_radar(
+        radar_id: str, 
+        reason: Optional[str] = None,
+        current_user = Depends(get_current_user)
+    ):
+        """Unassign a radar from its current location"""
+        radar = await db.sensors.find_one({"id": radar_id}, {"_id": 0})
+        if not radar:
+            raise HTTPException(status_code=404, detail="Radar not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            check_permission(current_user, ["TENANT_ADMIN", "SUPERVISOR"])
+            if current_user.tenant_id != radar.get("client_id"):
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        service = get_service()
+        return await service.unassign_radar(radar_id, current_user.id, reason)
+    
+    @router.get("/radars/{radar_id}/assignments")
+    async def get_radar_assignments(radar_id: str, current_user = Depends(get_current_user)):
+        """Get assignment history for a radar"""
+        radar = await db.sensors.find_one({"id": radar_id}, {"_id": 0})
+        if not radar:
+            raise HTTPException(status_code=404, detail="Radar not found")
+        
+        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != radar.get("client_id"):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        service = get_service()
+        return await service.get_radar_assignment_history(radar_id)
+    
+    @router.get("/radars/{radar_id}/location")
+    async def get_radar_location_endpoint(radar_id: str, current_user = Depends(get_current_user)):
+        """Get current location for a radar"""
+        radar = await db.sensors.find_one({"id": radar_id}, {"_id": 0})
+        if not radar:
+            raise HTTPException(status_code=404, detail="Radar not found")
+        
+        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != radar.get("client_id"):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        service = get_service()
+        location = await service.get_radar_location(radar_id)
+        return {
+            "location": location.model_dump(),
+            "path": location.get_path()
+        }
+    
+    # ==================== EVENT LOCATION ====================
+    
+    @router.get("/events/{event_id}/location")
+    async def get_event_location(event_id: str, current_user = Depends(get_current_user)):
+        """Get location path for an event"""
+        event = await db.events.find_one({"id": event_id}, {"_id": 0})
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+        
+        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != event.get("tenant_id"):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        service = get_service()
+        if event.get("sensor_id"):
+            path = await service.get_event_location_path(event["sensor_id"])
+            return path.model_dump()
+        
+        return {"full_path": "Capteur inconnu"}
+    
+    return router
