@@ -77,6 +77,14 @@ function AppRoutes() {
         <Route path="sensors" element={<Navigate to="/radars" replace />} />
         <Route path="radars" element={<RadarsPage />} />
         <Route path="radars/:deviceId/config" element={<RadarConfigPage />} />
+        
+        {/* Clients & Buildings */}
+        <Route path="clients" element={<ClientsPage />} />
+        <Route path="clients/:clientId" element={<ClientDetailPage />} />
+        <Route path="buildings/:buildingId" element={<BuildingDetailPage />} />
+        <Route path="floors/:floorId" element={<FloorDetailPage />} />
+        <Route path="rooms/:roomId" element={<RoomDetailPage />} />
+        
         <Route path="sites" element={<SitesPage />} />
         <Route path="rules" element={<RulesPage />} />
         <Route path="users" element={<UsersPage />} />
