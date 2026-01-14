@@ -83,7 +83,7 @@ RoleType = Literal["SUPER_ADMIN", "TENANT_ADMIN", "SUPERVISOR", "OPERATOR", "VIE
 EventType = Literal["FALL", "PRE_FALL", "UNKNOWN"]
 SeverityType = Literal["LOW", "MED", "HIGH"]
 EventStatus = Literal["NEW", "ACK", "RESOLVED", "FALSE_ALARM"]
-SensorType = Literal["RADAR", "CAMERA", "IOT"]
+SensorType = Literal["RADAR"]
 SensorStatus = Literal["ONLINE", "OFFLINE", "MAINTENANCE"]
 
 class UserBase(BaseModel):
