@@ -1,4 +1,13 @@
-import React, { useEffect, useState, useCallback } from 'react';
+/**
+ * LivePage - Mur d'événements temps réel
+ * 
+ * Affiche les événements en temps réel avec:
+ * - Localisation hiérarchique complète
+ * - État temps réel (actif/acquitté/résolu)
+ * - Statut du radar (en ligne/hors ligne)
+ * - Animations pour les nouveaux événements
+ */
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { eventsAPI, sitesAPI } from '@/lib/api';
@@ -7,188 +16,35 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn, formatRelativeTime, getEventTypeColor, getSeverityColor, getStatusColor } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
   Radio,
   AlertTriangle,
   RefreshCw,
   Filter,
-  CheckCircle,
-  XCircle,
-  Clock,
   Loader2,
   Volume2,
-  User,
-  MapPin,
-  Target,
-  Eye,
-  Building
+  VolumeX,
+  Activity,
+  Clock,
+  CheckCircle2,
+  Users,
+  Wifi,
+  WifiOff,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 
-// Event Card Component for Live Wall
-function EventCard({ event, onAcknowledge, onResolve, onFalseAlarm, onViewDetails, t, i18n }) {
-  const isPresenceEvent = event.type === 'PRESENCE';
-  const presenceDetected = event.presence_detected;
-  const activeRegions = event.active_regions || [];
-  const targetCount = event.target_count || 0;
-  const locationPath = event.location_path;
-  
-  // Get icon based on event type
-  const getEventIcon = (type) => {
-    switch (type) {
-      case 'FALL': return <AlertTriangle className="h-6 w-6" />;
-      case 'PRE_FALL': return <AlertTriangle className="h-6 w-6" />;
-      case 'PRESENCE': return <User className="h-6 w-6" />;
-      case 'INACTIVITY': return <Clock className="h-6 w-6" />;
-      default: return <Radio className="h-6 w-6" />;
-    }
-  };
-  
-  // Get presence title
-  const getPresenceTitle = () => {
-    if (!isPresenceEvent) {
-      return t(`events.type_${event.type?.toLowerCase() || 'unknown'}`);
-    }
-    return presenceDetected ? t('events.presence_detected') : t('events.no_presence');
-  };
-  
-  // Get active regions display
-  const getActiveRegionsDisplay = () => {
-    if (activeRegions.length === 0) {
-      return t('events.no_active_regions');
-    }
-    return `${t('events.active_regions')}: ${activeRegions.join(', ')}`;
-  };
-
-  return (
-    <div
-      className={cn(
-        'p-4 rounded-lg border transition-all hover:shadow-md',
-        event.status === 'NEW' && event.severity === 'HIGH' && 'bg-destructive/5 border-destructive/30',
-        event.status === 'NEW' && event.severity !== 'HIGH' && 'bg-accent/30 border-border',
-        event.status !== 'NEW' && 'bg-card border-border'
-      )}
-      data-testid={`live-event-card-${event.id}`}
-    >
-      {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className={cn(
-            'p-2 rounded-lg',
-            event.type === 'FALL' ? 'bg-destructive/20 text-destructive' :
-            event.type === 'PRE_FALL' ? 'bg-warning/20 text-warning' :
-            event.type === 'PRESENCE' && presenceDetected ? 'bg-success/20 text-success' :
-            'bg-muted text-muted-foreground'
-          )}>
-            {getEventIcon(event.type)}
-          </div>
-          <div>
-            <h3 className="font-semibold">{getPresenceTitle()}</h3>
-            <p className="text-sm text-muted-foreground">
-              {formatRelativeTime(event.timestamp || event.occurred_at, i18n.language)}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-col items-end gap-1">
-          <Badge className={cn('font-mono', getEventTypeColor(event.type))}>
-            {t(`events.type_${event.type?.toLowerCase() || 'unknown'}`)}
-          </Badge>
-          <Badge variant="outline" className={cn('border', getStatusColor(event.status))}>
-            {t(`events.status_${event.status?.toLowerCase()}`)}
-          </Badge>
-        </div>
-      </div>
-      
-      {/* Location Info */}
-      {locationPath && (
-        <div className="flex items-center gap-2 mb-3 p-2 rounded bg-primary/5 border border-primary/10">
-          <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
-          <span className="text-xs font-medium text-primary truncate">{locationPath}</span>
-        </div>
-      )}
-      
-      {/* Presence Info Grid */}
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        <div className="flex items-center gap-2 p-2 rounded bg-muted/30">
-          <MapPin className="h-4 w-4 text-muted-foreground" />
-          <span className="text-xs">
-            {activeRegions.length > 0 
-              ? activeRegions.join(', ')
-              : t('events.no_active_regions')
-            }
-          </span>
-        </div>
-        <div className="flex items-center gap-2 p-2 rounded bg-muted/30">
-          <Target className="h-4 w-4 text-muted-foreground" />
-          <span className="text-xs">
-            {targetCount > 0 
-              ? `${targetCount} ${t('events.target_count').toLowerCase()}`
-              : t('events.no_targets')
-            }
-          </span>
-        </div>
-      </div>
-      
-      {/* Footer */}
-      <div className="flex items-center justify-between pt-3 border-t border-border/50">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Badge variant="outline" className={getSeverityColor(event.severity)}>
-            {t(`events.severity_${event.severity?.toLowerCase()}`)}
-          </Badge>
-          <span className="font-mono">{event.device_id?.substring(0, 15) || event.sensor_id?.substring(0, 8)}...</span>
-        </div>
-        
-        <div className="flex items-center gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => onViewDetails(event.id)}
-            data-testid={`view-btn-${event.id}`}
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          
-          {event.status === 'NEW' && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onAcknowledge(event.id)}
-              data-testid={`ack-btn-${event.id}`}
-            >
-              <Clock className="h-4 w-4" />
-            </Button>
-          )}
-          {(event.status === 'NEW' || event.status === 'ACK') && (
-            <>
-              <Button
-                size="sm"
-                variant="default"
-                onClick={() => onResolve(event.id)}
-                data-testid={`resolve-btn-${event.id}`}
-              >
-                <CheckCircle className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => onFalseAlarm(event.id)}
-                data-testid={`false-alarm-btn-${event.id}`}
-              >
-                <XCircle className="h-4 w-4" />
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+// Import du nouveau composant LiveEventCard
+import { LiveEventCard } from '@/components/live';
 
 export function LivePage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { subscribe, connected } = useWebSocket();
+  
+  // États
   const [events, setEvents] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -196,7 +52,13 @@ export function LivePage() {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
+  const [newEventIds, setNewEventIds] = useState(new Set());
+  
+  // Référence pour le son d'alerte
+  const alertSoundRef = useRef(null);
 
+  // Chargement des données
   const fetchData = useCallback(async () => {
     try {
       const params = {
@@ -223,34 +85,73 @@ export function LivePage() {
     fetchData();
   }, [fetchData]);
 
+  // Gestion WebSocket pour les événements temps réel
   useEffect(() => {
     const unsubscribe = subscribe('live', (message) => {
-      // Handle both old and new event types
+      // Nouvel événement
       if (message.type === 'new_event' || message.type === 'new_radar_event') {
-        setEvents(prev => [message.event, ...prev.slice(0, 49)]);
+        const newEvent = message.event;
         
-        // Alert for high severity events
-        if (soundEnabled && (message.event.type === 'FALL' || message.event.severity === 'HIGH')) {
+        // Ajouter à la liste avec marqueur "nouveau"
+        setEvents(prev => [newEvent, ...prev.slice(0, 49)]);
+        setNewEventIds(prev => new Set([...prev, newEvent.id]));
+        
+        // Retirer le marqueur après 3 secondes
+        setTimeout(() => {
+          setNewEventIds(prev => {
+            const next = new Set(prev);
+            next.delete(newEvent.id);
+            return next;
+          });
+        }, 3000);
+        
+        // Alerte pour événements critiques
+        if (newEvent.type === 'FALL' || newEvent.severity === 'HIGH' || newEvent.severity === 'CRITICAL') {
+          // Notification système
           if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('OhmGuard Alert', {
-              body: `${message.event.type} detected - ${message.event.severity}`,
-              icon: '/favicon.ico'
+            new Notification('🚨 OhmGuard - Alerte', {
+              body: `${newEvent.type === 'FALL' ? 'Chute détectée' : newEvent.type} - ${newEvent.location_path || 'Localisation inconnue'}`,
+              icon: '/favicon.ico',
+              requireInteraction: true
             });
           }
+          
+          // Son d'alerte
+          if (soundEnabled && alertSoundRef.current) {
+            alertSoundRef.current.play().catch(() => {});
+          }
+          
+          toast.error(`🚨 ${newEvent.type === 'FALL' ? 'Chute détectée!' : 'Alerte haute priorité'}`, {
+            description: newEvent.location_path || 'Vérifier la localisation',
+            duration: 10000
+          });
+        } else {
+          toast.info('Nouvel événement', {
+            description: `${newEvent.type} - ${newEvent.severity}`
+          });
         }
-        
-        toast.warning(t('events.event_created'), {
-          description: `${message.event.type} - ${message.event.severity}`
-        });
-      } else if (message.type === 'event_updated') {
+      } 
+      // Mise à jour d'événement
+      else if (message.type === 'event_updated') {
         setEvents(prev => prev.map(e => 
           e.id === message.event_id ? { ...e, ...message.update } : e
         ));
+        
+        // Marquer comme mis à jour
+        setNewEventIds(prev => new Set([...prev, message.event_id]));
+        setTimeout(() => {
+          setNewEventIds(prev => {
+            const next = new Set(prev);
+            next.delete(message.event_id);
+            return next;
+          });
+        }, 2000);
       }
     });
     return unsubscribe;
-  }, [subscribe, soundEnabled, t]);
+  }, [subscribe, soundEnabled]);
 
+  // Actions sur les événements
   const handleUpdateStatus = async (eventId, newStatus) => {
     try {
       await eventsAPI.update(eventId, { status: newStatus });
@@ -267,72 +168,149 @@ export function LivePage() {
     navigate(`/events/${eventId}`);
   };
 
+  // Filtrage
   const filteredEvents = events.filter(event => {
     if (selectedSite !== 'all' && event.site_id !== selectedSite) return false;
     return true;
   });
 
+  // Statistiques
+  const stats = {
+    new: events.filter(e => e.status === 'NEW').length,
+    ack: events.filter(e => e.status === 'ACK').length,
+    presence: events.filter(e => e.type === 'PRESENCE').length,
+    active: events.filter(e => e.presence_detected).length,
+    critical: events.filter(e => e.severity === 'HIGH' || e.severity === 'CRITICAL').length
+  };
+
+  // Loading state
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="text-center space-y-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Chargement des événements...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div data-testid="live-page" className="space-y-6">
-      {/* Header */}
+      {/* Son d'alerte (invisible) */}
+      <audio ref={alertSoundRef} preload="auto">
+        <source src="/alert.mp3" type="audio/mpeg" />
+      </audio>
+      
+      {/* === HEADER === */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          {/* Indicateur de connexion WebSocket */}
           <div className="relative">
-            <Radio className="h-6 w-6 text-primary" />
-            {connected && (
+            <Activity className="h-7 w-7 text-primary" />
+            {connected ? (
               <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-success"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+              </span>
+            ) : (
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
               </span>
             )}
           </div>
+          
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{t('events.live_title')}</h1>
-            <p className="text-muted-foreground">
-              {filteredEvents.length} {t('events.title').toLowerCase()}
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+              Mur d'événements
+              <Badge variant="outline" className={cn(
+                "ml-2 font-normal",
+                connected ? "border-green-500 text-green-600" : "border-red-500 text-red-600"
+              )}>
+                {connected ? (
+                  <>
+                    <Wifi className="h-3 w-3 mr-1" />
+                    Temps réel
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="h-3 w-3 mr-1" />
+                    Hors ligne
+                  </>
+                )}
+              </Badge>
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {filteredEvents.length} événement{filteredEvents.length > 1 ? 's' : ''} • 
+              {stats.critical > 0 && (
+                <span className="text-red-500 font-medium ml-1">
+                  {stats.critical} critique{stats.critical > 1 ? 's' : ''}
+                </span>
+              )}
             </p>
           </div>
         </div>
         
+        {/* Actions rapides */}
         <div className="flex items-center gap-2">
+          {/* Toggle son */}
           <Button
             variant={soundEnabled ? 'default' : 'outline'}
             size="sm"
             onClick={() => setSoundEnabled(!soundEnabled)}
             data-testid="sound-toggle"
+            className={cn(!soundEnabled && "text-muted-foreground")}
           >
-            <Volume2 className={cn('h-4 w-4', !soundEnabled && 'opacity-50')} />
+            {soundEnabled ? (
+              <Volume2 className="h-4 w-4" />
+            ) : (
+              <VolumeX className="h-4 w-4" />
+            )}
           </Button>
+          
+          {/* Toggle vue */}
+          <div className="flex border rounded-lg overflow-hidden">
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'ghost'}
+              size="sm"
+              className="rounded-none"
+              onClick={() => setViewMode('grid')}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              className="rounded-none"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          {/* Refresh */}
           <Button variant="outline" size="sm" onClick={fetchData} data-testid="refresh-btn">
             <RefreshCw className="h-4 w-4 mr-2" />
-            {t('refresh')}
+            Actualiser
           </Button>
         </div>
       </div>
 
-      {/* Filters */}
+      {/* === FILTRES === */}
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">{t('filter')}:</span>
+              <span className="text-sm font-medium">Filtres:</span>
             </div>
             
             <Select value={selectedSite} onValueChange={setSelectedSite}>
               <SelectTrigger className="w-48" data-testid="site-filter">
-                <SelectValue placeholder={t('events.site')} />
+                <SelectValue placeholder="Site" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t('all')} {t('sites.title')}</SelectItem>
+                <SelectItem value="all">Tous les sites</SelectItem>
                 {sites.map(site => (
                   <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
                 ))}
@@ -341,99 +319,150 @@ export function LivePage() {
             
             <Select value={selectedType} onValueChange={(v) => { setSelectedType(v); setLoading(true); }}>
               <SelectTrigger className="w-40" data-testid="type-filter">
-                <SelectValue placeholder={t('events.event_type')} />
+                <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t('all')}</SelectItem>
-                <SelectItem value="FALL">{t('events.type_fall')}</SelectItem>
-                <SelectItem value="PRE_FALL">{t('events.type_pre_fall')}</SelectItem>
-                <SelectItem value="PRESENCE">{t('events.type_presence')}</SelectItem>
-                <SelectItem value="INACTIVITY">{t('events.type_inactivity')}</SelectItem>
+                <SelectItem value="all">Tous les types</SelectItem>
+                <SelectItem value="FALL">🔴 Chute</SelectItem>
+                <SelectItem value="PRE_FALL">🟠 Pré-chute</SelectItem>
+                <SelectItem value="PRESENCE">🟢 Présence</SelectItem>
+                <SelectItem value="INACTIVITY">🟡 Inactivité</SelectItem>
               </SelectContent>
             </Select>
             
             <Select value={selectedStatus} onValueChange={(v) => { setSelectedStatus(v); setLoading(true); }}>
               <SelectTrigger className="w-40" data-testid="status-filter">
-                <SelectValue placeholder={t('status')} />
+                <SelectValue placeholder="Statut" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t('all')}</SelectItem>
-                <SelectItem value="NEW">{t('events.status_new')}</SelectItem>
-                <SelectItem value="ACK">{t('events.status_ack')}</SelectItem>
-                <SelectItem value="RESOLVED">{t('events.status_resolved')}</SelectItem>
-                <SelectItem value="FALSE_ALARM">{t('events.status_false_alarm')}</SelectItem>
+                <SelectItem value="all">Tous les statuts</SelectItem>
+                <SelectItem value="NEW">Nouveau</SelectItem>
+                <SelectItem value="ACK">Acquitté</SelectItem>
+                <SelectItem value="RESOLVED">Résolu</SelectItem>
+                <SelectItem value="FALSE_ALARM">Fausse alerte</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </CardContent>
       </Card>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
+      {/* === STATISTIQUES === */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <Card className={cn(stats.new > 0 && "border-blue-500/50 bg-blue-500/5")}>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-destructive">
-              {events.filter(e => e.status === 'NEW').length}
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-blue-600">{stats.new}</div>
+                <div className="text-xs text-muted-foreground">Nouveaux</div>
+              </div>
+              <AlertTriangle className="h-8 w-8 text-blue-500/30" />
             </div>
-            <div className="text-sm text-muted-foreground">{t('events.status_new')}</div>
           </CardContent>
         </Card>
-        <Card>
+        
+        <Card className={cn(stats.ack > 0 && "border-amber-500/50 bg-amber-500/5")}>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-warning">
-              {events.filter(e => e.status === 'ACK').length}
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-amber-600">{stats.ack}</div>
+                <div className="text-xs text-muted-foreground">Acquittés</div>
+              </div>
+              <Clock className="h-8 w-8 text-amber-500/30" />
             </div>
-            <div className="text-sm text-muted-foreground">{t('events.status_ack')}</div>
           </CardContent>
         </Card>
-        <Card>
+        
+        <Card className={cn(stats.critical > 0 && "border-red-500/50 bg-red-500/5")}>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-primary">
-              {events.filter(e => e.type === 'PRESENCE').length}
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-red-600">{stats.critical}</div>
+                <div className="text-xs text-muted-foreground">Critiques</div>
+              </div>
+              <AlertTriangle className="h-8 w-8 text-red-500/30" />
             </div>
-            <div className="text-sm text-muted-foreground">{t('events.type_presence')}</div>
           </CardContent>
         </Card>
+        
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-success">
-              {events.filter(e => e.presence_detected).length}
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-emerald-600">{stats.presence}</div>
+                <div className="text-xs text-muted-foreground">Présences</div>
+              </div>
+              <Users className="h-8 w-8 text-emerald-500/30" />
             </div>
-            <div className="text-sm text-muted-foreground">{t('events.presence_detected')}</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+                <div className="text-xs text-muted-foreground">Actifs</div>
+              </div>
+              <CheckCircle2 className="h-8 w-8 text-green-500/30" />
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Events Grid - Live Wall */}
-      <Card className="scanlines">
-        <CardHeader className="border-b border-border">
+      {/* === GRILLE D'ÉVÉNEMENTS === */}
+      <Card>
+        <CardHeader className="border-b border-border py-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-primary" />
-              {t('events.title')}
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Radio className="h-5 w-5 text-primary" />
+              Événements en direct
             </CardTitle>
+            {connected && (
+              <div className="flex items-center gap-1.5 text-xs text-green-600">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+                En direct
+              </div>
+            )}
           </div>
         </CardHeader>
+        
         <CardContent className="p-4">
           {filteredEvents.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
-              {t('events.no_events')}
+            <div className="py-16 text-center">
+              <Radio className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
+              <p className="text-muted-foreground">
+                Aucun événement à afficher
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Les nouveaux événements apparaîtront automatiquement
+              </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className={cn(
+              "gap-4",
+              viewMode === 'grid' 
+                ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3" 
+                : "flex flex-col"
+            )}>
               {filteredEvents.map((event, index) => (
                 <div
                   key={event.id}
-                  className={cn(index === 0 && 'animate-slide-in-right')}
+                  className={cn(
+                    "transition-all duration-300",
+                    index === 0 && "animate-in slide-in-from-top-4"
+                  )}
                 >
-                  <EventCard
+                  <LiveEventCard
                     event={event}
+                    isNew={newEventIds.has(event.id)}
                     onAcknowledge={(id) => handleUpdateStatus(id, 'ACK')}
                     onResolve={(id) => handleUpdateStatus(id, 'RESOLVED')}
                     onFalseAlarm={(id) => handleUpdateStatus(id, 'FALSE_ALARM')}
                     onViewDetails={handleViewDetails}
-                    t={t}
-                    i18n={i18n}
+                    language={i18n.language}
                   />
                 </div>
               ))}
@@ -444,3 +473,5 @@ export function LivePage() {
     </div>
   );
 }
+
+export default LivePage;
