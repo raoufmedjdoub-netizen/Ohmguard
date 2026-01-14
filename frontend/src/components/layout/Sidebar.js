@@ -9,7 +9,6 @@ import {
   LayoutDashboard,
   Radio,
   History,
-  MapPin,
   Bell,
   Users,
   Settings,
