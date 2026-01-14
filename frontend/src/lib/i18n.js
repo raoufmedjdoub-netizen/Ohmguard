@@ -166,10 +166,23 @@ const resources = {
         snapshot: 'Snapshot',
         raw_data: 'Raw Data',
         timeline: 'Timeline',
+        presence: 'Presence',
+        active_regions: 'Active Regions',
+        target_count: 'Target Count',
+        details: 'Details',
+        view_details: 'View Details',
+        raw_payload: 'Raw Payload',
+        occurred_at: 'Occurred At',
+        no_active_regions: 'No active regions',
+        no_targets: 'No targets detected',
+        presence_detected: 'Presence detected',
+        no_presence: 'No presence',
         
         // Types
         type_fall: 'Fall',
         type_pre_fall: 'Pre-Fall',
+        type_presence: 'Presence',
+        type_inactivity: 'Inactivity',
         type_unknown: 'Unknown',
         
         // Severities
