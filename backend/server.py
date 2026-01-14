@@ -1706,7 +1706,11 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize MQTT services on startup"""
+    """Initialize services on startup"""
+    # Initialize Clients & Buildings service
+    init_clients_buildings_service(db)
+    logger.info("Clients & Buildings service initialized")
+    
     if MQTT_ENABLED:
         try:
             # Initialize main MQTT service for events
