@@ -195,29 +195,16 @@ class MQTTService:
         return sensor
     
     async def _auto_register_sensor(self, device_id: str, payload: Dict) -> Optional[Dict[str, Any]]:
-        """Auto-register a new sensor from MQTT device"""
-        # Get default tenant and site for auto-registration
+        """Auto-register a new sensor from MQTT device
+        
+        Sensors are registered WITHOUT location assignment.
+        Administrators must manually assign them via Clients & Buildings UI.
+        """
+        # Get default tenant for the sensor (for multi-tenant filtering)
         tenant = await self.db.tenants.find_one({}, {"_id": 0})
         if not tenant:
             logger.warning(f"No tenant found for auto-registration of device {device_id}")
             return None
-        
-        site = await self.db.sites.find_one({"tenant_id": tenant['id']}, {"_id": 0})
-        if not site:
-            logger.warning(f"No site found for auto-registration of device {device_id}")
-            return None
-        
-        zone = await self.db.zones.find_one({"site_id": site['id']}, {"_id": 0})
-        if not zone:
-            # Create a default zone
-            zone = {
-                "id": str(uuid.uuid4()),
-                "name": "Zone Auto",
-                "site_id": site['id'],
-                "floor": "RDC",
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-            await self.db.zones.insert_one(zone)
         
         # Extract serial product from state payload - THE REAL SERIAL NUMBER
         serial_product = payload.get("serialProduct", "")
@@ -232,7 +219,7 @@ class MQTTService:
         else:
             radar_name = f"Radar {device_id[:12]}"
         
-        # Create sensor with serialProduct from payload and deviceId for MQTT
+        # Create sensor WITHOUT location assignment (pending assignment via UI)
         sensor = {
             "id": str(uuid.uuid4()),
             "name": radar_name,
@@ -244,11 +231,19 @@ class MQTTService:
             "hardware": hardware_info,
             "product_type": product_type,
             "firmware": payload.get("versionName", "unknown"),
-            "zone_id": zone['id'],
-            "site_id": site['id'],
+            # Location fields - NULL until manually assigned
+            "zone_id": None,
+            "site_id": None,
+            "client_id": None,
+            "building_id": None,
+            "floor_id": None,
+            "room_id": None,
+            "room_space_id": None,
+            # Tenant and status
             "tenant_id": tenant['id'],
             "api_key": f"sk_{uuid.uuid4().hex}",
             "status": "ONLINE",
+            "assignment_status": "PENDING",  # PENDING | ASSIGNED
             "last_seen": datetime.now(timezone.utc).isoformat(),
             "created_at": datetime.now(timezone.utc).isoformat()
         }
@@ -259,7 +254,7 @@ class MQTTService:
         self._device_sensor_cache[device_id] = sensor
         self._cache_timestamp[device_id] = datetime.now(timezone.utc)
         
-        logger.info(f"Auto-registered new sensor: {radar_name} (device: {device_id}, serial: {serial_product})")
+        logger.info(f"Auto-registered new sensor: {radar_name} (device: {device_id}, serial: {serial_product}) - PENDING ASSIGNMENT")
         
         # Broadcast new sensor to WebSocket
         if self.broadcast_callback:
