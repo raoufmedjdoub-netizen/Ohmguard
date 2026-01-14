@@ -25,7 +25,8 @@ import {
   Bed,
   ChevronRight,
   Loader2,
-  Users
+  Users,
+  MapPin
 } from 'lucide-react';
 
 export function FloorDetailPage() {
