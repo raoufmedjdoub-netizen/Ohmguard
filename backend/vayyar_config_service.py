@@ -258,7 +258,8 @@ class VayyarConfigService:
             "_meta": {
                 "correlationId": correlation_id,
                 "sentAt": now,
-                "versionNumber": version_number
+                "versionNumber": version_number,
+                "serialProduct": serial_product
             }
         }
         
@@ -277,7 +278,7 @@ class VayyarConfigService:
                     retain=options.retain
                 )
             
-            logger.info(f"Published config v{version_number} to {pub_topic}")
+            logger.info(f"Published config v{version_number} to {pub_topic} (device: {mqtt_device_id}, serial: {serial_product})")
             
         except Exception as e:
             logger.error(f"Failed to publish config: {e}")
@@ -294,14 +295,16 @@ class VayyarConfigService:
         if self.broadcast_callback and tenant_id:
             await self.broadcast_callback(tenant_id, {
                 "type": "config_sent",
-                "deviceId": device_id,
+                "sensorId": sensor_id,
+                "deviceId": mqtt_device_id,
+                "serialProduct": serial_product,
                 "versionId": version_id,
                 "versionNumber": version_number
             })
         
         return ConfigVersionResponse(
             id=version_id,
-            deviceId=device_id,
+            deviceId=mqtt_device_id,
             versionNumber=version_number,
             config=config,
             status=ConfigVersionStatus.SENT.value,
