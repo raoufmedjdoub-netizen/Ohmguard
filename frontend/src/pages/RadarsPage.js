@@ -1,52 +1,74 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Wifi, WifiOff, Radio, RefreshCw, Settings, Activity, Thermometer, Clock, MemoryStick } from 'lucide-react';
+import { 
+  Wifi, WifiOff, Radio, RefreshCw, Settings, Activity, 
+  Thermometer, Clock, MemoryStick, Plus, Copy, Key, 
+  Trash2, Edit, Search, MapPin
+} from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import api from '@/lib/api';
+import api, { sensorsAPI, sitesAPI, zonesAPI } from '@/lib/api';
 import { useWebSocket } from '@/contexts/WebSocketContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function RadarsPage() {
   const { t } = useTranslation();
   const { lastMessage } = useWebSocket();
+  const { user } = useAuth();
   const [mqttStatus, setMqttStatus] = useState(null);
-  const [radarSensors, setRadarSensors] = useState([]);
-  const [allSensors, setAllSensors] = useState([]);
+  const [radars, setRadars] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [zones, setZones] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [registerDialog, setRegisterDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  
+  // Dialog states
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedRadar, setSelectedRadar] = useState(null);
+  
+  // Form states
+  const [newRadar, setNewRadar] = useState({
+    name: '',
+    model: '',
+    firmware: '',
+    site_id: '',
+    zone_id: ''
+  });
   const [newDeviceId, setNewDeviceId] = useState('');
-  const [selectedSensorId, setSelectedSensorId] = useState('');
+  const [selectedRadarId, setSelectedRadarId] = useState('');
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [sensorsRes, statusRes] = await Promise.all([
+      const [sensorsRes, sitesRes, zonesRes, statusRes] = await Promise.all([
         api.get('/sensors'),
+        sitesAPI.list(),
+        zonesAPI.list(),
         api.get('/mqtt/status').catch(() => ({ data: null }))
       ]);
       
-      const sensors = sensorsRes.data;
-      setAllSensors(sensors);
-      
-      // Filter radar sensors (those with model starting with "id_" are from MQTT)
-      const radars = sensors.filter(s => 
-        s.type === 'RADAR' || 
-        (s.model && s.model.startsWith('id_'))
-      );
-      setRadarSensors(radars);
+      // All sensors are now RADAR type only
+      setRadars(sensorsRes.data);
+      setSites(sitesRes.data);
+      setZones(zonesRes.data);
       
       if (statusRes.data) {
         setMqttStatus(statusRes.data);
       }
     } catch (error) {
-      console.error('Error fetching radar data:', error);
-      toast.error(t('radars.fetchError', 'Erreur lors du chargement des radars'));
+      console.error('Error fetching data:', error);
+      toast.error(t('radars.fetchError'));
     } finally {
       setLoading(false);
     }
@@ -56,265 +78,475 @@ export function RadarsPage() {
     fetchData();
   }, []);
 
-  // Listen for real-time updates
   useEffect(() => {
     if (lastMessage) {
-      if (lastMessage.type === 'sensor_status' || lastMessage.type === 'sensor_registered') {
+      if (lastMessage.type === 'sensor_status' || lastMessage.type === 'sensor_registered' || lastMessage.type === 'new_event') {
         fetchData();
       }
     }
   }, [lastMessage]);
 
-  const handleRegisterDevice = async () => {
-    if (!newDeviceId || !selectedSensorId) {
-      toast.error(t('radars.fillFields', 'Veuillez remplir tous les champs'));
+  const handleAddRadar = async () => {
+    if (!newRadar.name || !newRadar.site_id || !newRadar.zone_id) {
+      toast.error(t('radars.fillRequired'));
       return;
     }
     
     try {
-      await api.post(`/mqtt/register-device?device_id=${encodeURIComponent(newDeviceId)}&sensor_id=${selectedSensorId}`);
-      toast.success(t('radars.deviceRegistered', 'Appareil enregistré avec succès'));
-      setRegisterDialog(false);
-      setNewDeviceId('');
-      setSelectedSensorId('');
+      const tenantId = user?.tenant_id || sites.find(s => s.id === newRadar.site_id)?.tenant_id;
+      await sensorsAPI.create({
+        ...newRadar,
+        type: 'RADAR',
+        tenant_id: tenantId
+      });
+      toast.success(t('radars.radarAdded'));
+      setAddDialogOpen(false);
+      setNewRadar({ name: '', model: '', firmware: '', site_id: '', zone_id: '' });
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || t('radars.registerError', 'Erreur lors de l\'enregistrement'));
+      toast.error(error.response?.data?.detail || t('radars.addError'));
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'ONLINE': return 'bg-green-500';
-      case 'OFFLINE': return 'bg-red-500';
-      case 'MAINTENANCE': return 'bg-yellow-500';
-      default: return 'bg-gray-500';
+  const handleLinkDevice = async () => {
+    if (!newDeviceId || !selectedRadarId) {
+      toast.error(t('radars.fillFields'));
+      return;
     }
+    
+    try {
+      await api.post(`/mqtt/register-device?device_id=${encodeURIComponent(newDeviceId)}&sensor_id=${selectedRadarId}`);
+      toast.success(t('radars.deviceLinked'));
+      setLinkDialogOpen(false);
+      setNewDeviceId('');
+      setSelectedRadarId('');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || t('radars.linkError'));
+    }
+  };
+
+  const handleDeleteRadar = async () => {
+    if (!selectedRadar) return;
+    
+    try {
+      await sensorsAPI.delete(selectedRadar.id);
+      toast.success(t('radars.radarDeleted'));
+      setDeleteDialogOpen(false);
+      setSelectedRadar(null);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || t('radars.deleteError'));
+    }
+  };
+
+  const handleRotateKey = async (radarId) => {
+    try {
+      const response = await sensorsAPI.rotateKey(radarId);
+      toast.success(t('radars.keyRotated'));
+      navigator.clipboard.writeText(response.data.api_key);
+      toast.info(t('radars.keyCopied'));
+      fetchData();
+    } catch (error) {
+      toast.error(t('radars.rotateError'));
+    }
+  };
+
+  const copyApiKey = (apiKey) => {
+    navigator.clipboard.writeText(apiKey);
+    toast.success(t('radars.keyCopied'));
   };
 
   const getStatusBadge = (status) => {
-    switch (status) {
-      case 'ONLINE': return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">{t('radars.online', 'En ligne')}</Badge>;
-      case 'OFFLINE': return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">{t('radars.offline', 'Hors ligne')}</Badge>;
-      case 'MAINTENANCE': return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">{t('radars.maintenance', 'Maintenance')}</Badge>;
-      default: return <Badge variant="secondary">{status}</Badge>;
-    }
+    const styles = {
+      ONLINE: 'bg-green-500/20 text-green-600 border-green-500/30',
+      OFFLINE: 'bg-red-500/20 text-red-600 border-red-500/30',
+      MAINTENANCE: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30'
+    };
+    const labels = {
+      ONLINE: t('radars.online'),
+      OFFLINE: t('radars.offline'),
+      MAINTENANCE: t('radars.maintenance')
+    };
+    return <Badge className={styles[status] || styles.OFFLINE}>{labels[status] || status}</Badge>;
   };
 
   const formatLastSeen = (timestamp) => {
-    if (!timestamp) return t('radars.never', 'Jamais');
+    if (!timestamp) return t('radars.never');
     const date = new Date(timestamp);
     const now = new Date();
     const diff = (now - date) / 1000;
     
-    if (diff < 60) return t('radars.justNow', 'À l\'instant');
-    if (diff < 3600) return t('radars.minutesAgo', '{{min}} min', { min: Math.floor(diff / 60) });
-    if (diff < 86400) return t('radars.hoursAgo', '{{hours}}h', { hours: Math.floor(diff / 3600) });
+    if (diff < 60) return t('radars.justNow');
+    if (diff < 3600) return `${Math.floor(diff / 60)} min`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
     return date.toLocaleDateString();
   };
+
+  const getSiteName = (siteId) => sites.find(s => s.id === siteId)?.name || '-';
+  const getZoneName = (zoneId) => zones.find(z => z.id === zoneId)?.name || '-';
+  const getZonesForSite = (siteId) => zones.filter(z => z.site_id === siteId);
+
+  const filteredRadars = radars.filter(radar => {
+    const matchesSearch = !searchQuery || 
+      radar.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      radar.model?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = selectedStatus === 'all' || radar.status === selectedStatus;
+    return matchesSearch && matchesStatus;
+  });
+
+  const onlineCount = radars.filter(r => r.status === 'ONLINE').length;
+  const offlineCount = radars.filter(r => r.status === 'OFFLINE').length;
+  const mqttCount = radars.filter(r => r.model?.startsWith('id_')).length;
 
   return (
     <div className="space-y-6" data-testid="radars-page">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t('radars.title', 'Radars Vayyar')}</h1>
-          <p className="text-muted-foreground">{t('radars.subtitle', 'Gestion des capteurs radar connectés via MQTT')}</p>
+          <h1 className="text-2xl font-bold text-foreground">{t('radars.title')}</h1>
+          <p className="text-muted-foreground">{t('radars.subtitle')}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchData} disabled={loading} data-testid="refresh-radars-btn">
+          <Button variant="outline" onClick={fetchData} disabled={loading} data-testid="refresh-btn">
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            {t('common.refresh', 'Actualiser')}
+            {t('common.refresh')}
           </Button>
-          <Dialog open={registerDialog} onOpenChange={setRegisterDialog}>
+          <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
             <DialogTrigger asChild>
-              <Button data-testid="register-device-btn">
-                <Radio className="h-4 w-4 mr-2" />
-                {t('radars.registerDevice', 'Associer un appareil')}
+              <Button variant="outline" data-testid="link-device-btn">
+                <Wifi className="h-4 w-4 mr-2" />
+                {t('radars.linkDevice')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{t('radars.registerDeviceTitle', 'Associer un appareil MQTT')}</DialogTitle>
-                <DialogDescription>
-                  {t('radars.registerDeviceDesc', 'Associez manuellement un device ID MQTT à un capteur existant')}
-                </DialogDescription>
+                <DialogTitle>{t('radars.linkDeviceTitle')}</DialogTitle>
+                <DialogDescription>{t('radars.linkDeviceDesc')}</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label>{t('radars.deviceId', 'Device ID MQTT')}</Label>
+                  <Label>{t('radars.deviceId')}</Label>
                   <Input 
                     placeholder="id_QTg6MDM6..." 
                     value={newDeviceId}
                     onChange={(e) => setNewDeviceId(e.target.value)}
-                    data-testid="device-id-input"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{t('radars.sensor', 'Capteur cible')}</Label>
-                  <Select value={selectedSensorId} onValueChange={setSelectedSensorId}>
-                    <SelectTrigger data-testid="sensor-select">
-                      <SelectValue placeholder={t('radars.selectSensor', 'Sélectionner un capteur')} />
+                  <Label>{t('radars.targetRadar')}</Label>
+                  <Select value={selectedRadarId} onValueChange={setSelectedRadarId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('radars.selectRadar')} />
                     </SelectTrigger>
                     <SelectContent>
-                      {allSensors.filter(s => s.type === 'RADAR').map(sensor => (
-                        <SelectItem key={sensor.id} value={sensor.id}>
-                          {sensor.name}
-                        </SelectItem>
+                      {radars.map(radar => (
+                        <SelectItem key={radar.id} value={radar.id}>{radar.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={handleRegisterDevice} className="w-full" data-testid="confirm-register-btn">
-                  {t('radars.register', 'Associer')}
-                </Button>
+                <Button onClick={handleLinkDevice} className="w-full">{t('radars.link')}</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="add-radar-btn">
+                <Plus className="h-4 w-4 mr-2" />
+                {t('radars.addRadar')}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t('radars.addRadarTitle')}</DialogTitle>
+                <DialogDescription>{t('radars.addRadarDesc')}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label>{t('radars.name')} *</Label>
+                  <Input 
+                    placeholder="Radar Chambre 101"
+                    value={newRadar.name}
+                    onChange={(e) => setNewRadar({...newRadar, name: e.target.value})}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>{t('radars.model')}</Label>
+                    <Input 
+                      placeholder="Vayyar Home"
+                      value={newRadar.model}
+                      onChange={(e) => setNewRadar({...newRadar, model: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t('radars.firmware')}</Label>
+                    <Input 
+                      placeholder="v1.0.0"
+                      value={newRadar.firmware}
+                      onChange={(e) => setNewRadar({...newRadar, firmware: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('radars.site')} *</Label>
+                  <Select 
+                    value={newRadar.site_id} 
+                    onValueChange={(v) => setNewRadar({...newRadar, site_id: v, zone_id: ''})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('radars.selectSite')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sites.map(site => (
+                        <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('radars.zone')} *</Label>
+                  <Select 
+                    value={newRadar.zone_id} 
+                    onValueChange={(v) => setNewRadar({...newRadar, zone_id: v})}
+                    disabled={!newRadar.site_id}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('radars.selectZone')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getZonesForSite(newRadar.site_id).map(zone => (
+                        <SelectItem key={zone.id} value={zone.id}>{zone.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={handleAddRadar} className="w-full">{t('radars.add')}</Button>
               </div>
             </DialogContent>
           </Dialog>
         </div>
       </div>
 
-      {/* MQTT Status Card */}
-      <Card className="border-primary/20" data-testid="mqtt-status-card">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {mqttStatus?.connected ? (
-                <div className="p-2 rounded-full bg-green-500/20">
-                  <Wifi className="h-5 w-5 text-green-500" />
+      {/* MQTT Status + Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="md:col-span-2 border-primary/20" data-testid="mqtt-status-card">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {mqttStatus?.connected ? (
+                  <div className="p-2 rounded-full bg-green-500/20">
+                    <Wifi className="h-5 w-5 text-green-500" />
+                  </div>
+                ) : (
+                  <div className="p-2 rounded-full bg-red-500/20">
+                    <WifiOff className="h-5 w-5 text-red-500" />
+                  </div>
+                )}
+                <div>
+                  <p className="font-semibold">{t('radars.mqttConnection')}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {mqttStatus?.broker_host}:{mqttStatus?.broker_port}
+                  </p>
                 </div>
-              ) : (
-                <div className="p-2 rounded-full bg-red-500/20">
-                  <WifiOff className="h-5 w-5 text-red-500" />
-                </div>
-              )}
+              </div>
+              <Badge className={mqttStatus?.connected ? 'bg-green-500' : 'bg-red-500'}>
+                {mqttStatus?.connected ? t('radars.connected') : t('radars.disconnected')}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-lg">{t('radars.mqttConnection', 'Connexion MQTT')}</CardTitle>
-                <CardDescription>
-                  {mqttStatus?.broker_host}:{mqttStatus?.broker_port}
-                </CardDescription>
+                <p className="text-sm text-muted-foreground">{t('radars.totalRadars')}</p>
+                <p className="text-2xl font-bold">{radars.length}</p>
+              </div>
+              <div className="p-2 rounded-full bg-primary/10">
+                <Radio className="h-5 w-5 text-primary" />
               </div>
             </div>
-            <Badge variant={mqttStatus?.connected ? 'default' : 'destructive'} className={mqttStatus?.connected ? 'bg-green-500' : ''}>
-              {mqttStatus?.connected ? t('radars.connected', 'Connecté') : t('radars.disconnected', 'Déconnecté')}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4 text-sm">
-            <div>
-              <span className="text-muted-foreground">{t('radars.status', 'Statut')}:</span>
-              <span className="ml-2 font-medium">{mqttStatus?.enabled ? t('radars.enabled', 'Activé') : t('radars.disabled', 'Désactivé')}</span>
+            <div className="mt-2 text-xs text-muted-foreground">
+              {mqttCount} {t('radars.autoDetected')}
             </div>
-            <div>
-              <span className="text-muted-foreground">{t('radars.running', 'Service')}:</span>
-              <span className="ml-2 font-medium">{mqttStatus?.running ? t('radars.running', 'En cours') : t('radars.stopped', 'Arrêté')}</span>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">{t('radars.onlineStatus')}</p>
+                <p className="text-2xl font-bold text-green-500">{onlineCount}/{radars.length}</p>
+              </div>
+              <div className="p-2 rounded-full bg-green-500/10">
+                <Activity className="h-5 w-5 text-green-500" />
+              </div>
             </div>
-            <div>
-              <span className="text-muted-foreground">{t('radars.radarCount', 'Radars')}:</span>
-              <span className="ml-2 font-medium">{radarSensors.length}</span>
+            <div className="mt-2 text-xs text-muted-foreground">
+              {offlineCount} {t('radars.offline').toLowerCase()}
             </div>
-          </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Search & Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={t('radars.searchPlaceholder')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('radars.allStatuses')}</SelectItem>
+            <SelectItem value="ONLINE">{t('radars.online')}</SelectItem>
+            <SelectItem value="OFFLINE">{t('radars.offline')}</SelectItem>
+            <SelectItem value="MAINTENANCE">{t('radars.maintenance')}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Radars Table */}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('radars.name')}</TableHead>
+                <TableHead>{t('radars.location')}</TableHead>
+                <TableHead>{t('radars.model')}</TableHead>
+                <TableHead>{t('radars.status')}</TableHead>
+                <TableHead>{t('radars.lastSeen')}</TableHead>
+                <TableHead className="text-right">{t('radars.actions')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    <RefreshCw className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+                  </TableCell>
+                </TableRow>
+              ) : filteredRadars.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    <Radio className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-muted-foreground">{t('radars.noRadars')}</p>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredRadars.map(radar => (
+                  <TableRow key={radar.id} data-testid={`radar-row-${radar.id}`}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className={`p-1.5 rounded-lg ${radar.status === 'ONLINE' ? 'bg-green-500/10' : 'bg-muted'}`}>
+                          <Radio className={`h-4 w-4 ${radar.status === 'ONLINE' ? 'text-green-500' : 'text-muted-foreground'}`} />
+                        </div>
+                        <div>
+                          <p className="font-medium">{radar.name}</p>
+                          {radar.model?.startsWith('id_') && (
+                            <p className="text-xs text-muted-foreground font-mono">{radar.model.slice(0, 20)}...</p>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 text-sm">
+                        <MapPin className="h-3 w-3 text-muted-foreground" />
+                        <span>{getSiteName(radar.site_id)}</span>
+                        <span className="text-muted-foreground">/ {getZoneName(radar.zone_id)}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <p>{radar.model?.startsWith('id_') ? 'Vayyar MQTT' : (radar.model || '-')}</p>
+                        {radar.firmware && <p className="text-xs text-muted-foreground">{radar.firmware}</p>}
+                      </div>
+                    </TableCell>
+                    <TableCell>{getStatusBadge(radar.status)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        {formatLastSeen(radar.last_seen)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => copyApiKey(radar.api_key)}
+                          title={t('radars.copyKey')}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleRotateKey(radar.id)}
+                          title={t('radars.rotateKey')}
+                        >
+                          <Key className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => { setSelectedRadar(radar); setDeleteDialogOpen(true); }}
+                          className="text-destructive hover:text-destructive"
+                          title={t('radars.delete')}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
-      {/* Radar Sensors Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {loading ? (
-          Array(3).fill(0).map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="pt-6">
-                <div className="h-32 bg-muted rounded" />
-              </CardContent>
-            </Card>
-          ))
-        ) : radarSensors.length === 0 ? (
-          <Card className="col-span-full">
-            <CardContent className="pt-6 text-center py-12">
-              <Radio className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-medium text-lg mb-2">{t('radars.noRadars', 'Aucun radar détecté')}</h3>
-              <p className="text-muted-foreground text-sm">
-                {t('radars.noRadarsDesc', 'Les radars Vayyar seront automatiquement détectés lorsqu\'ils enverront des données via MQTT')}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          radarSensors.map(radar => (
-            <Card key={radar.id} className="relative overflow-hidden" data-testid={`radar-card-${radar.id}`}>
-              <div className={`absolute top-0 left-0 w-1 h-full ${getStatusColor(radar.status)}`} />
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${radar.status === 'ONLINE' ? 'bg-green-500/10' : 'bg-muted'}`}>
-                      <Radio className={`h-5 w-5 ${radar.status === 'ONLINE' ? 'text-green-500' : 'text-muted-foreground'}`} />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base">{radar.name}</CardTitle>
-                      <CardDescription className="text-xs font-mono">
-                        {radar.model || radar.id.slice(0, 12)}...
-                      </CardDescription>
-                    </div>
-                  </div>
-                  {getStatusBadge(radar.status)}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Clock className="h-3.5 w-3.5" />
-                    <span>{formatLastSeen(radar.last_seen)}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Activity className="h-3.5 w-3.5" />
-                    <span>{radar.firmware || 'N/A'}</span>
-                  </div>
-                </div>
-                
-                {/* Extra info if available */}
-                {(radar.temperature || radar.memory_usage || radar.uptime) && (
-                  <div className="pt-2 border-t border-border/50 grid grid-cols-3 gap-2 text-xs">
-                    {radar.temperature && (
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Thermometer className="h-3 w-3" />
-                        <span>{radar.temperature}°C</span>
-                      </div>
-                    )}
-                    {radar.memory_usage && (
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <MemoryStick className="h-3 w-3" />
-                        <span>{radar.memory_usage}%</span>
-                      </div>
-                    )}
-                    {radar.uptime && (
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span>{Math.floor(radar.uptime / 3600)}h</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-                <div className="pt-2 flex justify-end">
-                  <Button variant="ghost" size="sm" className="text-xs">
-                    <Settings className="h-3.5 w-3.5 mr-1" />
-                    {t('radars.configure', 'Configurer')}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('radars.deleteTitle')}</DialogTitle>
+            <DialogDescription>
+              {t('radars.deleteDesc', { name: selectedRadar?.name })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteRadar}>
+              {t('common.delete')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Info Section */}
       <Card className="bg-muted/30">
         <CardContent className="pt-6">
-          <h3 className="font-medium mb-2">{t('radars.howItWorks', 'Comment ça marche')}</h3>
+          <h3 className="font-medium mb-2">{t('radars.howItWorks')}</h3>
           <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• {t('radars.info1', 'Les radars Vayyar envoient leurs données via le protocole MQTT')}</li>
-            <li>• {t('radars.info2', 'Les nouveaux appareils sont automatiquement détectés et enregistrés')}</li>
-            <li>• {t('radars.info3', 'Les événements de chute sont créés en temps réel et diffusés via WebSocket')}</li>
-            <li>• {t('radars.info4', 'Vous pouvez associer manuellement un device ID à un capteur existant')}</li>
+            <li>• {t('radars.info1')}</li>
+            <li>• {t('radars.info2')}</li>
+            <li>• {t('radars.info3')}</li>
+            <li>• {t('radars.info4')}</li>
           </ul>
         </CardContent>
       </Card>
