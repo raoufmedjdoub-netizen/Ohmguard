@@ -88,24 +88,18 @@ async def seed():
     await db.zones.insert_many(zones)
     print(f"✓ Created {len(zones)} zones")
     
-    # Create Sensors
+    # Create Sensors (Vayyar Radars only)
     sensors = []
-    sensor_types = ["RADAR", "CAMERA", "IOT"]
-    sensor_models = {
-        "RADAR": ["Vayyar Walabot", "Novelda XeThru"],
-        "CAMERA": ["Hikvision DS-2CD", "Axis P3245"],
-        "IOT": ["Philips Lifeline", "Medical Guardian"]
-    }
+    radar_models = ["Vayyar Home", "Vayyar Care", "Vayyar Walabot"]
     
     for i in range(10):
-        s_type = sensor_types[i % 3]
         zone = zones[i % len(zones)]
         site = next(s for s in sites if s["id"] == zone["site_id"])
         sensor = {
             "id": str(uuid.uuid4()),
-            "name": f"Capteur-{s_type[:3]}-{i+1:03d}",
-            "type": s_type,
-            "model": random.choice(sensor_models[s_type]),
+            "name": f"Radar Vayyar {i+1:03d}",
+            "type": "RADAR",
+            "model": random.choice(radar_models),
             "firmware": f"v{random.randint(1,3)}.{random.randint(0,9)}.{random.randint(0,99)}",
             "zone_id": zone["id"],
             "site_id": site["id"],
@@ -117,7 +111,7 @@ async def seed():
         }
         sensors.append(sensor)
     await db.sensors.insert_many(sensors)
-    print(f"✓ Created {len(sensors)} sensors")
+    print(f"✓ Created {len(sensors)} Vayyar radars")
     
     # Create Events
     events = []
