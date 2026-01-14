@@ -42,6 +42,8 @@ export function RadarsPage() {
   // Form states
   const [newRadar, setNewRadar] = useState({
     name: '',
+    serial_product: '',  // Serial number for identification
+    device_id: '',       // MQTT device ID for communications
     model: '',
     firmware: '',
     site_id: '',
