@@ -390,6 +390,7 @@ const resources = {
         history: 'Historique',
         statistics: 'Statistiques',
         radars: 'Radars',
+        clients: 'Clients & Bâtiments',
         sites: 'Sites & Zones',
         rules: 'Règles d\'alerte',
         users: 'Utilisateurs',
