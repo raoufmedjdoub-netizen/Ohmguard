@@ -15,6 +15,7 @@ import { DashboardPage } from '@/pages/DashboardPage';
 import { LivePage } from '@/pages/LivePage';
 import { HistoryPage } from '@/pages/HistoryPage';
 import { SensorsPage } from '@/pages/SensorsPage';
+import { RadarsPage } from '@/pages/RadarsPage';
 import { SitesPage } from '@/pages/SitesPage';
 import { RulesPage } from '@/pages/RulesPage';
 import { UsersPage } from '@/pages/UsersPage';
