@@ -41,9 +41,7 @@ const TYPE_COLORS = {
 };
 
 const SENSOR_TYPE_COLORS = {
-  RADAR: COLORS.primary,
-  CAMERA: COLORS.secondary,
-  IOT: COLORS.success
+  RADAR: COLORS.primary
 };
 
 export function StatisticsPage() {
