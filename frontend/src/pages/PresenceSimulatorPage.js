@@ -65,7 +65,9 @@ export function PresenceSimulatorPage() {
         const response = await sensorsAPI.list();
         setSensors(response.data);
         if (response.data.length > 0) {
-          setSelectedSensor(response.data[0].device_id || response.data[0].id);
+          // Use device_id for MQTT communications
+          const firstSensor = response.data[0];
+          setSelectedSensor(firstSensor.device_id || firstSensor.serial_product || firstSensor.id);
         }
       } catch (error) {
         console.error('Failed to fetch sensors:', error);
