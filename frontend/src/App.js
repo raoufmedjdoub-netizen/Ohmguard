@@ -65,6 +65,7 @@ function AppRoutes() {
         <Route path="live" element={<LivePage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="sensors" element={<SensorsPage />} />
+        <Route path="radars" element={<RadarsPage />} />
         <Route path="sites" element={<SitesPage />} />
         <Route path="rules" element={<RulesPage />} />
         <Route path="users" element={<UsersPage />} />
