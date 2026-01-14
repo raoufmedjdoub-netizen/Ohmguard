@@ -345,7 +345,14 @@ class MQTTService:
         logger.debug(f"Updated sensor {sensor['id']} status to {new_status}")
     
     async def _handle_device_event(self, device_id: str, payload: Dict):
-        """Handle device event (fall detection, presence, etc.)"""
+        """
+        Handle device event using new RadarEvent model.
+        Normalizes raw Vayyar payload into platform event with:
+        - Proper event type mapping (FALL, PRE_FALL, PRESENCE, INACTIVITY, UNKNOWN)
+        - Presence detection status
+        - Active regions extraction
+        - Target count
+        """
         sensor = await self._get_sensor_by_device_id(device_id)
         
         if not sensor:
@@ -357,48 +364,88 @@ class MQTTService:
         event_type_code = payload.get("type", 0)
         event_payload = payload.get("payload", {})
         
-        # Determine event type and severity
-        event_type = self._determine_event_type(event_type_code, event_payload)
-        severity = self._determine_severity(event_type_code, event_payload)
-        confidence = self._calculate_confidence(event_payload)
+        # Build RadarEventRequest for normalization
+        try:
+            radar_payload = RadarEventPayload(
+                presenceDetected=event_payload.get("presenceDetected", False),
+                presenceRegionMap=event_payload.get("presenceRegionMap", {}),
+                presenceTargetType=event_payload.get("presenceTargetType", 0),
+                roomPresenceIndication=event_payload.get("roomPresenceIndication", 0),
+                timestamp=event_payload.get("timestamp", 0),
+                trackerTargets=event_payload.get("trackerTargets", [])
+            )
+            
+            radar_request = RadarEventRequest(
+                payload=radar_payload,
+                type=event_type_code,
+                deviceId=device_id
+            )
+        except Exception as e:
+            logger.error(f"Failed to parse radar event payload: {e}")
+            # Fall back to legacy processing
+            return await self._handle_device_event_legacy(device_id, payload, sensor)
         
-        # Skip non-critical events (presence-only)
-        if event_type == "PRESENCE" and event_type_code == 0:
-            logger.debug(f"Skipping presence-only event from {device_id}")
+        # Normalize the event
+        normalized = normalize_radar_event(
+            request=radar_request,
+            sensor_id=sensor['id'],
+            site_id=sensor['site_id'],
+            zone_id=sensor['zone_id'],
+            tenant_id=sensor['tenant_id']
+        )
+        
+        # Determine if we should store this event
+        # Skip pure PRESENCE events with no detection to avoid flooding
+        if (normalized.eventType == RadarEventType.PRESENCE and 
+            not normalized.presenceDetected and 
+            normalized.targetCount == 0):
+            logger.debug(f"Skipping empty presence event from {device_id}")
             return
         
         # Deduplication: check for similar event in last 10 seconds
-        ten_seconds_ago = datetime.now(timezone.utc) - __import__('datetime').timedelta(seconds=10)
+        from datetime import timedelta
+        ten_seconds_ago = datetime.now(timezone.utc) - timedelta(seconds=10)
         existing = await self.db.events.find_one({
             "sensor_id": sensor['id'],
-            "type": event_type,
+            "type": normalized.eventType.value,
             "timestamp": {"$gte": ten_seconds_ago.isoformat()}
         }, {"_id": 0})
         
         if existing:
-            # Update confidence if higher
-            if confidence > existing.get('confidence', 0):
+            # Update if this has more data
+            if normalized.targetCount > existing.get('target_count', 0):
                 await self.db.events.update_one(
                     {"id": existing['id']},
-                    {"$set": {"confidence": confidence, "raw_payload": payload}}
+                    {"$set": {
+                        "raw_payload": normalized.rawPayloadJson,
+                        "active_regions": normalized.activeRegions,
+                        "target_count": normalized.targetCount,
+                        "presence_detected": normalized.presenceDetected
+                    }}
                 )
             logger.debug(f"Deduplicated event from {device_id}")
             return
         
-        # Create new event
+        # Create new event document
         event = {
-            "id": str(uuid.uuid4()),
+            "id": normalized.id,
+            "device_id": device_id,
             "sensor_id": sensor['id'],
             "tenant_id": sensor['tenant_id'],
             "site_id": sensor['site_id'],
             "zone_id": sensor['zone_id'],
-            "type": event_type,
-            "severity": severity,
-            "confidence": confidence,
-            "status": "NEW",
+            "type": normalized.eventType.value,
+            "presence_status": normalized.presenceStatus.value,
+            "presence_detected": normalized.presenceDetected,
+            "active_regions": normalized.activeRegions,
+            "target_count": normalized.targetCount,
+            "occurred_at": normalized.occurredAt,
+            "raw_timestamp": normalized.rawTimestamp,
+            "severity": normalized.severity.value,
+            "status": normalized.status.value,
+            "confidence": 1.0,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "raw_payload": payload,
-            "vayyar_event_id": event_payload.get("eventId"),
+            "raw_payload": normalized.rawPayloadJson,
             "tracker_targets": event_payload.get("trackerTargets", [])
         }
         
@@ -410,13 +457,21 @@ class MQTTService:
             {"$set": {"status": "ONLINE", "last_seen": datetime.now(timezone.utc).isoformat()}}
         )
         
-        logger.info(f"Created {event_type} event from device {device_id}, severity: {severity}")
+        logger.info(f"Created {normalized.eventType.value} event from device {device_id}, "
+                   f"presence={normalized.presenceDetected}, regions={normalized.activeRegions}, "
+                   f"targets={normalized.targetCount}")
         
-        # Broadcast to WebSocket
+        # Broadcast to WebSocket with enriched data
         if self.broadcast_callback:
             await self.broadcast_callback(sensor['tenant_id'], {
-                "type": "new_event",
-                "event": event
+                "type": "new_radar_event",
+                "event": {
+                    **event,
+                    "sensor_name": sensor.get('name'),
+                    "active_regions_display": format_active_regions_display(normalized.activeRegions),
+                    "target_count_display": format_target_count_display(normalized.targetCount),
+                    "presence_display": "Présence détectée" if normalized.presenceDetected else "Aucune présence"
+                }
             })
         
         # Trigger alert rules
