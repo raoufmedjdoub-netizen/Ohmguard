@@ -250,7 +250,7 @@ class MQTTService:
         return sensor
     
     async def _handle_device_state(self, device_id: str, payload: Dict):
-        """Handle device state update"""
+        """Handle device state update - extracts serialProduct from payload"""
         sensor = await self._get_sensor_by_device_id(device_id)
         
         if not sensor:
@@ -269,13 +269,41 @@ class MQTTService:
             "firmware": payload.get("versionName", sensor.get("firmware")),
         }
         
-        # Add extra info
+        # Extract serialProduct from state payload - this is the real serial number
+        if "serialProduct" in payload and payload["serialProduct"]:
+            update_data["serial_product"] = payload["serialProduct"]
+            # Update name if it's still using device_id
+            if sensor.get("name", "").startswith("Radar ") and device_id in sensor.get("name", ""):
+                update_data["name"] = f"Radar {payload['serialProduct'][:12]}"
+            logger.info(f"Updated serial_product for device {device_id}: {payload['serialProduct']}")
+        
+        # Extract serialRadar if present
+        if "serialRadar" in payload and payload["serialRadar"]:
+            update_data["serial_radar"] = payload["serialRadar"]
+        
+        # Store model info from payload
+        if "model" in payload and payload["model"]:
+            update_data["model"] = payload["model"]
+        
+        # Store hardware info
+        if "hardware" in payload and payload["hardware"]:
+            update_data["hardware"] = payload["hardware"]
+        
+        # Add extra telemetry info
         if "temperature" in payload:
             update_data["temperature"] = payload["temperature"]
         if "memoryUsage" in payload:
             update_data["memory_usage"] = payload["memoryUsage"]
         if "upTime" in payload:
             update_data["uptime"] = payload["upTime"]
+        if "productType" in payload:
+            update_data["product_type"] = payload["productType"]
+        
+        # WiFi info
+        wifi_state = payload.get("wifiState", {})
+        if wifi_state:
+            update_data["wifi_ssid"] = wifi_state.get("ssid")
+            update_data["wifi_rssi"] = wifi_state.get("rssi")
         
         await self.db.sensors.update_one(
             {"id": sensor['id']},
@@ -288,6 +316,7 @@ class MQTTService:
                 "type": "sensor_status",
                 "sensor_id": sensor['id'],
                 "device_id": device_id,
+                "serial_product": update_data.get("serial_product", sensor.get("serial_product")),
                 "status": new_status,
                 "timestamp": datetime.now(timezone.utc).isoformat()
             })
