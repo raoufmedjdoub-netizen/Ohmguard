@@ -37,9 +37,27 @@ export function getEventTypeColor(type) {
   switch (type) {
     case 'FALL': return 'bg-destructive text-destructive-foreground';
     case 'PRE_FALL': return 'bg-warning text-warning-foreground';
+    case 'PRESENCE': return 'bg-primary/80 text-primary-foreground';
+    case 'INACTIVITY': return 'bg-orange-500 text-white';
     case 'UNKNOWN': return 'bg-muted text-muted-foreground';
     default: return 'bg-muted text-muted-foreground';
   }
+}
+
+export function getEventTypeIcon(type) {
+  switch (type) {
+    case 'FALL': return '🚨';
+    case 'PRE_FALL': return '⚠️';
+    case 'PRESENCE': return '👤';
+    case 'INACTIVITY': return '💤';
+    default: return '❓';
+  }
+}
+
+export function getPresenceStatusColor(status) {
+  return status === 'DETECTED' 
+    ? 'bg-success/20 text-success border-success/50' 
+    : 'bg-muted/50 text-muted-foreground border-muted';
 }
 
 export function getSeverityColor(severity) {
