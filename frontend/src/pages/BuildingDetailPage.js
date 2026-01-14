@@ -506,14 +506,14 @@ export function BuildingDetailPage() {
             <div className="space-y-2">
               <Label>Étage (optionnel)</Label>
               <Select 
-                value={zoneForm.floor_id} 
-                onValueChange={(v) => setZoneForm(prev => ({ ...prev, floor_id: v }))}
+                value={zoneForm.floor_id || "building-level"} 
+                onValueChange={(v) => setZoneForm(prev => ({ ...prev, floor_id: v === "building-level" ? "" : v }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Zone au niveau bâtiment" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Niveau bâtiment</SelectItem>
+                  <SelectItem value="building-level">Niveau bâtiment</SelectItem>
                   {floors.map(floor => (
                     <SelectItem key={floor.id} value={floor.id}>{floor.name}</SelectItem>
                   ))}
