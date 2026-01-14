@@ -188,11 +188,59 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 ## Key Files Reference
 - `backend/server.py` - Main FastAPI app with all endpoints
 - `backend/mqtt_service.py` - MQTT integration with RadarEvent support
-- `backend/radar_event_models.py` - **NEW: RadarEvent enums and models**
+- `backend/radar_event_models.py` - RadarEvent enums and models
 - `backend/vayyar_config_service.py` - Config publish/versioning
+- `backend/clients_buildings_models.py` - **NEW: Multi-tenant hierarchy models**
+- `backend/clients_buildings_service.py` - **NEW: Multi-tenant business logic**
+- `backend/clients_buildings_routes.py` - **NEW: Clients & Buildings API**
+- `backend/seed_clients_buildings.py` - **NEW: Demo data seeder**
 - `frontend/src/pages/LivePage.js` - Live event wall with cards
 - `frontend/src/pages/HistoryPage.js` - Event history table
-- `frontend/src/pages/EventDetailPage.js` - **NEW: Event detail view**
-- `frontend/src/pages/PresenceSimulatorPage.js` - **NEW: Presence simulator**
+- `frontend/src/pages/EventDetailPage.js` - Event detail view
+- `frontend/src/pages/PresenceSimulatorPage.js` - Presence simulator
+- `frontend/src/pages/ClientsPage.js` - **NEW: Clients list & management**
+- `frontend/src/pages/ClientDetailPage.js` - **NEW: Client detail with tree view**
+- `frontend/src/pages/BuildingDetailPage.js` - **NEW: Building management**
+- `frontend/src/pages/FloorDetailPage.js` - **NEW: Floor & rooms management**
+- `frontend/src/pages/RoomDetailPage.js` - **NEW: Room & spaces with radar assignment**
 - `frontend/src/lib/api.js` - API client with new endpoints
 - `frontend/src/lib/i18n.js` - Translations (FR/EN)
+
+## Clients & Buildings Module (January 14, 2026 - COMPLETE)
+
+### Hierarchy Structure
+Client → Buildings → Floors/Zones → Rooms → Spaces
+
+### API Endpoints
+- `GET /api/clients` - List all clients (tenants)
+- `POST /api/clients` - Create new client
+- `GET /api/clients/:id` - Get client details
+- `GET /api/clients/:id/tree` - Get hierarchical tree view
+- `GET /api/clients/:id/buildings` - List client buildings
+- `POST /api/clients/:id/buildings` - Create building
+- `GET /api/buildings/:id` - Building details
+- `GET /api/buildings/:id/floors` - List floors
+- `POST /api/buildings/:id/floors` - Create floor
+- `GET /api/buildings/:id/zones` - List zones
+- `POST /api/buildings/:id/zones` - Create zone
+- `GET /api/floors/:id` - Floor details
+- `GET /api/floors/:id/rooms` - List rooms
+- `POST /api/floors/:id/rooms` - Create room
+- `GET /api/rooms/:id` - Room details with spaces
+- `POST /api/rooms/:id/spaces` - Add space to room
+- `POST /api/radars/:id/assign` - Assign radar to location
+- `POST /api/radars/:id/unassign` - Unassign radar
+
+### UI Features
+- ✅ Clients list with search, stats, and creation modal
+- ✅ Client detail page with hierarchical tree view
+- ✅ Building management (floors, zones, contact info)
+- ✅ Floor management (rooms list with type/capacity)
+- ✅ Room management (spaces with radar assignment wizard)
+- ✅ Auto-create spaces on room creation (bedroom, bathroom, kitchenette)
+- ✅ Visual radar status in space cards
+
+### Demo Data
+- 2 clients: "EHPAD Les Jardins du Parc", "Résidence Seniors Les Cèdres"
+- 3 buildings with floors, rooms, and zones
+- 2 radars assigned to Chambre 101 spaces
