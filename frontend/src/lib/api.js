@@ -99,8 +99,10 @@ export const sensorsAPI = {
 export const eventsAPI = {
   list: (params) => api.get('/events', { params }),
   get: (id) => api.get(`/events/${id}`),
+  getDetail: (id) => api.get(`/events/${id}/detail`),
   update: (id, data) => api.patch(`/events/${id}`, data),
-  count: (params) => api.get('/events/count', { params })
+  count: (params) => api.get('/events/count', { params }),
+  createRadarEvent: (data) => api.post('/events/radar', data)
 };
 
 // Alert Rules API
