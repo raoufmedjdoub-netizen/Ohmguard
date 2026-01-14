@@ -22,7 +22,8 @@ import {
   User,
   MapPin,
   Target,
-  Eye
+  Eye,
+  Building
 } from 'lucide-react';
 
 // Event Card Component for Live Wall
