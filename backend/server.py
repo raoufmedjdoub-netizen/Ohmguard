@@ -788,15 +788,15 @@ async def list_events(
                         "room_number": location_path.room_number,
                         "zone_name": location_path.zone_name
                     }
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"Failed to get location for sensor {event.get('sensor_id')}: {e}")
                     event["location_path"] = None
                     event["location"] = None
             else:
                 event["location_path"] = None
                 event["location"] = None
-    except Exception:
-        # Service not initialized, skip location enrichment
-        pass
+    except Exception as e:
+        logger.error(f"Failed to enrich events with location: {e}")
     
     return events
 
