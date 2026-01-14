@@ -21,7 +21,8 @@ import {
   Eye,
   User,
   MapPin,
-  Target
+  Target,
+  Building
 } from 'lucide-react';
 
 export function HistoryPage() {
