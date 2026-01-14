@@ -11,7 +11,7 @@ import {
   Clock,
   Cpu,
   Activity,
-  MapPin,
+  Building2,
   TrendingUp,
   Loader2,
   XCircle
