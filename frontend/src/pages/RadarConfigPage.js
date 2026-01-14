@@ -282,7 +282,8 @@ export function RadarConfigPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold">{t('config.title', 'Radar Configuration')}</h1>
-            <p className="text-muted-foreground">{radar?.name || deviceId}</p>
+            <p className="text-muted-foreground">{radar?.name || 'Unknown Radar'}</p>
+            <p className="text-sm text-primary font-mono">Device ID (MQTT): {radar?.device_id || deviceId}</p>
           </div>
         </div>
         <div className="flex gap-2">
