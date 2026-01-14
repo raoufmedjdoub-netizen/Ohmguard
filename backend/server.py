@@ -1210,49 +1210,13 @@ async def simulate_event(
     
     return event_obj
 
-# Include the router in the main app
-app.include_router(api_router)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # ==================== MQTT CONFIGURATION ====================
 
 MQTT_BROKER_HOST = os.environ.get('MQTT_BROKER_HOST', '38.242.254.49')
 MQTT_BROKER_PORT = int(os.environ.get('MQTT_BROKER_PORT', '1883'))
 MQTT_ENABLED = os.environ.get('MQTT_ENABLED', 'true').lower() == 'true'
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize MQTT service on startup"""
-    if MQTT_ENABLED:
-        try:
-            await init_mqtt_service(
-                db=db,
-                broadcast_callback=manager.broadcast_to_tenant,
-                broker_host=MQTT_BROKER_HOST,
-                broker_port=MQTT_BROKER_PORT
-            )
-            logger.info(f"MQTT service initialized - connected to {MQTT_BROKER_HOST}:{MQTT_BROKER_PORT}")
-        except Exception as e:
-            logger.error(f"Failed to initialize MQTT service: {e}")
-    else:
-        logger.info("MQTT service disabled")
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    """Cleanup on shutdown"""
-    if MQTT_ENABLED:
-        await stop_mqtt_service()
-        logger.info("MQTT service stopped")
-    client.close()
-
-# ==================== MQTT STATUS ENDPOINT ====================
+# ==================== MQTT ENDPOINTS ====================
 
 @api_router.get("/mqtt/status")
 async def get_mqtt_status(current_user: UserInDB = Depends(get_current_user)):
@@ -1297,3 +1261,39 @@ async def register_mqtt_device(
     await log_audit(current_user.id, sensor['tenant_id'], "register_mqtt_device", "sensor", sensor_id, {"device_id": device_id})
     
     return {"status": "ok", "message": f"Device {device_id} mapped to sensor {sensor_id}"}
+
+# Include the router in the main app
+app.include_router(api_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize MQTT service on startup"""
+    if MQTT_ENABLED:
+        try:
+            await init_mqtt_service(
+                db=db,
+                broadcast_callback=manager.broadcast_to_tenant,
+                broker_host=MQTT_BROKER_HOST,
+                broker_port=MQTT_BROKER_PORT
+            )
+            logger.info(f"MQTT service initialized - connected to {MQTT_BROKER_HOST}:{MQTT_BROKER_PORT}")
+        except Exception as e:
+            logger.error(f"Failed to initialize MQTT service: {e}")
+    else:
+        logger.info("MQTT service disabled")
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    """Cleanup on shutdown"""
+    if MQTT_ENABLED:
+        await stop_mqtt_service()
+        logger.info("MQTT service stopped")
+    client.close()
