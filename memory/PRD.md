@@ -1,7 +1,7 @@
-# FallGuard - Product Requirements Document
+# OhmGuard - Product Requirements Document
 
 ## Original Problem Statement
-Build FallGuard - a SaaS platform for fall detection management centralizing events from sensors (radar/camera/IoT) installed in facilities (nursing homes, hospitals, airports).
+Build OhmGuard - a SaaS platform for fall detection management centralizing events from sensors (radar/camera/IoT) installed in facilities (nursing homes, hospitals, airports).
 
 ## Technology Stack (Final)
 - **Frontend:** React (JavaScript) + Tailwind CSS + shadcn/ui
@@ -9,6 +9,7 @@ Build FallGuard - a SaaS platform for fall detection management centralizing eve
 - **Database:** MongoDB
 - **Real-time:** WebSocket (native FastAPI) + MQTT (aiomqtt)
 - **Auth:** JWT + Refresh tokens
+- **Theme:** Turquoise/Blue color scheme
 
 ## User Personas
 1. **Super Admin** - Platform administrator with full access
@@ -79,7 +80,7 @@ Build FallGuard - a SaaS platform for fall detection management centralizing eve
 - `/api/health` - Health check
 
 ## Demo Credentials
-- Super Admin: admin@fallguard.io / admin123
+- Super Admin: admin@ohmguard.io / admin123
 - Tenant Admin: directeur@jardins-ehpad.fr / directeur123
 - Supervisor: superviseur@jardins-ehpad.fr / super123
 - Operator: operateur@jardins-ehpad.fr / oper123
