@@ -22,7 +22,7 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 ## What's Been Implemented (January 2026)
 
 ### Backend Features
-- ✅ Complete REST API with 30+ endpoints
+- ✅ Complete REST API with 40+ endpoints
 - ✅ JWT authentication with refresh tokens
 - ✅ Multi-tenant data isolation
 - ✅ WebSocket for real-time events
@@ -31,16 +31,23 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - ✅ Audit logging
 - ✅ Device API (heartbeat, event ingestion)
 - ✅ Seed script with demo data
-- ✅ **MQTT Service for Vayyar Radar integration**
-- ✅ **Auto-registration of MQTT devices as sensors**
+- ✅ MQTT Service for Vayyar Radar integration
+- ✅ Auto-registration of MQTT devices as sensors
+- ✅ **Vayyar Config Service** - MQTT publish/subscribe for device configuration
+- ✅ **Config versioning with rollback support**
+- ✅ **ACK handling with timeout detection**
 
 ### Frontend Features
 - ✅ Login page with demo credentials
 - ✅ Dashboard with real-time stats
 - ✅ Live Events page with filters
 - ✅ Event History with pagination
-- ✅ Sensors Management (CRUD)
-- ✅ **Vayyar Radars page** (NEW - MQTT management)
+- ✅ **Radars Management** (unified CRUD + MQTT)
+- ✅ **Radar Configuration Page** (NEW)
+  - Basic form with tabs (App, Walabot, RF, System, Regions)
+  - Monaco JSON editor with validation
+  - MQTT options (QoS, Retain)
+  - Version history and rollback
 - ✅ Sites & Zones hierarchy view
 - ✅ Alert Rules configuration
 - ✅ User Management with role editing
