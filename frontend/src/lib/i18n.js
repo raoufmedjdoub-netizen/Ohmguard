@@ -43,6 +43,7 @@ const resources = {
         notifications: 'Notifications',
         settings: 'Settings',
         simulator: 'Simulator',
+        presence_simulator: 'Presence Simulator',
         widgets: 'Widgets',
         logout: 'Logout'
       },
