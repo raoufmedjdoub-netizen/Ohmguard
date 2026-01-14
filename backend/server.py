@@ -772,6 +772,32 @@ async def list_events(
             query["timestamp"] = {"$lte": end_date}
     
     events = await db.events.find(query, {"_id": 0}).sort("timestamp", -1).skip(skip).limit(limit).to_list(limit)
+    
+    # Enrich events with location info
+    try:
+        service = get_clients_buildings_service()
+        for event in events:
+            if event.get("sensor_id"):
+                try:
+                    location_path = await service.get_event_location_path(event["sensor_id"])
+                    event["location_path"] = location_path.full_path
+                    event["location"] = {
+                        "client_name": location_path.client_name,
+                        "building_name": location_path.building_name,
+                        "floor_name": location_path.floor_name,
+                        "room_number": location_path.room_number,
+                        "zone_name": location_path.zone_name
+                    }
+                except Exception:
+                    event["location_path"] = None
+                    event["location"] = None
+            else:
+                event["location_path"] = None
+                event["location"] = None
+    except Exception:
+        # Service not initialized, skip location enrichment
+        pass
+    
     return events
 
 @api_router.get("/events/count")
