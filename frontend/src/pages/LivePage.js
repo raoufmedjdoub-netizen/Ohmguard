@@ -346,18 +346,36 @@ export function LivePage() {
               <span className="text-sm font-medium">Filtres:</span>
             </div>
             
-            <Select value={selectedSite} onValueChange={setSelectedSite}>
-              <SelectTrigger className="w-48" data-testid="site-filter">
-                <SelectValue placeholder="Site" />
+            {/* Filtre Client */}
+            <Select value={selectedClient} onValueChange={(v) => { setSelectedClient(v); setSelectedBuilding('all'); }}>
+              <SelectTrigger className="w-52" data-testid="client-filter">
+                <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                <SelectValue placeholder="Client" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tous les sites</SelectItem>
-                {sites.map(site => (
-                  <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
+                <SelectItem value="all">Tous les clients</SelectItem>
+                {clients.map(client => (
+                  <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
             
+            {/* Filtre Bâtiment (visible seulement si client sélectionné) */}
+            {selectedClient !== 'all' && buildings.length > 0 && (
+              <Select value={selectedBuilding} onValueChange={setSelectedBuilding}>
+                <SelectTrigger className="w-48" data-testid="building-filter">
+                  <SelectValue placeholder="Bâtiment" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les bâtiments</SelectItem>
+                  {buildings.map(building => (
+                    <SelectItem key={building.id} value={building.id}>{building.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            
+            {/* Filtre Type */}
             <Select value={selectedType} onValueChange={(v) => { setSelectedType(v); setLoading(true); }}>
               <SelectTrigger className="w-40" data-testid="type-filter">
                 <SelectValue placeholder="Type" />
@@ -371,6 +389,7 @@ export function LivePage() {
               </SelectContent>
             </Select>
             
+            {/* Filtre Statut */}
             <Select value={selectedStatus} onValueChange={(v) => { setSelectedStatus(v); setLoading(true); }}>
               <SelectTrigger className="w-40" data-testid="status-filter">
                 <SelectValue placeholder="Statut" />
