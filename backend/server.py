@@ -1335,31 +1335,45 @@ async def websocket_endpoint(websocket: WebSocket, tenant_id: str, token: Option
 
 @api_router.post("/simulator/event")
 async def simulate_event(
-    sensor_id: str,
+    sensor_id: str = None,
+    device_id: str = None,
     event_type: EventType = "FALL",
     severity: SeverityType = "HIGH",
     confidence: float = 0.95,
     current_user: UserInDB = Depends(get_current_user)
 ):
-    """Simulate a fall event for testing/demo purposes"""
+    """
+    Simulate a fall event for testing/demo purposes.
+    Accepts either sensor_id (internal) or device_id (MQTT identifier).
+    """
     check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN", "SUPERVISOR"])
     
-    sensor = await db.sensors.find_one({"id": sensor_id}, {"_id": 0})
+    # Find sensor by sensor_id or device_id
+    sensor = None
+    if device_id:
+        sensor = await db.sensors.find_one(
+            {"$or": [{"device_id": device_id}, {"serial_product": device_id}]},
+            {"_id": 0}
+        )
+    elif sensor_id:
+        sensor = await db.sensors.find_one({"id": sensor_id}, {"_id": 0})
+    
     if not sensor:
-        raise HTTPException(status_code=404, detail="Sensor not found")
+        raise HTTPException(status_code=404, detail="Sensor not found. Provide valid sensor_id or device_id")
     
     if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != sensor['tenant_id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     event_obj = Event(
-        sensor_id=sensor_id,
+        sensor_id=sensor['id'],
+        device_id=sensor.get('device_id'),
         type=event_type,
         confidence=confidence,
         severity=severity,
         tenant_id=sensor['tenant_id'],
         site_id=sensor['site_id'],
         zone_id=sensor['zone_id'],
-        raw_payload={"simulated": True}
+        raw_payload={"simulated": True, "device_id": sensor.get('device_id')}
     )
     doc = event_obj.model_dump()
     doc['timestamp'] = doc['timestamp'].isoformat()
