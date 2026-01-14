@@ -812,6 +812,143 @@ async def update_event(event_id: str, update: EventUpdate, current_user: UserInD
     updated = await db.events.find_one({"id": event_id}, {"_id": 0})
     return updated
 
+# ==================== RADAR EVENT ENDPOINTS ====================
+
+@api_router.post("/events/radar")
+async def create_radar_event(request: RadarEventRequest):
+    """
+    Ingest raw radar event payload and create normalized platform event.
+    This endpoint is called by MQTT service or external radar integrations.
+    
+    Body format:
+    {
+        "payload": {
+            "presenceDetected": false,
+            "presenceRegionMap": {"0": 0, "1": 0, ...},
+            "presenceTargetType": 0,
+            "roomPresenceIndication": 0,
+            "timestamp": 1768397944445,
+            "trackerTargets": []
+        },
+        "type": 4,
+        "deviceId": "device-123"
+    }
+    """
+    # Find sensor by device_id
+    sensor = await db.sensors.find_one(
+        {"$or": [
+            {"device_id": request.deviceId},
+            {"serial_product": request.deviceId},
+            {"model": request.deviceId}
+        ]},
+        {"_id": 0}
+    )
+    
+    sensor_id = sensor['id'] if sensor else None
+    site_id = sensor['site_id'] if sensor else None
+    zone_id = sensor['zone_id'] if sensor else None
+    tenant_id = sensor['tenant_id'] if sensor else None
+    
+    # Normalize the event
+    normalized = normalize_radar_event(
+        request=request,
+        sensor_id=sensor_id,
+        site_id=site_id,
+        zone_id=zone_id,
+        tenant_id=tenant_id
+    )
+    
+    # Prepare document for MongoDB
+    event_doc = {
+        "id": normalized.id,
+        "device_id": normalized.deviceId,
+        "sensor_id": normalized.sensorId,
+        "site_id": normalized.siteId,
+        "zone_id": normalized.zoneId,
+        "tenant_id": normalized.tenantId,
+        "type": normalized.eventType.value,
+        "presence_status": normalized.presenceStatus.value,
+        "presence_detected": normalized.presenceDetected,
+        "active_regions": normalized.activeRegions,
+        "target_count": normalized.targetCount,
+        "occurred_at": normalized.occurredAt,
+        "raw_timestamp": normalized.rawTimestamp,
+        "timestamp": normalized.createdAt,
+        "severity": normalized.severity.value,
+        "status": normalized.status.value,
+        "raw_payload": normalized.rawPayloadJson,
+        "confidence": 1.0  # Direct radar events have full confidence
+    }
+    
+    # Store in events collection
+    await db.events.insert_one(event_doc)
+    
+    # Update sensor last_seen if found
+    if sensor:
+        await db.sensors.update_one(
+            {"id": sensor['id']},
+            {"$set": {"status": "ONLINE", "last_seen": datetime.now(timezone.utc).isoformat()}}
+        )
+    
+    # Broadcast to WebSocket if tenant known
+    if tenant_id:
+        await manager.broadcast_to_tenant(tenant_id, {
+            "type": "new_radar_event",
+            "event": {
+                **event_doc,
+                "sensor_name": sensor.get('name') if sensor else None,
+                "active_regions_display": format_active_regions_display(normalized.activeRegions),
+                "target_count_display": format_target_count_display(normalized.targetCount)
+            }
+        })
+    
+    logger.info(f"Created radar event {normalized.id} from device {request.deviceId}, type={normalized.eventType.value}")
+    
+    return {
+        "id": normalized.id,
+        "eventType": normalized.eventType.value,
+        "presenceStatus": normalized.presenceStatus.value,
+        "presenceDetected": normalized.presenceDetected,
+        "activeRegions": normalized.activeRegions,
+        "activeRegionsDisplay": format_active_regions_display(normalized.activeRegions),
+        "targetCount": normalized.targetCount,
+        "targetCountDisplay": format_target_count_display(normalized.targetCount),
+        "occurredAt": normalized.occurredAt,
+        "severity": normalized.severity.value,
+        "status": normalized.status.value,
+        "sensorId": normalized.sensorId,
+        "deviceId": normalized.deviceId
+    }
+
+
+@api_router.get("/events/{event_id}/detail")
+async def get_event_detail(event_id: str, current_user: UserInDB = Depends(get_current_user)):
+    """
+    Get detailed event information including raw payload
+    """
+    event = await db.events.find_one({"id": event_id}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != event.get('tenant_id'):
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Get sensor info
+    sensor = None
+    if event.get('sensor_id'):
+        sensor = await db.sensors.find_one({"id": event['sensor_id']}, {"_id": 0})
+    
+    # Format response with enriched data
+    return {
+        **event,
+        "sensor_name": sensor.get('name') if sensor else None,
+        "sensor_serial": sensor.get('serial_product') if sensor else None,
+        "active_regions_display": format_active_regions_display(event.get('active_regions', [])),
+        "target_count_display": format_target_count_display(event.get('target_count', 0)),
+        "presence_display": "Présence détectée" if event.get('presence_detected') else "Aucune présence"
+    }
+
+
 # ==================== ALERT RULE ENDPOINTS ====================
 
 @api_router.post("/rules", response_model=AlertRule)
