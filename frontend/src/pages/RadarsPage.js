@@ -500,8 +500,8 @@ export function RadarsPage() {
                       <div className="text-sm">
                         <p>{radar.model || 'Vayyar Home'}</p>
                         {radar.firmware && <p className="text-xs text-muted-foreground">{radar.firmware}</p>}
-                        {radar.device_id && (
-                          <p className="text-xs text-muted-foreground font-mono">MQTT: {radar.device_id.slice(0, 15)}...</p>
+                        {radar.serial_product && (
+                          <p className="text-xs text-muted-foreground font-mono">SN: {radar.serial_product}</p>
                         )}
                       </div>
                     </TableCell>
