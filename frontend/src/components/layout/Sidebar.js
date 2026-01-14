@@ -23,7 +23,8 @@ import {
   ChevronRight,
   Globe,
   BarChart3,
-  LayoutGrid
+  LayoutGrid,
+  Radar
 } from 'lucide-react';
 
 const navItems = [
@@ -32,6 +33,7 @@ const navItems = [
   { path: '/history', icon: History, labelKey: 'nav.history' },
   { path: '/statistics', icon: BarChart3, labelKey: 'nav.statistics' },
   { path: '/sensors', icon: Cpu, labelKey: 'nav.sensors' },
+  { path: '/radars', icon: Radar, labelKey: 'nav.radars' },
   { path: '/sites', icon: MapPin, labelKey: 'nav.sites' },
   { path: '/rules', icon: Bell, labelKey: 'nav.rules', requireAdmin: true },
   { path: '/users', icon: Users, labelKey: 'nav.users', requireAdmin: true },
