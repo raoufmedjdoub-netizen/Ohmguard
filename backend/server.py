@@ -1221,6 +1221,79 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ==================== MQTT CONFIGURATION ====================
+
+MQTT_BROKER_HOST = os.environ.get('MQTT_BROKER_HOST', '38.242.254.49')
+MQTT_BROKER_PORT = int(os.environ.get('MQTT_BROKER_PORT', '1883'))
+MQTT_ENABLED = os.environ.get('MQTT_ENABLED', 'true').lower() == 'true'
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize MQTT service on startup"""
+    if MQTT_ENABLED:
+        try:
+            await init_mqtt_service(
+                db=db,
+                broadcast_callback=manager.broadcast_to_tenant,
+                broker_host=MQTT_BROKER_HOST,
+                broker_port=MQTT_BROKER_PORT
+            )
+            logger.info(f"MQTT service initialized - connected to {MQTT_BROKER_HOST}:{MQTT_BROKER_PORT}")
+        except Exception as e:
+            logger.error(f"Failed to initialize MQTT service: {e}")
+    else:
+        logger.info("MQTT service disabled")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    """Cleanup on shutdown"""
+    if MQTT_ENABLED:
+        await stop_mqtt_service()
+        logger.info("MQTT service stopped")
     client.close()
+
+# ==================== MQTT STATUS ENDPOINT ====================
+
+@api_router.get("/mqtt/status")
+async def get_mqtt_status(current_user: UserInDB = Depends(get_current_user)):
+    """Get MQTT service status"""
+    from mqtt_service import mqtt_service
+    
+    return {
+        "enabled": MQTT_ENABLED,
+        "broker_host": MQTT_BROKER_HOST,
+        "broker_port": MQTT_BROKER_PORT,
+        "running": mqtt_service.running if mqtt_service else False,
+        "connected": mqtt_service._client is not None if mqtt_service else False
+    }
+
+@api_router.post("/mqtt/register-device")
+async def register_mqtt_device(
+    device_id: str,
+    sensor_id: str,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Manually map a MQTT device to an existing sensor"""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    
+    sensor = await db.sensors.find_one({"id": sensor_id}, {"_id": 0})
+    if not sensor:
+        raise HTTPException(status_code=404, detail="Sensor not found")
+    
+    if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != sensor['tenant_id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Update sensor with device_id
+    await db.sensors.update_one(
+        {"id": sensor_id},
+        {"$set": {"model": device_id}}
+    )
+    
+    # Clear cache in MQTT service
+    from mqtt_service import mqtt_service
+    if mqtt_service and device_id in mqtt_service._device_sensor_cache:
+        del mqtt_service._device_sensor_cache[device_id]
+    
+    await log_audit(current_user.id, sensor['tenant_id'], "register_mqtt_device", "sensor", sensor_id, {"device_id": device_id})
+    
+    return {"status": "ok", "message": f"Device {device_id} mapped to sensor {sensor_id}"}
