@@ -474,8 +474,43 @@ class MQTTService:
                 }
             })
         
-        # Trigger alert rules
-        await self._process_alert_rules(event, sensor)
+        # Trigger alert rules for HIGH severity events
+        if normalized.severity == EventSeverity.HIGH:
+            await self._process_alert_rules(event, sensor)
+    
+    async def _handle_device_event_legacy(self, device_id: str, payload: Dict, sensor: Dict):
+        """Legacy event handler for non-standard payloads"""
+        event_type_code = payload.get("type", 0)
+        event_payload = payload.get("payload", {})
+        
+        # Determine event type and severity using legacy methods
+        event_type = self._determine_event_type(event_type_code, event_payload)
+        severity = self._determine_severity(event_type_code, event_payload)
+        confidence = self._calculate_confidence(event_payload)
+        
+        # Create legacy event
+        event = {
+            "id": str(uuid.uuid4()),
+            "sensor_id": sensor['id'],
+            "tenant_id": sensor['tenant_id'],
+            "site_id": sensor['site_id'],
+            "zone_id": sensor['zone_id'],
+            "type": event_type,
+            "severity": severity,
+            "confidence": confidence,
+            "status": "NEW",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "raw_payload": payload
+        }
+        
+        await self.db.events.insert_one(event)
+        logger.info(f"Created legacy event {event_type} from device {device_id}")
+        
+        if self.broadcast_callback:
+            await self.broadcast_callback(sensor['tenant_id'], {
+                "type": "new_event",
+                "event": event
+            })
     
     def _determine_event_type(self, event_type_code: int, payload: Dict) -> str:
         """Determine the event type from Vayyar payload"""
