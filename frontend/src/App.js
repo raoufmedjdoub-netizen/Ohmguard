@@ -17,7 +17,6 @@ import { HistoryPage } from '@/pages/HistoryPage';
 import { EventDetailPage } from '@/pages/EventDetailPage';
 import { RadarsPage } from '@/pages/RadarsPage';
 import { RadarConfigPage } from '@/pages/RadarConfigPage';
-import { SitesPage } from '@/pages/SitesPage';
 import { RulesPage } from '@/pages/RulesPage';
 import { UsersPage } from '@/pages/UsersPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
