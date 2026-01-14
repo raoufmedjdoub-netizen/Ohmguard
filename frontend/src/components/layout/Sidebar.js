@@ -23,7 +23,8 @@ import {
   Globe,
   BarChart3,
   LayoutGrid,
-  Radar
+  Radar,
+  Building2
 } from 'lucide-react';
 
 const navItems = [
