@@ -138,7 +138,7 @@ async def seed():
             "type": random.choice(event_types),
             "confidence": round(random.uniform(0.7, 0.99), 2),
             "severity": random.choice(severities),
-            "anonymized_snapshot_url": f"https://fallguard.local/snapshots/{uuid.uuid4().hex}.jpg" if random.random() > 0.5 else None,
+            "anonymized_snapshot_url": f"https://ohmguard.local/snapshots/{uuid.uuid4().hex}.jpg" if random.random() > 0.5 else None,
             "raw_payload": {"sensor_data": {"accelerometer": [random.uniform(-1, 1) for _ in range(3)]}},
             "status": random.choice(statuses),
             "assigned_to": None,
@@ -155,7 +155,7 @@ async def seed():
     users = [
         {
             "id": str(uuid.uuid4()),
-            "email": "admin@fallguard.io",
+            "email": "admin@ohmguard.io",
             "full_name": "Admin Système",
             "role": "SUPER_ADMIN",
             "tenant_id": None,
