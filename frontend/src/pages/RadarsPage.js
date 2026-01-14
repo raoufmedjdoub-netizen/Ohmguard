@@ -529,10 +529,10 @@ export function RadarsPage() {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              {t('common.cancel')}
+              {t('cancel')}
             </Button>
             <Button variant="destructive" onClick={handleDeleteRadar}>
-              {t('common.delete')}
+              {t('delete')}
             </Button>
           </DialogFooter>
         </DialogContent>
