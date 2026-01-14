@@ -99,6 +99,14 @@ function EventCard({ event, onAcknowledge, onResolve, onFalseAlarm, onViewDetail
         </div>
       </div>
       
+      {/* Location Info */}
+      {locationPath && (
+        <div className="flex items-center gap-2 mb-3 p-2 rounded bg-primary/5 border border-primary/10">
+          <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
+          <span className="text-xs font-medium text-primary truncate">{locationPath}</span>
+        </div>
+      )}
+      
       {/* Presence Info Grid */}
       <div className="grid grid-cols-2 gap-2 mb-3">
         <div className="flex items-center gap-2 p-2 rounded bg-muted/30">
