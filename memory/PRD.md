@@ -164,6 +164,7 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - [x] Radar Event Processing (January 14, 2026)
 - [x] Clients & Buildings Multi-tenant Module (January 14, 2026)
 - [x] **Location integration in events (January 14, 2026)** - Live & History pages now show full location path
+- [x] **LivePage redesign (January 14, 2026)** - New event cards with hierarchical location, real-time status, device status
 
 ### P1 - High Priority (Next)
 - [ ] Full RBAC with granular permissions
