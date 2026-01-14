@@ -14,6 +14,7 @@ import { LoginPage } from '@/pages/LoginPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { LivePage } from '@/pages/LivePage';
 import { HistoryPage } from '@/pages/HistoryPage';
+import { EventDetailPage } from '@/pages/EventDetailPage';
 import { RadarsPage } from '@/pages/RadarsPage';
 import { RadarConfigPage } from '@/pages/RadarConfigPage';
 import { SitesPage } from '@/pages/SitesPage';
@@ -21,6 +22,7 @@ import { RulesPage } from '@/pages/RulesPage';
 import { UsersPage } from '@/pages/UsersPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import { SimulatorPage } from '@/pages/SimulatorPage';
+import { PresenceSimulatorPage } from '@/pages/PresenceSimulatorPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { StatisticsPage } from '@/pages/StatisticsPage';
 import { WidgetPage } from '@/components/widgets/DashboardWidget';
@@ -64,6 +66,7 @@ function AppRoutes() {
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="live" element={<LivePage />} />
         <Route path="history" element={<HistoryPage />} />
+        <Route path="events/:eventId" element={<EventDetailPage />} />
         <Route path="sensors" element={<Navigate to="/radars" replace />} />
         <Route path="radars" element={<RadarsPage />} />
         <Route path="radars/:deviceId/config" element={<RadarConfigPage />} />
@@ -72,6 +75,7 @@ function AppRoutes() {
         <Route path="users" element={<UsersPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="simulator" element={<SimulatorPage />} />
+        <Route path="simulator/presence" element={<PresenceSimulatorPage />} />
         <Route path="statistics" element={<StatisticsPage />} />
         <Route path="widgets" element={<WidgetPage />} />
         <Route path="settings" element={<SettingsPage />} />
