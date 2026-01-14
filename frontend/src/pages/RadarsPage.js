@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Wifi, WifiOff, Radio, RefreshCw, Settings, Activity, 
-  Thermometer, Clock, MemoryStick, Plus, Copy, Key, 
-  Trash2, Edit, Search, MapPin, Sliders
+  Wifi, WifiOff, Radio, RefreshCw, Activity, 
+  Clock, Plus, Copy, Key, 
+  Trash2, Search, MapPin, Sliders, Building2, AlertCircle, Link2
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -14,65 +14,58 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import api, { sensorsAPI, sitesAPI, zonesAPI } from '@/lib/api';
+import api, { sensorsAPI } from '@/lib/api';
 import { useWebSocket } from '@/contexts/WebSocketContext';
-import { useAuth } from '@/contexts/AuthContext';
 
 export function RadarsPage() {
   const { t } = useTranslation();
   const { lastMessage } = useWebSocket();
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [mqttStatus, setMqttStatus] = useState(null);
   const [radars, setRadars] = useState([]);
-  const [sites, setSites] = useState([]);
-  const [zones, setZones] = useState([]);
+  const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedAssignment, setSelectedAssignment] = useState('all');
   
   // Dialog states
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedRadar, setSelectedRadar] = useState(null);
   
-  // Form states
-  const [newRadar, setNewRadar] = useState({
-    name: '',
-    serial_product: '',  // Serial number for identification
-    device_id: '',       // MQTT device ID for communications
-    model: '',
-    firmware: '',
-    site_id: '',
-    zone_id: ''
+  // Assignment form
+  const [assignmentData, setAssignmentData] = useState({
+    clientId: '',
+    buildingId: '',
+    floorId: '',
+    roomId: '',
+    spaceId: ''
   });
-  const [newDeviceId, setNewDeviceId] = useState('');
-  const [selectedRadarId, setSelectedRadarId] = useState('');
+  const [buildings, setBuildings] = useState([]);
+  const [floors, setFloors] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [spaces, setSpaces] = useState([]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [sensorsRes, sitesRes, zonesRes, statusRes] = await Promise.all([
+      const [sensorsRes, clientsRes, statusRes] = await Promise.all([
         api.get('/sensors'),
-        sitesAPI.list(),
-        zonesAPI.list(),
+        api.get('/clients'),
         api.get('/mqtt/status').catch(() => ({ data: null }))
       ]);
       
-      // All sensors are now RADAR type only
       setRadars(sensorsRes.data);
-      setSites(sitesRes.data);
-      setZones(zonesRes.data);
+      setClients(clientsRes.data);
       
       if (statusRes.data) {
         setMqttStatus(statusRes.data);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
-      toast.error(t('radars.fetchError'));
+      toast.error('Erreur lors du chargement');
     } finally {
       setLoading(false);
     }
@@ -90,49 +83,80 @@ export function RadarsPage() {
     }
   }, [lastMessage]);
 
-  const handleAddRadar = async () => {
-    if (!newRadar.serial_product || !newRadar.site_id || !newRadar.zone_id) {
-      toast.error(t('radars.fillRequired'));
+  // Fetch buildings when client is selected
+  useEffect(() => {
+    if (assignmentData.clientId) {
+      api.get(`/clients/${assignmentData.clientId}/buildings`).then(res => {
+        setBuildings(res.data);
+        setFloors([]);
+        setRooms([]);
+        setSpaces([]);
+      });
+    }
+  }, [assignmentData.clientId]);
+
+  // Fetch floors when building is selected
+  useEffect(() => {
+    if (assignmentData.buildingId) {
+      api.get(`/buildings/${assignmentData.buildingId}/floors`).then(res => {
+        setFloors(res.data);
+        setRooms([]);
+        setSpaces([]);
+      });
+    }
+  }, [assignmentData.buildingId]);
+
+  // Fetch rooms when floor is selected
+  useEffect(() => {
+    if (assignmentData.floorId) {
+      api.get(`/floors/${assignmentData.floorId}/rooms`).then(res => {
+        setRooms(res.data);
+        setSpaces([]);
+      });
+    }
+  }, [assignmentData.floorId]);
+
+  // Fetch spaces when room is selected
+  useEffect(() => {
+    if (assignmentData.roomId) {
+      api.get(`/rooms/${assignmentData.roomId}`).then(res => {
+        setSpaces(res.data.spaces || []);
+      });
+    }
+  }, [assignmentData.roomId]);
+
+  const handleAssignRadar = async () => {
+    if (!selectedRadar || !assignmentData.clientId) {
+      toast.error('Veuillez sélectionner au moins un client');
       return;
     }
     
     try {
-      const tenantId = user?.tenant_id || sites.find(s => s.id === newRadar.site_id)?.tenant_id;
-      await sensorsAPI.create({
-        name: newRadar.name || `Radar ${newRadar.serial_product.slice(0, 12)}`,
-        serial_product: newRadar.serial_product,
-        device_id: newRadar.device_id || newRadar.serial_product,  // Use serial as device_id if not provided
-        model: newRadar.model || 'Vayyar Home',
-        firmware: newRadar.firmware,
-        site_id: newRadar.site_id,
-        zone_id: newRadar.zone_id,
-        type: 'RADAR',
-        tenant_id: tenantId
+      await api.post(`/radars/${selectedRadar.id}/assign`, {
+        client_id: assignmentData.clientId,
+        building_id: assignmentData.buildingId || null,
+        floor_id: assignmentData.floorId || null,
+        room_id: assignmentData.roomId || null,
+        room_space_id: assignmentData.spaceId || null
       });
-      toast.success(t('radars.radarAdded'));
-      setAddDialogOpen(false);
-      setNewRadar({ name: '', serial_product: '', device_id: '', model: '', firmware: '', site_id: '', zone_id: '' });
+      
+      toast.success('Radar affecté avec succès');
+      setAssignDialogOpen(false);
+      setSelectedRadar(null);
+      setAssignmentData({ clientId: '', buildingId: '', floorId: '', roomId: '', spaceId: '' });
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || t('radars.addError'));
+      toast.error(error.response?.data?.detail || 'Erreur lors de l\'affectation');
     }
   };
 
-  const handleLinkDevice = async () => {
-    if (!newDeviceId || !selectedRadarId) {
-      toast.error(t('radars.fillFields'));
-      return;
-    }
-    
+  const handleUnassignRadar = async (radarId) => {
     try {
-      await api.post(`/mqtt/register-device?device_id=${encodeURIComponent(newDeviceId)}&sensor_id=${selectedRadarId}`);
-      toast.success(t('radars.deviceLinked'));
-      setLinkDialogOpen(false);
-      setNewDeviceId('');
-      setSelectedRadarId('');
+      await api.post(`/radars/${radarId}/unassign`);
+      toast.success('Radar désaffecté');
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || t('radars.linkError'));
+      toast.error('Erreur lors de la désaffectation');
     }
   };
 
@@ -141,225 +165,120 @@ export function RadarsPage() {
     
     try {
       await sensorsAPI.delete(selectedRadar.id);
-      toast.success(t('radars.radarDeleted'));
+      toast.success('Radar supprimé');
       setDeleteDialogOpen(false);
       setSelectedRadar(null);
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || t('radars.deleteError'));
+      toast.error('Erreur lors de la suppression');
     }
   };
 
   const handleRotateKey = async (radarId) => {
     try {
-      const response = await sensorsAPI.rotateKey(radarId);
-      toast.success(t('radars.keyRotated'));
-      navigator.clipboard.writeText(response.data.api_key);
-      toast.info(t('radars.keyCopied'));
+      await api.post(`/sensors/${radarId}/rotate-key`);
+      toast.success('Clé API régénérée');
       fetchData();
     } catch (error) {
-      toast.error(t('radars.rotateError'));
+      toast.error('Erreur lors de la régénération');
     }
   };
 
-  const copyApiKey = (apiKey) => {
-    navigator.clipboard.writeText(apiKey);
-    toast.success(t('radars.keyCopied'));
+  const copyApiKey = (key) => {
+    if (key) {
+      navigator.clipboard.writeText(key);
+      toast.success('Clé API copiée');
+    }
   };
 
   const getStatusBadge = (status) => {
-    const styles = {
-      ONLINE: 'bg-green-500/20 text-green-600 border-green-500/30',
-      OFFLINE: 'bg-red-500/20 text-red-600 border-red-500/30',
-      MAINTENANCE: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30'
+    const config = {
+      ONLINE: { className: 'bg-green-500', label: 'En ligne' },
+      OFFLINE: { className: 'bg-red-500', label: 'Hors ligne' },
+      MAINTENANCE: { className: 'bg-amber-500', label: 'Maintenance' }
     };
-    const labels = {
-      ONLINE: t('radars.online'),
-      OFFLINE: t('radars.offline'),
-      MAINTENANCE: t('radars.maintenance')
-    };
-    return <Badge className={styles[status] || styles.OFFLINE}>{labels[status] || status}</Badge>;
+    const c = config[status] || config.OFFLINE;
+    return <Badge className={c.className}>{c.label}</Badge>;
   };
 
-  const formatLastSeen = (timestamp) => {
-    if (!timestamp) return t('radars.never');
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = (now - date) / 1000;
+  const getAssignmentBadge = (radar) => {
+    if (radar.client_id || radar.room_space_id) {
+      return <Badge className="bg-blue-500">Affecté</Badge>;
+    }
+    return <Badge variant="outline" className="border-amber-500 text-amber-500">En attente</Badge>;
+  };
+
+  const getLocationDisplay = (radar) => {
+    if (!radar.client_id) {
+      return <span className="text-amber-500 italic">Non affecté</span>;
+    }
     
-    if (diff < 60) return t('radars.justNow');
-    if (diff < 3600) return `${Math.floor(diff / 60)} min`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-    return date.toLocaleDateString();
+    // Build location path
+    const client = clients.find(c => c.id === radar.client_id);
+    const parts = [];
+    if (client) parts.push(client.name);
+    
+    // We would need to fetch these, but for now show what we have
+    if (radar.location_path) {
+      return <span className="text-sm">{radar.location_path}</span>;
+    }
+    
+    if (parts.length > 0) {
+      return <span className="text-sm text-primary">{parts.join(' > ')}</span>;
+    }
+    
+    return <span className="text-muted-foreground">Client #{radar.client_id?.substring(0, 8)}</span>;
   };
 
-  const getSiteName = (siteId) => sites.find(s => s.id === siteId)?.name || '-';
-  const getZoneName = (zoneId) => zones.find(z => z.id === zoneId)?.name || '-';
-  const getZonesForSite = (siteId) => zones.filter(z => z.site_id === siteId);
+  const formatLastSeen = (lastSeen) => {
+    if (!lastSeen) return 'Jamais';
+    const date = new Date(lastSeen);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'À l\'instant';
+    if (diffMins < 60) return `Il y a ${diffMins} min`;
+    if (diffMins < 1440) return `Il y a ${Math.floor(diffMins / 60)}h`;
+    return date.toLocaleDateString('fr-FR');
+  };
 
+  // Filtering
   const filteredRadars = radars.filter(radar => {
     const matchesSearch = !searchQuery || 
-      radar.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      radar.model?.toLowerCase().includes(searchQuery.toLowerCase());
+      radar.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      radar.serial_product?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      radar.device_id?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = selectedStatus === 'all' || radar.status === selectedStatus;
-    return matchesSearch && matchesStatus;
+    const matchesAssignment = selectedAssignment === 'all' || 
+      (selectedAssignment === 'PENDING' && !radar.client_id) ||
+      (selectedAssignment === 'ASSIGNED' && radar.client_id);
+    return matchesSearch && matchesStatus && matchesAssignment;
   });
 
+  // Stats
   const onlineCount = radars.filter(r => r.status === 'ONLINE').length;
-  const offlineCount = radars.filter(r => r.status === 'OFFLINE').length;
-  const mqttCount = radars.filter(r => r.model?.startsWith('id_')).length;
+  const pendingCount = radars.filter(r => !r.client_id).length;
+  const assignedCount = radars.filter(r => r.client_id).length;
 
   return (
     <div className="space-y-6" data-testid="radars-page">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t('radars.title')}</h1>
-          <p className="text-muted-foreground">{t('radars.subtitle')}</p>
+          <h1 className="text-2xl font-bold">Gestion des Radars</h1>
+          <p className="text-muted-foreground">Radars Vayyar détectés et affectations</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchData} disabled={loading} data-testid="refresh-btn">
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            {t('refresh')}
-          </Button>
-          <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" data-testid="link-device-btn">
-                <Wifi className="h-4 w-4 mr-2" />
-                {t('radars.linkDevice')}
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{t('radars.linkDeviceTitle')}</DialogTitle>
-                <DialogDescription>{t('radars.linkDeviceDesc')}</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label>{t('radars.deviceId')}</Label>
-                  <Input 
-                    placeholder="id_QTg6MDM6..." 
-                    value={newDeviceId}
-                    onChange={(e) => setNewDeviceId(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t('radars.targetRadar')}</Label>
-                  <Select value={selectedRadarId} onValueChange={setSelectedRadarId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('radars.selectRadar')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {radars.map(radar => (
-                        <SelectItem key={radar.id} value={radar.id}>{radar.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button onClick={handleLinkDevice} className="w-full">{t('radars.link')}</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="add-radar-btn">
-                <Plus className="h-4 w-4 mr-2" />
-                {t('radars.addRadar')}
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{t('radars.addRadarTitle')}</DialogTitle>
-                <DialogDescription>{t('radars.addRadarDesc')}</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label>{t('radars.name')} *</Label>
-                  <Input 
-                    placeholder="Radar Chambre 101"
-                    value={newRadar.name}
-                    onChange={(e) => setNewRadar({...newRadar, name: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t('radars.serialProduct')} *</Label>
-                  <Input 
-                    placeholder="VPRD-XXXX-XXXX"
-                    value={newRadar.serial_product}
-                    onChange={(e) => setNewRadar({...newRadar, serial_product: e.target.value})}
-                  />
-                  <p className="text-xs text-muted-foreground">{t('radars.serialProductHelp')}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t('radars.mqttDeviceId')}</Label>
-                  <Input 
-                    placeholder="id_QTg6MDM6MkE6..."
-                    value={newRadar.device_id}
-                    onChange={(e) => setNewRadar({...newRadar, device_id: e.target.value})}
-                  />
-                  <p className="text-xs text-muted-foreground">{t('radars.mqttDeviceIdHelp')}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>{t('radars.model')}</Label>
-                    <Input 
-                      placeholder="Vayyar Home"
-                      value={newRadar.model}
-                      onChange={(e) => setNewRadar({...newRadar, model: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>{t('radars.firmware')}</Label>
-                    <Input 
-                      placeholder="v1.0.0"
-                      value={newRadar.firmware}
-                      onChange={(e) => setNewRadar({...newRadar, firmware: e.target.value})}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t('radars.site')} *</Label>
-                  <Select 
-                    value={newRadar.site_id} 
-                    onValueChange={(v) => setNewRadar({...newRadar, site_id: v, zone_id: ''})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('radars.selectSite')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sites.map(site => (
-                        <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t('radars.zone')} *</Label>
-                  <Select 
-                    value={newRadar.zone_id} 
-                    onValueChange={(v) => setNewRadar({...newRadar, zone_id: v})}
-                    disabled={!newRadar.site_id}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('radars.selectZone')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getZonesForSite(newRadar.site_id).map(zone => (
-                        <SelectItem key={zone.id} value={zone.id}>{zone.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button onClick={handleAddRadar} className="w-full">{t('radars.add')}</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+        <Button variant="outline" onClick={fetchData} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Actualiser
+        </Button>
       </div>
 
-      {/* MQTT Status + Stats */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="md:col-span-2 border-primary/20" data-testid="mqtt-status-card">
+        {/* MQTT Status */}
+        <Card className="border-primary/20">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -373,50 +292,64 @@ export function RadarsPage() {
                   </div>
                 )}
                 <div>
-                  <p className="font-semibold">{t('radars.mqttConnection')}</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="font-semibold">Connexion MQTT</p>
+                  <p className="text-xs text-muted-foreground">
                     {mqttStatus?.broker_host}:{mqttStatus?.broker_port}
                   </p>
                 </div>
               </div>
               <Badge className={mqttStatus?.connected ? 'bg-green-500' : 'bg-red-500'}>
-                {mqttStatus?.connected ? t('radars.connected') : t('radars.disconnected')}
+                {mqttStatus?.connected ? 'Connecté' : 'Déconnecté'}
               </Badge>
             </div>
           </CardContent>
         </Card>
         
+        {/* Total Radars */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">{t('radars.totalRadars')}</p>
+                <p className="text-sm text-muted-foreground">Total Radars</p>
                 <p className="text-2xl font-bold">{radars.length}</p>
               </div>
-              <div className="p-2 rounded-full bg-primary/10">
-                <Radio className="h-5 w-5 text-primary" />
-              </div>
+              <Radio className="h-8 w-8 text-primary/30" />
             </div>
-            <div className="mt-2 text-xs text-muted-foreground">
-              {mqttCount} {t('radars.autoDetected')}
-            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {onlineCount} en ligne
+            </p>
           </CardContent>
         </Card>
         
+        {/* Pending Assignment */}
+        <Card className={pendingCount > 0 ? "border-amber-500/50" : ""}>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">En attente</p>
+                <p className="text-2xl font-bold text-amber-500">{pendingCount}</p>
+              </div>
+              <AlertCircle className="h-8 w-8 text-amber-500/30" />
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              À affecter
+            </p>
+          </CardContent>
+        </Card>
+        
+        {/* Assigned */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">{t('radars.onlineStatus')}</p>
-                <p className="text-2xl font-bold text-green-500">{onlineCount}/{radars.length}</p>
+                <p className="text-sm text-muted-foreground">Affectés</p>
+                <p className="text-2xl font-bold text-blue-500">{assignedCount}</p>
               </div>
-              <div className="p-2 rounded-full bg-green-500/10">
-                <Activity className="h-5 w-5 text-green-500" />
-              </div>
+              <Building2 className="h-8 w-8 text-blue-500/30" />
             </div>
-            <div className="mt-2 text-xs text-muted-foreground">
-              {offlineCount} {t('radars.offline').toLowerCase()}
-            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Localisés
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -426,21 +359,30 @@ export function RadarsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder={t('radars.searchPlaceholder')}
+            placeholder="Rechercher par nom, série, device ID..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
         </div>
         <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Statut" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{t('radars.allStatuses')}</SelectItem>
-            <SelectItem value="ONLINE">{t('radars.online')}</SelectItem>
-            <SelectItem value="OFFLINE">{t('radars.offline')}</SelectItem>
-            <SelectItem value="MAINTENANCE">{t('radars.maintenance')}</SelectItem>
+            <SelectItem value="all">Tous statuts</SelectItem>
+            <SelectItem value="ONLINE">En ligne</SelectItem>
+            <SelectItem value="OFFLINE">Hors ligne</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={selectedAssignment} onValueChange={setSelectedAssignment}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Affectation" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes</SelectItem>
+            <SelectItem value="PENDING">En attente</SelectItem>
+            <SelectItem value="ASSIGNED">Affectés</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -451,12 +393,12 @@ export function RadarsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t('radars.name')}</TableHead>
-                <TableHead>{t('radars.location')}</TableHead>
-                <TableHead>{t('radars.model')}</TableHead>
-                <TableHead>{t('radars.status')}</TableHead>
-                <TableHead>{t('radars.lastSeen')}</TableHead>
-                <TableHead className="text-right">{t('radars.actions')}</TableHead>
+                <TableHead>Radar</TableHead>
+                <TableHead>Localisation</TableHead>
+                <TableHead>Affectation</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead>Dernière activité</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -470,7 +412,7 @@ export function RadarsPage() {
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8">
                     <Radio className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground">{t('radars.noRadars')}</p>
+                    <p className="text-muted-foreground">Aucun radar trouvé</p>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -483,29 +425,29 @@ export function RadarsPage() {
                         </div>
                         <div>
                           <p className="font-medium">{radar.name}</p>
-                          <p className="text-xs text-primary font-mono">
-                            {radar.device_id ? `MQTT: ${radar.device_id.substring(0, 20)}...` : 'No Device ID'}
+                          {radar.serial_product && (
+                            <p className="text-xs text-muted-foreground font-mono">
+                              SN: {radar.serial_product}
+                            </p>
+                          )}
+                          <p className="text-xs text-primary/70 font-mono">
+                            {radar.device_id?.substring(0, 24)}...
                           </p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1 text-sm">
+                      <div className="flex items-center gap-1">
                         <MapPin className="h-3 w-3 text-muted-foreground" />
-                        <span>{getSiteName(radar.site_id)}</span>
-                        <span className="text-muted-foreground">/ {getZoneName(radar.zone_id)}</span>
+                        {getLocationDisplay(radar)}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm">
-                        <p>{radar.model || 'Vayyar Home'}</p>
-                        {radar.firmware && <p className="text-xs text-muted-foreground">{radar.firmware}</p>}
-                        {radar.serial_product && (
-                          <p className="text-xs text-muted-foreground font-mono">SN: {radar.serial_product}</p>
-                        )}
-                      </div>
+                      {getAssignmentBadge(radar)}
                     </TableCell>
-                    <TableCell>{getStatusBadge(radar.status)}</TableCell>
+                    <TableCell>
+                      {getStatusBadge(radar.status)}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <Clock className="h-3 w-3" />
@@ -514,11 +456,38 @@ export function RadarsPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        {/* Assign/Unassign button */}
+                        {!radar.client_id ? (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="text-primary"
+                            onClick={() => {
+                              setSelectedRadar(radar);
+                              setAssignDialogOpen(true);
+                            }}
+                            title="Affecter"
+                          >
+                            <Link2 className="h-4 w-4 mr-1" />
+                            Affecter
+                          </Button>
+                        ) : (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="text-amber-500"
+                            onClick={() => handleUnassignRadar(radar.id)}
+                            title="Désaffecter"
+                          >
+                            Désaffecter
+                          </Button>
+                        )}
+                        
                         <Button 
                           variant="ghost" 
                           size="icon"
                           onClick={() => navigate(`/radars/${radar.id}/config`)}
-                          title={t('radars.configure', 'Configure')}
+                          title="Configurer"
                         >
                           <Sliders className="h-4 w-4" />
                         </Button>
@@ -526,7 +495,7 @@ export function RadarsPage() {
                           variant="ghost" 
                           size="icon"
                           onClick={() => copyApiKey(radar.api_key)}
-                          title={t('radars.copyKey')}
+                          title="Copier clé API"
                         >
                           <Copy className="h-4 w-4" />
                         </Button>
@@ -534,7 +503,7 @@ export function RadarsPage() {
                           variant="ghost" 
                           size="icon"
                           onClick={() => handleRotateKey(radar.id)}
-                          title={t('radars.rotateKey')}
+                          title="Régénérer clé"
                         >
                           <Key className="h-4 w-4" />
                         </Button>
@@ -543,7 +512,7 @@ export function RadarsPage() {
                           size="icon"
                           onClick={() => { setSelectedRadar(radar); setDeleteDialogOpen(true); }}
                           className="text-destructive hover:text-destructive"
-                          title={t('radars.delete')}
+                          title="Supprimer"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -557,38 +526,132 @@ export function RadarsPage() {
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
+      {/* Assignment Dialog */}
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{t('radars.deleteTitle')}</DialogTitle>
+            <DialogTitle>Affecter le radar</DialogTitle>
             <DialogDescription>
-              {t('radars.deleteDesc', { name: selectedRadar?.name })}
+              {selectedRadar?.name} - {selectedRadar?.serial_product}
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label>Client *</Label>
+              <Select 
+                value={assignmentData.clientId} 
+                onValueChange={(v) => setAssignmentData({...assignmentData, clientId: v, buildingId: '', floorId: '', roomId: '', spaceId: ''})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un client" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {buildings.length > 0 && (
+              <div className="space-y-2">
+                <Label>Bâtiment</Label>
+                <Select 
+                  value={assignmentData.buildingId} 
+                  onValueChange={(v) => setAssignmentData({...assignmentData, buildingId: v, floorId: '', roomId: '', spaceId: ''})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un bâtiment" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {buildings.map(b => (
+                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            {floors.length > 0 && (
+              <div className="space-y-2">
+                <Label>Étage</Label>
+                <Select 
+                  value={assignmentData.floorId} 
+                  onValueChange={(v) => setAssignmentData({...assignmentData, floorId: v, roomId: '', spaceId: ''})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un étage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {floors.map(f => (
+                      <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            {rooms.length > 0 && (
+              <div className="space-y-2">
+                <Label>Chambre</Label>
+                <Select 
+                  value={assignmentData.roomId} 
+                  onValueChange={(v) => setAssignmentData({...assignmentData, roomId: v, spaceId: ''})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner une chambre" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rooms.map(r => (
+                      <SelectItem key={r.id} value={r.id}>Ch. {r.room_number}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            {spaces.length > 0 && (
+              <div className="space-y-2">
+                <Label>Espace</Label>
+                <Select 
+                  value={assignmentData.spaceId} 
+                  onValueChange={(v) => setAssignmentData({...assignmentData, spaceId: v})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un espace" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {spaces.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.name || s.space_type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              {t('cancel')}
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteRadar}>
-              {t('delete')}
-            </Button>
+            <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>Annuler</Button>
+            <Button onClick={handleAssignRadar}>Affecter</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Info Section */}
-      <Card className="bg-muted/30">
-        <CardContent className="pt-6">
-          <h3 className="font-medium mb-2">{t('radars.howItWorks')}</h3>
-          <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• {t('radars.info1')}</li>
-            <li>• {t('radars.info2')}</li>
-            <li>• {t('radars.info3')}</li>
-            <li>• {t('radars.info4')}</li>
-          </ul>
-        </CardContent>
-      </Card>
+      {/* Delete Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Supprimer le radar</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer {selectedRadar?.name} ?
+              Cette action est irréversible.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Annuler</Button>
+            <Button variant="destructive" onClick={handleDeleteRadar}>Supprimer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
