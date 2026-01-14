@@ -28,6 +28,10 @@ from vayyar_config_schema import (
     get_default_config_dict
 )
 
+# Clients & Buildings imports
+from clients_buildings_service import init_clients_buildings_service, get_clients_buildings_service
+from clients_buildings_routes import create_clients_buildings_router
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
