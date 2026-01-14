@@ -294,7 +294,7 @@ export function HistoryPage() {
                       </TableCell>
                       <TableCell>
                         <span className="font-mono text-xs text-muted-foreground">
-                          {event.device_id?.substring(0, 12) || event.sensor_id?.substring(0, 12)}...
+                          {event.device_id?.substring(0, 20) || event.sensor_id?.substring(0, 12)}...
                         </span>
                       </TableCell>
                       <TableCell>
