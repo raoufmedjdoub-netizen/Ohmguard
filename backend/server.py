@@ -1513,9 +1513,10 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize MQTT service on startup"""
+    """Initialize MQTT services on startup"""
     if MQTT_ENABLED:
         try:
+            # Initialize main MQTT service for events
             await init_mqtt_service(
                 db=db,
                 broadcast_callback=manager.broadcast_to_tenant,
@@ -1523,15 +1524,26 @@ async def startup_event():
                 broker_port=MQTT_BROKER_PORT
             )
             logger.info(f"MQTT service initialized - connected to {MQTT_BROKER_HOST}:{MQTT_BROKER_PORT}")
+            
+            # Initialize Vayyar Config service
+            config_svc = await init_vayyar_config_service(
+                db=db,
+                broker_host=MQTT_BROKER_HOST,
+                broker_port=MQTT_BROKER_PORT
+            )
+            config_svc.set_broadcast_callback(manager.broadcast_to_tenant)
+            logger.info("Vayyar Config service initialized")
+            
         except Exception as e:
-            logger.error(f"Failed to initialize MQTT service: {e}")
+            logger.error(f"Failed to initialize MQTT services: {e}")
     else:
-        logger.info("MQTT service disabled")
+        logger.info("MQTT services disabled")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
     """Cleanup on shutdown"""
     if MQTT_ENABLED:
         await stop_mqtt_service()
-        logger.info("MQTT service stopped")
+        await stop_vayyar_config_service()
+        logger.info("MQTT services stopped")
     client.close()
