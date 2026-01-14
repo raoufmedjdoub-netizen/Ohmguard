@@ -210,18 +210,30 @@ class MQTTService:
             }
             await self.db.zones.insert_one(zone)
         
-        # Extract serial product and device info from payload
+        # Extract serial product from state payload - THE REAL SERIAL NUMBER
         serial_product = payload.get("serialProduct", "")
-        model_info = payload.get("model", "Vayyar Radar")
+        serial_radar = payload.get("serialRadar", "")
+        model_info = payload.get("model", "Vayyar Home")
+        hardware_info = payload.get("hardware", "")
+        product_type = payload.get("productType", "Falling")
         
-        # Create sensor with both serialProduct and deviceId
+        # Generate a readable name
+        if serial_product:
+            radar_name = f"Radar {serial_product}"
+        else:
+            radar_name = f"Radar {device_id[:12]}"
+        
+        # Create sensor with serialProduct from payload and deviceId for MQTT
         sensor = {
             "id": str(uuid.uuid4()),
-            "name": f"Radar {serial_product[:12] if serial_product else device_id[:8]}",
+            "name": radar_name,
             "type": "RADAR",
-            "serial_product": serial_product or device_id,  # serialProduct as main identifier
-            "device_id": device_id,  # deviceId for MQTT communications
+            "serial_product": serial_product,  # From payload serialProduct field
+            "serial_radar": serial_radar,      # From payload serialRadar field
+            "device_id": device_id,            # deviceId for MQTT communications
             "model": model_info,
+            "hardware": hardware_info,
+            "product_type": product_type,
             "firmware": payload.get("versionName", "unknown"),
             "zone_id": zone['id'],
             "site_id": site['id'],
@@ -238,7 +250,7 @@ class MQTTService:
         self._device_sensor_cache[device_id] = sensor
         self._cache_timestamp[device_id] = datetime.now(timezone.utc)
         
-        logger.info(f"Auto-registered new sensor for device {device_id}: {sensor['id']}")
+        logger.info(f"Auto-registered new sensor: {radar_name} (device: {device_id}, serial: {serial_product})")
         
         # Broadcast new sensor to WebSocket
         if self.broadcast_callback:
