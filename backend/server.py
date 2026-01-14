@@ -211,10 +211,10 @@ class Sensor(SensorBase):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class EventBase(BaseModel):
-    sensor_id: str
+    sensor_id: Optional[str] = None
     type: EventType
-    confidence: float = Field(ge=0, le=1)
-    severity: SeverityType
+    confidence: float = Field(ge=0, le=1, default=1.0)
+    severity: SeverityType = "LOW"
     anonymized_snapshot_url: Optional[str] = None
     raw_payload: dict = {}
 
@@ -229,10 +229,18 @@ class EventUpdate(BaseModel):
 class Event(EventBase):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    tenant_id: str
-    site_id: str
-    zone_id: str
+    tenant_id: Optional[str] = None
+    site_id: Optional[str] = None
+    zone_id: Optional[str] = None
+    device_id: Optional[str] = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # New radar event fields
+    presence_status: Optional[str] = None
+    presence_detected: Optional[bool] = None
+    active_regions: Optional[List[int]] = None
+    target_count: Optional[int] = None
+    occurred_at: Optional[str] = None
+    raw_timestamp: Optional[int] = None
     status: EventStatus = "NEW"
     assigned_to: Optional[str] = None
     notes: Optional[str] = None
