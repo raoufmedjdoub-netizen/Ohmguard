@@ -37,6 +37,7 @@ const navItems = [
   { path: '/users', icon: Users, labelKey: 'nav.users', requireAdmin: true },
   { path: '/notifications', icon: Bell, labelKey: 'nav.notifications' },
   { path: '/simulator', icon: Play, labelKey: 'nav.simulator', requireOperator: true },
+  { path: '/simulator/presence', icon: Radio, labelKey: 'nav.presence_simulator', requireOperator: true },
   { path: '/widgets', icon: LayoutGrid, labelKey: 'nav.widgets' },
   { path: '/settings', icon: Settings, labelKey: 'nav.settings' }
 ];
