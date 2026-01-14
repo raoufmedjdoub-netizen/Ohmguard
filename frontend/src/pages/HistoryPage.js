@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { eventsAPI, sitesAPI } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,11 +18,15 @@ import {
   ChevronRight,
   Download,
   Loader2,
-  Eye
+  Eye,
+  User,
+  MapPin,
+  Target
 } from 'lucide-react';
 
 export function HistoryPage() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -70,14 +75,17 @@ export function HistoryPage() {
   }, [fetchData]);
 
   const handleExport = () => {
-    const headers = ['ID', 'Type', 'Severity', 'Status', 'Confidence', 'Timestamp'];
+    const headers = ['ID', 'Type', 'Severity', 'Status', 'Presence', 'Active Regions', 'Targets', 'Timestamp', 'Device'];
     const rows = events.map(e => [
       e.id,
       e.type,
       e.severity,
       e.status,
-      e.confidence,
-      e.timestamp
+      e.presence_detected ? 'Yes' : 'No',
+      (e.active_regions || []).join(';') || '-',
+      e.target_count || 0,
+      e.timestamp || e.occurred_at,
+      e.device_id || e.sensor_id
     ]);
     
     const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
@@ -89,6 +97,10 @@ export function HistoryPage() {
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Export completed');
+  };
+
+  const handleViewDetails = (eventId) => {
+    navigate(`/events/${eventId}`);
   };
 
   const totalPages = Math.ceil(totalCount / limit);
@@ -151,6 +163,8 @@ export function HistoryPage() {
                 <SelectItem value="all">{t('all')}</SelectItem>
                 <SelectItem value="FALL">{t('events.type_fall')}</SelectItem>
                 <SelectItem value="PRE_FALL">{t('events.type_pre_fall')}</SelectItem>
+                <SelectItem value="PRESENCE">{t('events.type_presence')}</SelectItem>
+                <SelectItem value="INACTIVITY">{t('events.type_inactivity')}</SelectItem>
                 <SelectItem value="UNKNOWN">{t('events.type_unknown')}</SelectItem>
               </SelectContent>
             </Select>
@@ -200,54 +214,107 @@ export function HistoryPage() {
                   <TableHead>{t('events.event_type')}</TableHead>
                   <TableHead>{t('events.severity')}</TableHead>
                   <TableHead>{t('status')}</TableHead>
-                  <TableHead>{t('events.confidence')}</TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-1">
+                      <User className="h-4 w-4" />
+                      {t('events.presence')}
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-1">
+                      <MapPin className="h-4 w-4" />
+                      {t('events.active_regions')}
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-1">
+                      <Target className="h-4 w-4" />
+                      {t('events.target_count')}
+                    </div>
+                  </TableHead>
                   <TableHead>{t('events.sensor')}</TableHead>
                   <TableHead>{t('events.timestamp')}</TableHead>
                   <TableHead className="text-right">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {events.map((event) => (
-                  <TableRow 
-                    key={event.id} 
-                    className="table-row-highlight"
-                    data-testid={`history-row-${event.id}`}
-                  >
-                    <TableCell>
-                      <Badge className={cn('font-mono', getEventTypeColor(event.type))}>
-                        {t(`events.type_${event.type.toLowerCase()}`)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={getSeverityColor(event.severity)}>
-                        {t(`events.severity_${event.severity.toLowerCase()}`)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={cn('border', getStatusColor(event.status))}>
-                        {t(`events.status_${event.status.toLowerCase()}`)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-mono">{(event.confidence * 100).toFixed(0)}%</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {event.sensor_id?.substring(0, 12)}...
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">
-                        {formatDate(event.timestamp, i18n.language === 'fr' ? 'fr-FR' : 'en-US')}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" data-testid={`view-btn-${event.id}`}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {events.map((event) => {
+                  const activeRegions = event.active_regions || [];
+                  const targetCount = event.target_count || 0;
+                  const presenceDetected = event.presence_detected;
+                  
+                  return (
+                    <TableRow 
+                      key={event.id} 
+                      className="table-row-highlight"
+                      data-testid={`history-row-${event.id}`}
+                    >
+                      <TableCell>
+                        <Badge className={cn('font-mono', getEventTypeColor(event.type))}>
+                          {t(`events.type_${event.type?.toLowerCase() || 'unknown'}`)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={getSeverityColor(event.severity)}>
+                          {t(`events.severity_${event.severity?.toLowerCase()}`)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={cn('border', getStatusColor(event.status))}>
+                          {t(`events.status_${event.status?.toLowerCase()}`)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant="outline" 
+                          className={cn(
+                            presenceDetected 
+                              ? 'bg-success/20 text-success border-success/50' 
+                              : 'bg-muted/50 text-muted-foreground border-muted'
+                          )}
+                        >
+                          {presenceDetected ? t('yes') : t('no')}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-mono text-xs">
+                          {activeRegions.length > 0 
+                            ? activeRegions.join(', ')
+                            : <span className="text-muted-foreground">–</span>
+                          }
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-mono">
+                          {targetCount > 0 
+                            ? targetCount 
+                            : <span className="text-muted-foreground">0</span>
+                          }
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {event.device_id?.substring(0, 12) || event.sensor_id?.substring(0, 12)}...
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">
+                          {formatDate(event.timestamp || event.occurred_at, i18n.language === 'fr' ? 'fr-FR' : 'en-US')}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleViewDetails(event.id)}
+                          data-testid={`view-btn-${event.id}`}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
