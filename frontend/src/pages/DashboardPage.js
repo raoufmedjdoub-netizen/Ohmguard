@@ -105,9 +105,9 @@ export function DashboardPage() {
       bgColor: 'bg-secondary/10'
     },
     {
-      title: t('dashboard.total_sites'),
-      value: stats?.sites?.total || 0,
-      icon: MapPin,
+      title: t('dashboard.total_clients'),
+      value: stats?.clients?.total || stats?.sites?.total || 0,
+      icon: Building2,
       color: 'text-primary',
       bgColor: 'bg-primary/10'
     }
