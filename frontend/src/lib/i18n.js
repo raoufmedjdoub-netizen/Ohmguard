@@ -146,7 +146,7 @@ const resources = {
         false_alarms: 'False Alarms',
         total_sensors: 'Total Sensors',
         online_sensors: 'Online',
-        total_sites: 'Sites',
+        total_clients: 'Clients',
         recent_events: 'Recent Events',
         system_health: 'System Health'
       },
@@ -500,7 +500,7 @@ const resources = {
         false_alarms: 'Fausses Alarmes',
         total_sensors: 'Total Capteurs',
         online_sensors: 'En ligne',
-        total_sites: 'Sites',
+        total_clients: 'Clients',
         recent_events: 'Événements Récents',
         system_health: 'État du Système'
       },
