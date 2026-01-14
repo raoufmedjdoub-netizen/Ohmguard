@@ -37,6 +37,8 @@ const SEVERITY_COLORS = {
 const TYPE_COLORS = {
   FALL: COLORS.danger,
   PRE_FALL: COLORS.warning,
+  PRESENCE: COLORS.secondary,
+  INACTIVITY: '#A855F7', // Purple
   UNKNOWN: COLORS.muted
 };
 
