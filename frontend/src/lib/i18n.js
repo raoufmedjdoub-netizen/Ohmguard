@@ -517,10 +517,23 @@ const resources = {
         snapshot: 'Capture',
         raw_data: 'Données brutes',
         timeline: 'Chronologie',
+        presence: 'Présence',
+        active_regions: 'Zones actives',
+        target_count: 'Nombre de cibles',
+        details: 'Détails',
+        view_details: 'Voir détails',
+        raw_payload: 'Payload brut',
+        occurred_at: 'Survenu à',
+        no_active_regions: 'Aucune zone active',
+        no_targets: 'Aucune cible détectée',
+        presence_detected: 'Présence détectée',
+        no_presence: 'Aucune présence',
         
         // Types
         type_fall: 'Chute',
         type_pre_fall: 'Pré-Chute',
+        type_presence: 'Présence',
+        type_inactivity: 'Inactivité',
         type_unknown: 'Inconnu',
         
         // Severities
