@@ -1272,6 +1272,234 @@ async def register_mqtt_device(
     
     return {"status": "ok", "message": f"Device {device_id} mapped to sensor {sensor_id}"}
 
+# ==================== VAYYAR CONFIG ENDPOINTS ====================
+
+class ConfigPayload(BaseModel):
+    config: dict
+    mqttOptions: Optional[dict] = None
+
+@api_router.get("/devices/{device_id}/config/schema")
+async def get_config_schema(current_user: UserInDB = Depends(get_current_user)):
+    """Get the default Vayyar configuration schema"""
+    return get_default_config_dict()
+
+@api_router.get("/devices/{device_id}/config/latest")
+async def get_latest_config(
+    device_id: str,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Get the latest configuration version for a device"""
+    from vayyar_config_service import vayyar_config_service
+    
+    if not vayyar_config_service:
+        raise HTTPException(status_code=503, detail="Config service not available")
+    
+    version = await vayyar_config_service.get_latest_config(device_id)
+    if not version:
+        return {"config": get_default_config_dict(), "isDefault": True}
+    
+    return version
+
+@api_router.post("/devices/{device_id}/config/validate")
+async def validate_config(
+    device_id: str,
+    payload: ConfigPayload,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Validate a configuration payload"""
+    try:
+        validated = VayyarConfig(**payload.config)
+        return {
+            "valid": True,
+            "normalized": validated.model_dump(),
+            "errors": []
+        }
+    except Exception as e:
+        return {
+            "valid": False,
+            "normalized": None,
+            "errors": [str(e)]
+        }
+
+@api_router.post("/devices/{device_id}/config/send")
+async def send_config(
+    device_id: str,
+    payload: ConfigPayload,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Send configuration to device via MQTT"""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN", "SUPERVISOR"])
+    
+    from vayyar_config_service import vayyar_config_service
+    
+    if not vayyar_config_service:
+        raise HTTPException(status_code=503, detail="Config service not available")
+    
+    # Validate config
+    try:
+        validated = VayyarConfig(**payload.config)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid config: {str(e)}")
+    
+    # Parse MQTT options
+    mqtt_opts = MqttPublishOptions(**(payload.mqttOptions or {}))
+    
+    try:
+        result = await vayyar_config_service.publish_config(
+            device_id=device_id,
+            config=validated.model_dump(),
+            options=mqtt_opts,
+            tenant_id=current_user.tenant_id
+        )
+        
+        await log_audit(
+            current_user.id,
+            current_user.tenant_id,
+            "send_config",
+            "device",
+            device_id,
+            {"versionNumber": result.versionNumber}
+        )
+        
+        return result.model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send config: {str(e)}")
+
+@api_router.get("/devices/{device_id}/config/versions")
+async def get_config_versions(
+    device_id: str,
+    limit: int = Query(default=20, le=100),
+    skip: int = Query(default=0, ge=0),
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Get configuration version history"""
+    from vayyar_config_service import vayyar_config_service
+    
+    if not vayyar_config_service:
+        raise HTTPException(status_code=503, detail="Config service not available")
+    
+    return await vayyar_config_service.get_config_versions(device_id, limit, skip)
+
+@api_router.post("/devices/{device_id}/config/rollback/{version_number}")
+async def rollback_config(
+    device_id: str,
+    version_number: int,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Rollback to a specific configuration version"""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    
+    from vayyar_config_service import vayyar_config_service
+    
+    if not vayyar_config_service:
+        raise HTTPException(status_code=503, detail="Config service not available")
+    
+    try:
+        result = await vayyar_config_service.rollback_to_version(
+            device_id=device_id,
+            version_number=version_number,
+            tenant_id=current_user.tenant_id
+        )
+        
+        await log_audit(
+            current_user.id,
+            current_user.tenant_id,
+            "rollback_config",
+            "device",
+            device_id,
+            {"toVersion": version_number, "newVersion": result.versionNumber}
+        )
+        
+        return result.model_dump()
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@api_router.post("/devices/{device_id}/config/retry/{version_id}")
+async def retry_config(
+    device_id: str,
+    version_id: str,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Retry sending a failed configuration"""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    
+    from vayyar_config_service import vayyar_config_service
+    
+    if not vayyar_config_service:
+        raise HTTPException(status_code=503, detail="Config service not available")
+    
+    try:
+        result = await vayyar_config_service.retry_send(version_id)
+        return result.model_dump()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# Config Templates
+@api_router.get("/config/templates")
+async def get_templates(current_user: UserInDB = Depends(get_current_user)):
+    """Get all configuration templates"""
+    from vayyar_config_service import vayyar_config_service
+    
+    if not vayyar_config_service:
+        raise HTTPException(status_code=503, detail="Config service not available")
+    
+    return await vayyar_config_service.get_templates(current_user.tenant_id)
+
+@api_router.post("/config/templates")
+async def create_template(
+    name: str,
+    payload: ConfigPayload,
+    description: Optional[str] = None,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Create a configuration template"""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    
+    from vayyar_config_service import vayyar_config_service
+    
+    if not vayyar_config_service:
+        raise HTTPException(status_code=503, detail="Config service not available")
+    
+    return await vayyar_config_service.create_template(
+        name=name,
+        config=payload.config,
+        description=description,
+        tenant_id=current_user.tenant_id
+    )
+
+@api_router.get("/config/templates/{template_id}")
+async def get_template(
+    template_id: str,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Get a specific template"""
+    from vayyar_config_service import vayyar_config_service
+    
+    if not vayyar_config_service:
+        raise HTTPException(status_code=503, detail="Config service not available")
+    
+    template = await vayyar_config_service.get_template(template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return template
+
+@api_router.delete("/config/templates/{template_id}")
+async def delete_template(
+    template_id: str,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Delete a configuration template"""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    
+    from vayyar_config_service import vayyar_config_service
+    
+    if not vayyar_config_service:
+        raise HTTPException(status_code=503, detail="Config service not available")
+    
+    if await vayyar_config_service.delete_template(template_id):
+        return {"status": "ok"}
+    raise HTTPException(status_code=404, detail="Template not found")
+
 # Include the router in the main app
 app.include_router(api_router)
 
