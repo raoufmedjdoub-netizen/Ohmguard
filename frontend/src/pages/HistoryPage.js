@@ -243,6 +243,7 @@ export function HistoryPage() {
                   const activeRegions = event.active_regions || [];
                   const targetCount = event.target_count || 0;
                   const presenceDetected = event.presence_detected;
+                  const locationPath = event.location_path;
                   
                   return (
                     <TableRow 
@@ -266,6 +267,17 @@ export function HistoryPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
+                        <div className="max-w-[200px]">
+                          {locationPath ? (
+                            <span className="text-xs text-primary font-medium truncate block" title={locationPath}>
+                              {locationPath}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">–</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <Badge 
                           variant="outline" 
                           className={cn(
@@ -278,24 +290,11 @@ export function HistoryPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <span className="font-mono text-xs">
-                          {activeRegions.length > 0 
-                            ? activeRegions.join(', ')
-                            : <span className="text-muted-foreground">–</span>
-                          }
-                        </span>
-                      </TableCell>
-                      <TableCell>
                         <span className="font-mono">
                           {targetCount > 0 
                             ? targetCount 
                             : <span className="text-muted-foreground">0</span>
                           }
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-mono text-xs text-muted-foreground">
-                          {event.device_id?.substring(0, 20) || event.sensor_id?.substring(0, 12)}...
                         </span>
                       </TableCell>
                       <TableCell>
