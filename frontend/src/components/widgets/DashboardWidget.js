@@ -95,7 +95,7 @@ export function DashboardWidget({
                 )}
               </div>
               <div>
-                <p className="font-semibold">FallGuard</p>
+                <p className="font-semibold">OhmGuard</p>
                 <p className="text-xs text-muted-foreground">
                   {data.alerts.new} alertes • {data.sensors.online}/{data.sensors.total} capteurs
                 </p>
@@ -119,7 +119,7 @@ export function DashboardWidget({
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Shield className="h-5 w-5 text-primary" />
-              FallGuard
+              OhmGuard
             </CardTitle>
             <div className="flex items-center gap-1">
               <span className="relative flex h-2 w-2">
