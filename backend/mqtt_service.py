@@ -165,6 +165,7 @@ class MQTTService:
         if message_type == "state":
             await self._handle_device_state(device_id, payload)
         elif message_type == "event":
+            logger.info(f"EVENT received from {device_id}: {json.dumps(payload)[:500]}")
             await self._handle_device_event(device_id, payload)
     
     async def _get_sensor_by_device_id(self, device_id: str) -> Optional[Dict[str, Any]]:
