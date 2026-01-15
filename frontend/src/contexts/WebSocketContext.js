@@ -206,11 +206,11 @@ export function WebSocketProvider({ children }) {
 
   return (
     <WebSocketContext.Provider value={{ 
-      connected: connected || usePollingRef.current, 
+      connected, 
       lastEvent, 
       subscribe,
       forceRefresh,
-      isPolling: usePollingRef.current
+      isPolling
     }}>
       {children}
     </WebSocketContext.Provider>
