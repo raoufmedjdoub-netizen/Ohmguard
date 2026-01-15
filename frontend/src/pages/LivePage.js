@@ -94,11 +94,11 @@ export function LivePage() {
       setRadarStatuses(statuses);
     } catch (error) {
       console.error('Failed to fetch data:', error);
-      toast.error(t('errors.generic'));
+      toast.error('Erreur lors du chargement');
     } finally {
       setLoading(false);
     }
-  }, [selectedStatus, selectedType, t]);
+  }, [selectedStatus, selectedType]); // Removed 't' to avoid re-fetches on language change
 
   // Charger les bâtiments quand un client est sélectionné
   useEffect(() => {
