@@ -142,23 +142,10 @@ export function LivePage() {
       }
       
       // Real-time presence state update from polling
+      // Only used for the "Actifs" statistic, NOT for event cards
       if (message.type === 'presence_state_update') {
-        // Presence state is already handled by the context and passed via presenceState prop
-        // Just update radar statuses for online/offline status
-        if (message.sensors) {
-          const newStatuses = { ...radarStatuses };
-          Object.entries(message.sensors).forEach(([sensorId, data]) => {
-            newStatuses[sensorId] = {
-              ...newStatuses[sensorId],
-              status: data.status || 'OFFLINE',
-              last_seen: data.last_seen,
-              deviceOnline: data.is_online || false,
-              device_id: data.device_id,
-              name: data.name
-            };
-          });
-          setRadarStatuses(newStatuses);
-        }
+        // Don't update radarStatuses here to avoid unnecessary re-renders of event cards
+        // The presence state is already stored in the context and used for stats only
         return;
       }
       
