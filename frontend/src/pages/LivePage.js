@@ -356,12 +356,12 @@ export function LivePage() {
               Mur d'événements
               <Badge variant="outline" className={cn(
                 "ml-2 font-normal",
-                connected ? "border-green-500 text-green-600" : "border-red-500 text-red-600"
+                connected ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"
               )}>
                 {connected ? (
                   <>
                     <Wifi className="h-3 w-3 mr-1" />
-                    {connectionType === 'sse' ? 'SSE' : connectionType === 'websocket' ? 'WebSocket' : 'Temps réel'}
+                    Temps réel
                   </>
                 ) : (
                   <>
