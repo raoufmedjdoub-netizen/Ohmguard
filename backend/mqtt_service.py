@@ -151,20 +151,20 @@ class MQTTService:
             logger.warning(f"Invalid JSON payload on topic {topic}")
             return
         
-        # Extract deviceId from topic: /devices/{deviceId}/state or /devices/{deviceId}/event
+        # Extract deviceId from topic: /devices/{deviceId}/state or /devices/{deviceId}/events
         parts = topic.split('/')
         if len(parts) < 4:
             logger.warning(f"Invalid topic format: {topic}")
             return
         
         device_id = parts[2]
-        message_type = parts[3]  # "state" or "event"
+        message_type = parts[3]  # "state" or "events"
         
         logger.debug(f"Received {message_type} from device {device_id}")
         
         if message_type == "state":
             await self._handle_device_state(device_id, payload)
-        elif message_type == "event":
+        elif message_type == "events":
             logger.info(f"EVENT received from {device_id}: {json.dumps(payload)[:500]}")
             await self._handle_device_event(device_id, payload)
     
