@@ -197,8 +197,6 @@ export function LivePage() {
       else if (message.type === 'new_event' || message.type === 'new_radar_event') {
         const newEvent = message.event;
         
-        console.log('[LivePage] Received new event:', newEvent?.id, newEvent?.type, newEvent?.presence_detected);
-        
         if (!newEvent) {
           console.error('[LivePage] newEvent is undefined!', message);
           return;
@@ -206,17 +204,14 @@ export function LivePage() {
         
         // Skip events with presence_detected=false
         if (newEvent.type === 'PRESENCE' && newEvent.presence_detected === false) {
-          console.log('[LivePage] Skipping absence event');
           return;
         }
         
         // Check if event already exists to avoid duplicates
         setEvents(prev => {
           if (prev.some(e => e.id === newEvent.id)) {
-            console.log('[LivePage] Event already exists, skipping');
             return prev; // Event already exists, don't add
           }
-          console.log('[LivePage] Adding new event to list');
           return [newEvent, ...prev.slice(0, 49)];
         });
         
