@@ -50,6 +50,7 @@ export function LivePage() {
   const [events, setEvents] = useState([]);
   const [clients, setClients] = useState([]);
   const [buildings, setBuildings] = useState([]);
+  const [radarStatuses, setRadarStatuses] = useState({}); // {sensor_id: {status, last_seen, deviceOnline}}
   const [loading, setLoading] = useState(true);
   const [selectedClient, setSelectedClient] = useState('all');
   const [selectedBuilding, setSelectedBuilding] = useState('all');
@@ -71,12 +72,26 @@ export function LivePage() {
         ...(selectedType !== 'all' && { event_type: selectedType })
       };
       
-      const [eventsRes, clientsRes] = await Promise.all([
+      const [eventsRes, clientsRes, sensorsRes] = await Promise.all([
         eventsAPI.list(params),
-        api.get('/clients')
+        api.get('/clients'),
+        api.get('/sensors')
       ]);
       setEvents(eventsRes.data);
       setClients(clientsRes.data);
+      
+      // Initialiser les statuts des radars
+      const statuses = {};
+      sensorsRes.data.forEach(sensor => {
+        statuses[sensor.id] = {
+          status: sensor.status,
+          last_seen: sensor.last_seen,
+          deviceOnline: sensor.status === 'ONLINE',
+          device_id: sensor.device_id,
+          name: sensor.name
+        };
+      });
+      setRadarStatuses(statuses);
     } catch (error) {
       console.error('Failed to fetch data:', error);
       toast.error(t('errors.generic'));
