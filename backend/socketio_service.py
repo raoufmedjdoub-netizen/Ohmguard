@@ -126,9 +126,11 @@ async def broadcast_new_event(tenant_id: str, event: Dict[str, Any]):
     """Broadcast a new radar event to all clients in the tenant room."""
     room = f"tenant_{tenant_id}"
     logger.debug(f"Broadcasting new_event to room {room}")
+    # Sanitize data to ensure no ObjectId fields
+    clean_event = sanitize_for_json(event)
     await sio.emit('new_event', {
         'type': 'new_event',
-        'event': event
+        'event': clean_event
     }, room=room)
 
 
@@ -136,9 +138,11 @@ async def broadcast_presence_update(tenant_id: str, data: Dict[str, Any]):
     """Broadcast presence state update to all clients in the tenant room."""
     room = f"tenant_{tenant_id}"
     logger.debug(f"Broadcasting presence_update to room {room}")
+    # Sanitize data to ensure no ObjectId fields
+    clean_data = sanitize_for_json(data)
     await sio.emit('presence_update', {
         'type': 'presence_update',
-        **data
+        **clean_data
     }, room=room)
 
 
