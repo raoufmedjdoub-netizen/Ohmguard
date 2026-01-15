@@ -9,20 +9,20 @@ const POLLING_INTERVAL = 3000; // 3 seconds polling fallback
 export function WebSocketProvider({ children }) {
   const { user, isAuthenticated } = useAuth();
   const [connected, setConnected] = useState(false);
+  const [isPolling, setIsPolling] = useState(false);
   const [lastEvent, setLastEvent] = useState(null);
   const socketRef = useRef(null);
   const listenersRef = useRef(new Map());
   const pollingRef = useRef(null);
   const lastEventIdRef = useRef(null);
   const wsRetriesRef = useRef(0);
-  const usePollingRef = useRef(false);
 
   // Polling fallback function
   const startPolling = useCallback(() => {
     if (pollingRef.current) return;
     
     console.log('Starting polling fallback for real-time updates');
-    usePollingRef.current = true;
+    setIsPolling(true);
     setConnected(true); // Mark as connected since polling is working
     
     const poll = async () => {
@@ -75,7 +75,7 @@ export function WebSocketProvider({ children }) {
       clearInterval(pollingRef.current);
       pollingRef.current = null;
     }
-    usePollingRef.current = false;
+    setIsPolling(false);
   }, []);
 
   const connect = useCallback(() => {
