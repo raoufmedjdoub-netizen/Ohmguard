@@ -137,6 +137,13 @@ export const LiveEventCard = memo(function LiveEventCard({
   const presenceDetected = event.presence_detected;
   const isPresenceEvent = eventType === 'PRESENCE';
   
+  // DEBUG: Log if presence_detected changes
+  useEffect(() => {
+    if (isPresenceEvent) {
+      console.log(`[LiveEventCard ${event.id?.substring(0,8)}] presence_detected:`, presenceDetected, 'type:', eventType);
+    }
+  }, [presenceDetected, isPresenceEvent, event.id, eventType]);
+  
   // Données temps réel (simulées si non fournies)
   const realtime = event.realtime || {
     isActive: event.status === 'NEW' || event.status === 'ACK',
