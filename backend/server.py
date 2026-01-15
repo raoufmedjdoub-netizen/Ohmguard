@@ -78,13 +78,6 @@ app = FastAPI(title="OhmGuard API", version="1.0.0")
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
 # WebSocket connections manager
 class ConnectionManager:
     def __init__(self):
