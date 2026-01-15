@@ -70,19 +70,12 @@ export function WebSocketProvider({ children }) {
     }
   }, [isAuthenticated, notifyListeners]);
 
-  // Start polling
+  // Start polling - DISABLED to debug flickering
   const startPolling = useCallback(() => {
-    if (pollingRef.current) return;
-    
-    console.log('Starting real-time polling (5s interval)');
+    // Polling disabled - only manual refresh via forceRefresh
+    console.log('Polling disabled for stability - use manual refresh');
     setConnected(true);
-    
-    // Initial fetch
-    fetchLatestEvents();
-    
-    // Set up interval
-    pollingRef.current = setInterval(fetchLatestEvents, POLL_INTERVAL);
-  }, [fetchLatestEvents]);
+  }, []);
 
   // Stop polling
   const stopPolling = useCallback(() => {
