@@ -117,26 +117,18 @@ export function LivePage() {
   }, [fetchData]);
 
   // Gestion WebSocket/Polling pour les événements temps réel
+  // Note: Using a ref for radarStatuses inside the callback to avoid re-subscriptions
+  const radarStatusesRef = useRef(radarStatuses);
+  useEffect(() => {
+    radarStatusesRef.current = radarStatuses;
+  }, [radarStatuses]);
+
   useEffect(() => {
     const unsubscribe = subscribe('live', (message) => {
       // Force refresh - reload all events (from polling)
       if (message.type === 'force_refresh') {
         if (message.events) {
           setEvents(message.events);
-          
-          // Update radar statuses from events
-          const newStatuses = { ...radarStatuses };
-          message.events.forEach(event => {
-            if (event.sensor_id) {
-              newStatuses[event.sensor_id] = {
-                ...newStatuses[event.sensor_id],
-                status: 'ONLINE',
-                last_seen: event.timestamp || new Date().toISOString(),
-                deviceOnline: true
-              };
-            }
-          });
-          setRadarStatuses(newStatuses);
         }
         return;
       }
@@ -144,25 +136,13 @@ export function LivePage() {
       // Real-time presence state update from polling
       // Only used for the "Actifs" statistic, NOT for event cards
       if (message.type === 'presence_state_update') {
-        // Don't update radarStatuses here to avoid unnecessary re-renders of event cards
-        // The presence state is already stored in the context and used for stats only
+        // Don't trigger any state updates here - presenceState from context is enough
         return;
       }
       
       // Individual presence update (from WebSocket broadcast)
       if (message.type === 'presence_update') {
-        const { sensor_id, presence_detected, target_count } = message;
-        // The presenceState is updated in the context, no need to duplicate here
-        // But we can update radar status
-        setRadarStatuses(prev => ({
-          ...prev,
-          [sensor_id]: {
-            ...prev[sensor_id],
-            status: 'ONLINE',
-            last_seen: message.timestamp || new Date().toISOString(),
-            deviceOnline: true
-          }
-        }));
+        // Don't update radarStatuses to avoid re-renders
         return;
       }
       
@@ -181,7 +161,7 @@ export function LivePage() {
         
         // Notification si un radar passe hors ligne
         if (status === 'OFFLINE') {
-          const prevStatus = radarStatuses[sensor_id];
+          const prevStatus = radarStatusesRef.current[sensor_id];
           toast.warning(`Radar hors ligne`, {
             description: prevStatus?.name || sensor_id,
             duration: 5000
@@ -192,21 +172,19 @@ export function LivePage() {
       else if (message.type === 'new_event' || message.type === 'new_radar_event') {
         const newEvent = message.event;
         
-        // Mettre à jour le statut du radar associé
-        if (newEvent.sensor_id) {
-          setRadarStatuses(prev => ({
-            ...prev,
-            [newEvent.sensor_id]: {
-              ...prev[newEvent.sensor_id],
-              status: 'ONLINE',
-              last_seen: newEvent.timestamp || new Date().toISOString(),
-              deviceOnline: true
-            }
-          }));
+        // Skip events with presence_detected=false
+        if (newEvent.type === 'PRESENCE' && newEvent.presence_detected === false) {
+          return;
         }
         
-        // Ajouter à la liste avec marqueur "nouveau"
-        setEvents(prev => [newEvent, ...prev.slice(0, 49)]);
+        // Check if event already exists to avoid duplicates
+        setEvents(prev => {
+          if (prev.some(e => e.id === newEvent.id)) {
+            return prev; // Event already exists, don't add
+          }
+          return [newEvent, ...prev.slice(0, 49)];
+        });
+        
         setNewEventIds(prev => new Set([...prev, newEvent.id]));
         
         // Retirer le marqueur après 3 secondes
@@ -238,11 +216,8 @@ export function LivePage() {
             description: newEvent.location_path || 'Vérifier la localisation',
             duration: 10000
           });
-        } else {
-          toast.info('Nouvel événement', {
-            description: `${newEvent.type} - ${newEvent.severity}`
-          });
         }
+        // Removed toast for regular events to reduce noise
       } 
       // Mise à jour d'événement
       else if (message.type === 'event_updated') {
@@ -279,7 +254,7 @@ export function LivePage() {
       }
     });
     return unsubscribe;
-  }, [subscribe, soundEnabled]);
+  }, [subscribe, soundEnabled]); // Removed radarStatuses from dependencies
 
   // Actions sur les événements
   const handleUpdateStatus = async (eventId, newStatus) => {
