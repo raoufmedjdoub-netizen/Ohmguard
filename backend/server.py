@@ -41,12 +41,20 @@ from clients_buildings_service import init_clients_buildings_service, get_client
 from clients_buildings_routes import create_clients_buildings_router
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+# Load .env file but don't override existing environment variables
+# This ensures Kubernetes/production env vars take precedence
+load_dotenv(ROOT_DIR / '.env', override=False)
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
+# MongoDB connection - use environment variable (set by Kubernetes in production)
+mongo_url = os.environ.get('MONGO_URL')
+if not mongo_url:
+    raise ValueError("MONGO_URL environment variable is required")
+
+db_name = os.environ.get('DB_NAME', 'ohmguard')
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db = client[db_name]
+
+logger.info(f"Connected to MongoDB: {mongo_url[:30]}... / DB: {db_name}")
 
 # JWT Configuration
 SECRET_KEY = os.environ.get('JWT_SECRET', 'ohmguard-super-secret-key-change-in-production')
