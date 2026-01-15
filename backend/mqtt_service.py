@@ -356,8 +356,19 @@ class MQTTService:
             if not sensor:
                 return
         
+        # Log the raw payload for debugging
+        logger.info(f"Event from {device_id}: type={payload.get('type')}, payload_keys={list(payload.get('payload', {}).keys()) if isinstance(payload.get('payload'), dict) else 'N/A'}")
+        
         event_type_code = payload.get("type", 0)
         event_payload = payload.get("payload", {})
+        
+        # If payload is not a dict, try to use the root payload
+        if not isinstance(event_payload, dict):
+            logger.warning(f"Event payload is not a dict, using root payload. Type: {type(event_payload)}")
+            event_payload = payload
+        
+        # Log extracted presence data
+        logger.debug(f"Presence data: detected={event_payload.get('presenceDetected')}, regionMap={event_payload.get('presenceRegionMap')}, targets={len(event_payload.get('trackerTargets', []))}")
         
         # Build RadarEventRequest for normalization
         try:
