@@ -514,6 +514,7 @@ class MQTTService:
         
         # Broadcast to WebSocket with enriched data
         if self.broadcast_callback:
+            # Send new event notification
             await self.broadcast_callback(sensor['tenant_id'], {
                 "type": "new_radar_event",
                 "event": {
@@ -524,6 +525,18 @@ class MQTTService:
                     "presence_display": "Présence détectée" if normalized.presenceDetected else "Aucune présence"
                 }
             })
+            
+            # Also send presence state update for real-time badge updates
+            if normalized.eventType == RadarEventType.PRESENCE:
+                await self.broadcast_callback(sensor['tenant_id'], {
+                    "type": "presence_update",
+                    "sensor_id": sensor['id'],
+                    "device_id": device_id,
+                    "presence_detected": normalized.presenceDetected,
+                    "target_count": normalized.targetCount,
+                    "active_regions": normalized.activeRegions,
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                })
         
         # Trigger alert rules for HIGH severity events
         if normalized.severity == EventSeverity.HIGH:
