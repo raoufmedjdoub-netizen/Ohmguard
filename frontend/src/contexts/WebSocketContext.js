@@ -179,6 +179,7 @@ export function WebSocketProvider({ children }) {
     <WebSocketContext.Provider value={{ 
       connected, 
       lastEvent, 
+      presenceState,  // Expose real-time presence state
       subscribe,
       forceRefresh
     }}>
