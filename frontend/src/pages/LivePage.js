@@ -125,24 +125,25 @@ export function LivePage() {
 
   useEffect(() => {
     const unsubscribe = subscribe('live', (message) => {
-      // Force refresh - reload all events (from polling)
+      // Force refresh - reload all events (from manual refresh button)
       if (message.type === 'force_refresh') {
-        if (message.events) {
-          setEvents(message.events);
+        if (message.events && Array.isArray(message.events)) {
+          // Deduplicate events by ID before setting
+          const uniqueEvents = [];
+          const seenIds = new Set();
+          for (const event of message.events) {
+            if (!seenIds.has(event.id)) {
+              seenIds.add(event.id);
+              uniqueEvents.push(event);
+            }
+          }
+          setEvents(uniqueEvents);
         }
         return;
       }
       
-      // Real-time presence state update from polling
-      // Only used for the "Actifs" statistic, NOT for event cards
-      if (message.type === 'presence_state_update') {
-        // Don't trigger any state updates here - presenceState from context is enough
-        return;
-      }
-      
-      // Individual presence update (from WebSocket broadcast)
-      if (message.type === 'presence_update') {
-        // Don't update radarStatuses to avoid re-renders
+      // Ignore other message types to avoid re-renders
+      if (message.type === 'presence_state_update' || message.type === 'presence_update') {
         return;
       }
       
@@ -198,7 +199,6 @@ export function LivePage() {
         
         // Alerte pour événements critiques
         if (newEvent.type === 'FALL' || newEvent.severity === 'HIGH' || newEvent.severity === 'CRITICAL') {
-          // Notification système
           if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('🚨 OhmGuard - Alerte', {
               body: `${newEvent.type === 'FALL' ? 'Chute détectée' : newEvent.type} - ${newEvent.location_path || 'Localisation inconnue'}`,
@@ -207,7 +207,6 @@ export function LivePage() {
             });
           }
           
-          // Son d'alerte
           if (soundEnabled && alertSoundRef.current) {
             alertSoundRef.current.play().catch(() => {});
           }
@@ -217,7 +216,6 @@ export function LivePage() {
             duration: 10000
           });
         }
-        // Removed toast for regular events to reduce noise
       } 
       // Mise à jour d'événement
       else if (message.type === 'event_updated') {
@@ -225,7 +223,6 @@ export function LivePage() {
           e.id === message.event_id ? { ...e, ...message.update } : e
         ));
         
-        // Marquer comme mis à jour
         setNewEventIds(prev => new Set([...prev, message.event_id]));
         setTimeout(() => {
           setNewEventIds(prev => {
@@ -254,7 +251,7 @@ export function LivePage() {
       }
     });
     return unsubscribe;
-  }, [subscribe, soundEnabled]); // Removed radarStatuses from dependencies
+  }, [subscribe, soundEnabled]);
 
   // Actions sur les événements
   const handleUpdateStatus = async (eventId, newStatus) => {
