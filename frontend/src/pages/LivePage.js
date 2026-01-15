@@ -361,12 +361,12 @@ export function LivePage() {
                 {connected ? (
                   <>
                     <Wifi className="h-3 w-3 mr-1" />
-                    {isPolling ? 'Auto-refresh (3s)' : 'Temps réel'}
+                    {connectionType === 'sse' ? 'SSE' : connectionType === 'websocket' ? 'WebSocket' : 'Temps réel'}
                   </>
                 ) : (
                   <>
                     <WifiOff className="h-3 w-3 mr-1" />
-                    Hors ligne
+                    Connexion...
                   </>
                 )}
               </Badge>
