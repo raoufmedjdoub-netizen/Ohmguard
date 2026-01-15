@@ -1395,6 +1395,58 @@ async def health_check():
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
+# ==================== REAL-TIME PRESENCE STATE ====================
+
+@api_router.get("/sensors/presence-state")
+async def get_sensors_presence_state(current_user: UserInDB = Depends(get_current_user)):
+    """
+    Get the current real-time presence state for all sensors.
+    Returns a map of sensor_id -> presence state for efficient frontend updates.
+    
+    This endpoint is used by the polling mechanism to update presence badges
+    in real-time without relying on historical events.
+    """
+    query = {}
+    if current_user.role != "SUPER_ADMIN":
+        query["tenant_id"] = current_user.tenant_id
+    
+    sensors = await db.sensors.find(
+        query, 
+        {
+            "_id": 0, 
+            "id": 1, 
+            "device_id": 1,
+            "name": 1,
+            "status": 1,
+            "current_presence": 1,
+            "current_target_count": 1,
+            "current_active_regions": 1,
+            "presence_updated_at": 1,
+            "last_seen": 1
+        }
+    ).to_list(1000)
+    
+    # Build a map for efficient lookup
+    presence_map = {}
+    for sensor in sensors:
+        presence_map[sensor['id']] = {
+            "sensor_id": sensor['id'],
+            "device_id": sensor.get('device_id'),
+            "name": sensor.get('name'),
+            "status": sensor.get('status', 'OFFLINE'),
+            "presence_detected": sensor.get('current_presence', False),
+            "target_count": sensor.get('current_target_count', 0),
+            "active_regions": sensor.get('current_active_regions', []),
+            "presence_updated_at": sensor.get('presence_updated_at'),
+            "last_seen": sensor.get('last_seen'),
+            "is_online": sensor.get('status') == 'ONLINE'
+        }
+    
+    return {
+        "sensors": presence_map,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
 # ==================== WEBSOCKET ====================
 
 @app.websocket("/ws/{tenant_id}")
