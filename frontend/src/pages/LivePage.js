@@ -116,9 +116,31 @@ export function LivePage() {
     fetchData();
   }, [fetchData]);
 
-  // Gestion WebSocket pour les événements temps réel
+  // Gestion WebSocket/Polling pour les événements temps réel
   useEffect(() => {
     const unsubscribe = subscribe('live', (message) => {
+      // Force refresh - reload all events (from polling)
+      if (message.type === 'force_refresh') {
+        if (message.events) {
+          setEvents(message.events);
+          
+          // Update radar statuses from events
+          const newStatuses = { ...radarStatuses };
+          message.events.forEach(event => {
+            if (event.sensor_id) {
+              newStatuses[event.sensor_id] = {
+                ...newStatuses[event.sensor_id],
+                status: 'ONLINE',
+                last_seen: event.timestamp || new Date().toISOString(),
+                deviceOnline: true
+              };
+            }
+          });
+          setRadarStatuses(newStatuses);
+        }
+        return;
+      }
+      
       // Mise à jour du statut d'un radar
       if (message.type === 'sensor_status') {
         const { sensor_id, status, last_seen } = message;
