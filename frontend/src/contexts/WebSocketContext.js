@@ -43,8 +43,8 @@ export function WebSocketProvider({ children }) {
 
     // Create Socket.IO connection
     const socket = io(BACKEND_URL, {
-      path: '/socket.io',
-      transports: ['websocket', 'polling'], // Try WebSocket first, fallback to polling
+      path: '/ws-socket/socket.io',
+      transports: ['polling', 'websocket'], // Start with polling (more reliable in preview)
       auth: {
         token: token
       },
@@ -52,7 +52,8 @@ export function WebSocketProvider({ children }) {
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      timeout: 20000
+      timeout: 20000,
+      forceNew: true
     });
 
     socketRef.current = socket;
