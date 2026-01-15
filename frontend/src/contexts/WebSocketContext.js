@@ -41,9 +41,9 @@ export function WebSocketProvider({ children }) {
       return;
     }
 
-    // Create Socket.IO connection
+    // Create Socket.IO connection via /api path (routed through Kubernetes ingress)
     const socket = io(BACKEND_URL, {
-      path: '/ws-socket/socket.io',
+      path: '/api/socket.io',
       transports: ['polling', 'websocket'], // Start with polling (more reliable in preview)
       auth: {
         token: token
