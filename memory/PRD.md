@@ -166,6 +166,7 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - [x] **Location integration in events (January 14, 2026)** - Live & History pages now show full location path
 - [x] **LivePage redesign (January 14, 2026)** - New event cards with hierarchical location, real-time status, device status
 - [x] **Bug fix: Filtrage des événements "absence" (January 15, 2026)** - Le backend ignore maintenant les messages MQTT avec `presenceDetected=false` pour éviter de polluer la page Live avec des événements non pertinents
+- [x] **État de présence temps réel (January 15, 2026)** - Nouvel endpoint `/api/presence/sensors` pour obtenir l'état de présence actuel de tous les capteurs. Le badge de présence sur la page Live reflète maintenant l'état temps réel du radar, pas l'événement historique.
 
 ### P1 - High Priority (Next)
 - [ ] Full RBAC with granular permissions
