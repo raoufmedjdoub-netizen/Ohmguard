@@ -419,11 +419,10 @@ class MQTTService:
         )
         
         # Determine if we should store this event
-        # Skip pure PRESENCE events with no detection to avoid flooding
-        if (normalized.eventType == RadarEventType.PRESENCE and 
-            not normalized.presenceDetected and 
-            normalized.targetCount == 0):
-            logger.debug(f"Skipping empty presence event from {device_id}")
+        # Skip ALL PRESENCE events with no detection (presenceDetected=false) to avoid flooding
+        # These are "absence" notifications and should not be recorded as events
+        if normalized.eventType == RadarEventType.PRESENCE and not normalized.presenceDetected:
+            logger.debug(f"Skipping absence event from {device_id} (presenceDetected=false, targets={normalized.targetCount})")
             return
         
         # Deduplication: check for similar event in last 10 seconds
