@@ -1890,6 +1890,9 @@ api_router.include_router(clients_buildings_router)
 
 app.include_router(api_router)
 
+# Mount Socket.IO app
+app.mount("/", socket_app)
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
