@@ -119,9 +119,43 @@ export function LivePage() {
   // Gestion WebSocket pour les événements temps réel
   useEffect(() => {
     const unsubscribe = subscribe('live', (message) => {
+      // Mise à jour du statut d'un radar
+      if (message.type === 'sensor_status') {
+        const { sensor_id, status, last_seen } = message;
+        setRadarStatuses(prev => ({
+          ...prev,
+          [sensor_id]: {
+            ...prev[sensor_id],
+            status: status,
+            last_seen: last_seen || new Date().toISOString(),
+            deviceOnline: status === 'ONLINE'
+          }
+        }));
+        
+        // Notification si un radar passe hors ligne
+        if (status === 'OFFLINE') {
+          toast.warning(`Radar hors ligne`, {
+            description: prev[sensor_id]?.name || sensor_id,
+            duration: 5000
+          });
+        }
+      }
       // Nouvel événement
-      if (message.type === 'new_event' || message.type === 'new_radar_event') {
+      else if (message.type === 'new_event' || message.type === 'new_radar_event') {
         const newEvent = message.event;
+        
+        // Mettre à jour le statut du radar associé
+        if (newEvent.sensor_id) {
+          setRadarStatuses(prev => ({
+            ...prev,
+            [newEvent.sensor_id]: {
+              ...prev[newEvent.sensor_id],
+              status: 'ONLINE',
+              last_seen: newEvent.timestamp || new Date().toISOString(),
+              deviceOnline: true
+            }
+          }));
+        }
         
         // Ajouter à la liste avec marqueur "nouveau"
         setEvents(prev => [newEvent, ...prev.slice(0, 49)]);
@@ -177,6 +211,23 @@ export function LivePage() {
             return next;
           });
         }, 2000);
+      }
+      // Nouveau radar enregistré
+      else if (message.type === 'sensor_registered') {
+        const { sensor } = message;
+        setRadarStatuses(prev => ({
+          ...prev,
+          [sensor.id]: {
+            status: sensor.status,
+            last_seen: sensor.last_seen,
+            deviceOnline: sensor.status === 'ONLINE',
+            device_id: sensor.device_id,
+            name: sensor.name
+          }
+        }));
+        toast.success('Nouveau radar détecté', {
+          description: sensor.name || sensor.device_id
+        });
       }
     });
     return unsubscribe;
