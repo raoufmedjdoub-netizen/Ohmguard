@@ -62,9 +62,21 @@ export function LivePage() {
   
   // Référence pour le son d'alerte
   const alertSoundRef = useRef(null);
+  
+  // Référence pour éviter les appels multiples simultanés
+  const isFetchingRef = useRef(false);
 
   // Chargement des données
   const fetchData = useCallback(async () => {
+    // Prevent multiple simultaneous fetches
+    if (isFetchingRef.current) {
+      console.log('Fetch already in progress, skipping...');
+      return;
+    }
+    
+    isFetchingRef.current = true;
+    setLoading(true);
+    
     try {
       const params = {
         limit: 50,
@@ -77,7 +89,18 @@ export function LivePage() {
         api.get('/clients'),
         api.get('/sensors')
       ]);
-      setEvents(eventsRes.data);
+      
+      // Deduplicate events before setting
+      const uniqueEvents = [];
+      const seenIds = new Set();
+      for (const event of eventsRes.data) {
+        if (!seenIds.has(event.id)) {
+          seenIds.add(event.id);
+          uniqueEvents.push(event);
+        }
+      }
+      
+      setEvents(uniqueEvents);
       setClients(clientsRes.data);
       
       // Initialiser les statuts des radars
@@ -97,8 +120,9 @@ export function LivePage() {
       toast.error('Erreur lors du chargement');
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
-  }, [selectedStatus, selectedType]); // Removed 't' to avoid re-fetches on language change
+  }, [selectedStatus, selectedType]);
 
   // Charger les bâtiments quand un client est sélectionné
   useEffect(() => {
