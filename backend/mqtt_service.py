@@ -257,11 +257,12 @@ class MQTTService:
         
         logger.info(f"Auto-registered new sensor: {radar_name} (device: {device_id}, serial: {serial_product}) - PENDING ASSIGNMENT")
         
-        # Broadcast new sensor to WebSocket
+        # Broadcast new sensor to WebSocket (exclude _id for JSON serialization)
         if self.broadcast_callback:
+            sensor_for_broadcast = {k: v for k, v in sensor.items() if k != '_id'}
             await self.broadcast_callback(tenant['id'], {
                 "type": "sensor_registered",
-                "sensor": sensor
+                "sensor": sensor_for_broadcast
             })
         
         return sensor
