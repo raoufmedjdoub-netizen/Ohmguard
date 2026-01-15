@@ -1890,10 +1890,9 @@ api_router.include_router(clients_buildings_router)
 
 app.include_router(api_router)
 
-# Mount Socket.IO at a specific path to avoid conflicts
-# Socket.IO will be available at /socket.io/
+# Mount Socket.IO at /api/socket.io path
 from socketio_service import socket_app
-app.mount("/ws-socket", socket_app)
+app.mount("/api/socket.io", socket_app)
 
 app.add_middleware(
     CORSMiddleware,
