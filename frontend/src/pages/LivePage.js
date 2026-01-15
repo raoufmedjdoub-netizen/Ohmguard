@@ -623,10 +623,17 @@ export function LivePage() {
               {filteredEvents.map((event, index) => {
                 // Récupérer le statut temps réel du radar associé à cet événement
                 const radarStatus = radarStatuses[event.sensor_id] || {};
+                // Get real-time presence state from polling (more accurate than event data)
+                const sensorPresence = presenceState[event.sensor_id] || {};
+                
                 const realtimeData = {
                   isActive: event.status === 'NEW' || event.status === 'ACK',
-                  lastUpdateTs: radarStatus.last_seen || event.timestamp || event.occurred_at,
-                  deviceOnline: radarStatus.deviceOnline !== undefined ? radarStatus.deviceOnline : true
+                  lastUpdateTs: sensorPresence.presence_updated_at || radarStatus.last_seen || event.timestamp || event.occurred_at,
+                  deviceOnline: sensorPresence.is_online !== undefined ? sensorPresence.is_online : (radarStatus.deviceOnline !== undefined ? radarStatus.deviceOnline : true),
+                  // Use real-time presence state (from polling) instead of historical event data
+                  currentPresence: sensorPresence.presence_detected,
+                  currentTargetCount: sensorPresence.target_count,
+                  currentActiveRegions: sensorPresence.active_regions
                 };
                 
                 return (
@@ -640,6 +647,10 @@ export function LivePage() {
                     <LiveEventCard
                       event={{
                         ...event,
+                        // Override presence_detected with real-time state if available
+                        presence_detected: sensorPresence.presence_detected !== undefined 
+                          ? sensorPresence.presence_detected 
+                          : event.presence_detected,
                         realtime: realtimeData
                       }}
                       isNew={newEventIds.has(event.id)}
