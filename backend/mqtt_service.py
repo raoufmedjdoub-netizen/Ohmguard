@@ -375,14 +375,31 @@ class MQTTService:
         
         # EARLY EXIT: Ignore PRESENCE events where presenceDetected is false
         # These "absence" messages are noise and should not create events in the database
+        # BUT we still need to update the sensor's current presence state
         presence_detected = event_payload.get("presenceDetected", False)
         if event_type_code == 4 and not presence_detected:  # type 4 = PRESENCE
             logger.debug(f"Ignoring absence event from {device_id} (presenceDetected=false)")
-            # Still update sensor last_seen to show it's online
+            # Update sensor with current presence state (absence) and last_seen
             await self.db.sensors.update_one(
                 {"id": sensor['id']},
-                {"$set": {"status": "ONLINE", "last_seen": datetime.now(timezone.utc).isoformat()}}
+                {"$set": {
+                    "status": "ONLINE", 
+                    "last_seen": datetime.now(timezone.utc).isoformat(),
+                    "current_presence": False,  # No presence currently
+                    "current_target_count": 0,
+                    "presence_updated_at": datetime.now(timezone.utc).isoformat()
+                }}
             )
+            # Broadcast presence update to frontend
+            if self.broadcast_callback:
+                await self.broadcast_callback(sensor['tenant_id'], {
+                    "type": "presence_update",
+                    "sensor_id": sensor['id'],
+                    "device_id": device_id,
+                    "presence_detected": False,
+                    "target_count": 0,
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                })
             return
         
         # Log extracted presence data
