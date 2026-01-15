@@ -514,11 +514,14 @@ class MQTTService:
         
         # Broadcast to WebSocket with enriched data
         if self.broadcast_callback:
+            # Create a clean copy of event without MongoDB _id (ObjectId is not JSON serializable)
+            event_for_broadcast = {k: v for k, v in event.items() if k != '_id'}
+            
             # Send new event notification
             await self.broadcast_callback(sensor['tenant_id'], {
                 "type": "new_radar_event",
                 "event": {
-                    **event,
+                    **event_for_broadcast,
                     "sensor_name": sensor.get('name'),
                     "active_regions_display": format_active_regions_display(normalized.activeRegions),
                     "target_count_display": format_target_count_display(normalized.targetCount),
