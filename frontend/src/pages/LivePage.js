@@ -310,16 +310,16 @@ export function LivePage() {
     return true;
   });
 
-  // Statistiques - using real-time presence state
+  // Statistiques - based on local state only (no context dependencies)
   const stats = {
     new: events.filter(e => e.status === 'NEW').length,
     ack: events.filter(e => e.status === 'ACK').length,
     presence: events.filter(e => e.type === 'PRESENCE').length,
-    // Count sensors with current active presence (real-time)
-    active: Object.values(presenceState).filter(s => s.presence_detected).length,
+    // Count events with presence detected (from events, not real-time)
+    active: events.filter(e => e.type === 'PRESENCE' && e.presence_detected).length,
     critical: events.filter(e => e.severity === 'HIGH' || e.severity === 'CRITICAL').length,
-    radarsOnline: Object.values(presenceState).filter(s => s.is_online).length || Object.values(radarStatuses).filter(r => r.deviceOnline).length,
-    radarsTotal: Object.keys(presenceState).length || Object.keys(radarStatuses).length
+    radarsOnline: Object.values(radarStatuses).filter(r => r.deviceOnline).length,
+    radarsTotal: Object.keys(radarStatuses).length
   };
 
   // Loading state
