@@ -1397,7 +1397,7 @@ async def health_check():
 
 # ==================== REAL-TIME PRESENCE STATE ====================
 
-@api_router.get("/sensors/presence-state")
+@api_router.get("/presence/sensors")
 async def get_sensors_presence_state(current_user: UserInDB = Depends(get_current_user)):
     """
     Get the current real-time presence state for all sensors.
