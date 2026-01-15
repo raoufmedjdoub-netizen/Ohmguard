@@ -36,7 +36,7 @@ export function WebSocketProvider({ children }) {
         fetch(`${BACKEND_URL}/api/events?limit=30`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch(`${BACKEND_URL}/api/sensors/presence-state`, {
+        fetch(`${BACKEND_URL}/api/presence/sensors`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
