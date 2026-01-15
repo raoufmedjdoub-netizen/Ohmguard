@@ -126,7 +126,6 @@ export function WebSocketProvider({ children }) {
       ws.onclose = () => {
         console.log('WebSocket disconnected');
         clearTimeout(connectionTimeout);
-        setConnected(false);
         wsRetriesRef.current++;
         
         // After 2 failed attempts, switch to polling
@@ -134,6 +133,7 @@ export function WebSocketProvider({ children }) {
           console.log('WebSocket unavailable after retries, switching to polling');
           startPolling();
         } else if (isAuthenticated) {
+          setConnected(false);
           // Reconnect after delay
           setTimeout(() => {
             connect();
