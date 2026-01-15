@@ -815,30 +815,77 @@ async def list_events(
     
     events = await db.events.find(query, {"_id": 0}).sort("timestamp", -1).skip(skip).limit(limit).to_list(limit)
     
-    # Enrich events with location info
+    # Optimized batch enrichment to avoid N+1 queries
     try:
-        service = get_clients_buildings_service()
-        for event in events:
-            if event.get("sensor_id"):
-                try:
-                    location_path = await service.get_event_location_path(event["sensor_id"])
-                    event["location_path"] = location_path.full_path
+        # Collect unique sensor IDs
+        sensor_ids = list(set(e.get("sensor_id") for e in events if e.get("sensor_id")))
+        
+        if sensor_ids:
+            # Batch fetch all sensors
+            sensors = await db.sensors.find(
+                {"id": {"$in": sensor_ids}},
+                {"_id": 0, "id": 1, "clientId": 1, "buildingId": 1, "floorId": 1, "roomId": 1, "roomSpaceId": 1}
+            ).to_list(len(sensor_ids))
+            sensor_map = {s["id"]: s for s in sensors}
+            
+            # Collect all entity IDs
+            client_ids = list(set(s.get("clientId") for s in sensors if s.get("clientId")))
+            building_ids = list(set(s.get("buildingId") for s in sensors if s.get("buildingId")))
+            floor_ids = list(set(s.get("floorId") for s in sensors if s.get("floorId")))
+            room_ids = list(set(s.get("roomId") for s in sensors if s.get("roomId")))
+            
+            # Batch fetch all related entities
+            clients = await db.clients.find({"id": {"$in": client_ids}}, {"_id": 0, "id": 1, "name": 1}).to_list(len(client_ids)) if client_ids else []
+            buildings = await db.buildings.find({"id": {"$in": building_ids}}, {"_id": 0, "id": 1, "name": 1}).to_list(len(building_ids)) if building_ids else []
+            floors = await db.floors.find({"id": {"$in": floor_ids}}, {"_id": 0, "id": 1, "name": 1}).to_list(len(floor_ids)) if floor_ids else []
+            rooms = await db.rooms.find({"id": {"$in": room_ids}}, {"_id": 0, "id": 1, "room_number": 1, "name": 1}).to_list(len(room_ids)) if room_ids else []
+            
+            # Build lookup maps
+            client_map = {c["id"]: c for c in clients}
+            building_map = {b["id"]: b for b in buildings}
+            floor_map = {f["id"]: f for f in floors}
+            room_map = {r["id"]: r for r in rooms}
+            
+            # Enrich events using maps (O(1) lookups)
+            for event in events:
+                sensor_id = event.get("sensor_id")
+                if sensor_id and sensor_id in sensor_map:
+                    sensor = sensor_map[sensor_id]
+                    client = client_map.get(sensor.get("clientId"), {})
+                    building = building_map.get(sensor.get("buildingId"), {})
+                    floor = floor_map.get(sensor.get("floorId"), {})
+                    room = room_map.get(sensor.get("roomId"), {})
+                    
+                    # Build location path
+                    path_parts = []
+                    if client.get("name"): path_parts.append(client["name"])
+                    if building.get("name"): path_parts.append(building["name"])
+                    if floor.get("name"): path_parts.append(floor["name"])
+                    if room.get("room_number"): path_parts.append(f"Ch. {room['room_number']}")
+                    elif room.get("name"): path_parts.append(room["name"])
+                    
+                    event["location_path"] = " > ".join(path_parts) if path_parts else None
                     event["location"] = {
-                        "client_name": location_path.client_name,
-                        "building_name": location_path.building_name,
-                        "floor_name": location_path.floor_name,
-                        "room_number": location_path.room_number,
-                        "zone_name": location_path.zone_name
+                        "client_name": client.get("name"),
+                        "building_name": building.get("name"),
+                        "floor_name": floor.get("name"),
+                        "room_number": room.get("room_number") or room.get("name"),
+                        "zone_name": None
                     }
-                except Exception as e:
-                    logger.warning(f"Failed to get location for sensor {event.get('sensor_id')}: {e}")
+                else:
                     event["location_path"] = None
                     event["location"] = None
-            else:
+        else:
+            # No sensors to enrich
+            for event in events:
                 event["location_path"] = None
                 event["location"] = None
+                
     except Exception as e:
         logger.error(f"Failed to enrich events with location: {e}")
+        for event in events:
+            event["location_path"] = None
+            event["location"] = None
     
     return events
 
