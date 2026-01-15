@@ -7,7 +7,7 @@
  * - Statut du radar (en ligne/hors ligne)
  * - Animations pour les nouveaux événements
  */
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { eventsAPI } from '@/lib/api';
