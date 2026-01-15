@@ -377,7 +377,7 @@ class MQTTService:
         # These "absence" messages are noise and should not create events in the database
         presence_detected = event_payload.get("presenceDetected", False)
         if event_type_code == 4 and not presence_detected:  # type 4 = PRESENCE
-            logger.debug(f"Ignoring absence event from {device_id} (presenceDetected=false)")
+            logger.info(f"[FILTERED] Ignoring absence event from {device_id} (presenceDetected=false)")
             # Still update sensor last_seen to show it's online
             await self.db.sensors.update_one(
                 {"id": sensor['id']},
