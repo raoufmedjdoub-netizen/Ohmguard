@@ -141,6 +141,44 @@ export function LivePage() {
         return;
       }
       
+      // Real-time presence state update from polling
+      if (message.type === 'presence_state_update') {
+        // Presence state is already handled by the context and passed via presenceState prop
+        // Just update radar statuses for online/offline status
+        if (message.sensors) {
+          const newStatuses = { ...radarStatuses };
+          Object.entries(message.sensors).forEach(([sensorId, data]) => {
+            newStatuses[sensorId] = {
+              ...newStatuses[sensorId],
+              status: data.status || 'OFFLINE',
+              last_seen: data.last_seen,
+              deviceOnline: data.is_online || false,
+              device_id: data.device_id,
+              name: data.name
+            };
+          });
+          setRadarStatuses(newStatuses);
+        }
+        return;
+      }
+      
+      // Individual presence update (from WebSocket broadcast)
+      if (message.type === 'presence_update') {
+        const { sensor_id, presence_detected, target_count } = message;
+        // The presenceState is updated in the context, no need to duplicate here
+        // But we can update radar status
+        setRadarStatuses(prev => ({
+          ...prev,
+          [sensor_id]: {
+            ...prev[sensor_id],
+            status: 'ONLINE',
+            last_seen: message.timestamp || new Date().toISOString(),
+            deviceOnline: true
+          }
+        }));
+        return;
+      }
+      
       // Mise à jour du statut d'un radar
       if (message.type === 'sensor_status') {
         const { sensor_id, status, last_seen } = message;
@@ -156,8 +194,9 @@ export function LivePage() {
         
         // Notification si un radar passe hors ligne
         if (status === 'OFFLINE') {
+          const prevStatus = radarStatuses[sensor_id];
           toast.warning(`Radar hors ligne`, {
-            description: prev[sensor_id]?.name || sensor_id,
+            description: prevStatus?.name || sensor_id,
             duration: 5000
           });
         }
