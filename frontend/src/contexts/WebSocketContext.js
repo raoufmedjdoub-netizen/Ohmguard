@@ -10,6 +10,7 @@ export function WebSocketProvider({ children }) {
   const { user, isAuthenticated } = useAuth();
   const [connected, setConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState(null);
+  const [presenceState, setPresenceState] = useState({}); // Real-time presence state by sensor_id
   const listenersRef = useRef(new Map());
   const pollingRef = useRef(null);
   const lastEventIdRef = useRef(null);
@@ -23,18 +24,26 @@ export function WebSocketProvider({ children }) {
     });
   }, []);
 
-  // Fetch latest events
+  // Fetch latest events AND presence state
   const fetchLatestEvents = useCallback(async () => {
     if (!isAuthenticated || !isPageVisibleRef.current) return;
     
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${BACKEND_URL}/api/events?limit=30`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
       
-      if (response.ok) {
-        const events = await response.json();
+      // Fetch both events and presence state in parallel
+      const [eventsResponse, presenceResponse] = await Promise.all([
+        fetch(`${BACKEND_URL}/api/events?limit=30`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${BACKEND_URL}/api/sensors/presence-state`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
+      
+      // Process events
+      if (eventsResponse.ok) {
+        const events = await eventsResponse.json();
         
         if (events.length > 0) {
           const latestId = events[0].id;
@@ -57,9 +66,21 @@ export function WebSocketProvider({ children }) {
           
           lastEventIdRef.current = latestId;
         }
-        
-        setConnected(true);
       }
+      
+      // Process presence state
+      if (presenceResponse.ok) {
+        const presenceData = await presenceResponse.json();
+        setPresenceState(presenceData.sensors || {});
+        
+        // Notify listeners of presence update
+        notifyListeners({ 
+          type: 'presence_state_update', 
+          sensors: presenceData.sensors || {} 
+        });
+      }
+      
+      setConnected(true);
     } catch (error) {
       console.error('Polling error:', error);
       setConnected(false);
