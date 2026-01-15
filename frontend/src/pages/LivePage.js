@@ -535,6 +535,29 @@ export function LivePage() {
             </div>
           </CardContent>
         </Card>
+        
+        {/* Radars en ligne - Temps réel */}
+        <Card className="border-primary/30">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-primary">
+                  {stats.radarsOnline}/{stats.radarsTotal}
+                </div>
+                <div className="text-xs text-muted-foreground">Radars en ligne</div>
+              </div>
+              <div className="relative">
+                <Wifi className="h-8 w-8 text-primary/30" />
+                {connected && (
+                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* === GRILLE D'ÉVÉNEMENTS === */}
