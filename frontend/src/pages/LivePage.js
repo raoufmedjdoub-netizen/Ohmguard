@@ -573,25 +573,38 @@ export function LivePage() {
                 ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3" 
                 : "flex flex-col"
             )}>
-              {filteredEvents.map((event, index) => (
-                <div
-                  key={event.id}
-                  className={cn(
-                    "transition-all duration-300",
-                    index === 0 && "animate-in slide-in-from-top-4"
-                  )}
-                >
-                  <LiveEventCard
-                    event={event}
-                    isNew={newEventIds.has(event.id)}
-                    onAcknowledge={(id) => handleUpdateStatus(id, 'ACK')}
-                    onResolve={(id) => handleUpdateStatus(id, 'RESOLVED')}
-                    onFalseAlarm={(id) => handleUpdateStatus(id, 'FALSE_ALARM')}
-                    onViewDetails={handleViewDetails}
-                    language={i18n.language}
-                  />
-                </div>
-              ))}
+              {filteredEvents.map((event, index) => {
+                // Récupérer le statut temps réel du radar associé à cet événement
+                const radarStatus = radarStatuses[event.sensor_id] || {};
+                const realtimeData = {
+                  isActive: event.status === 'NEW' || event.status === 'ACK',
+                  lastUpdateTs: radarStatus.last_seen || event.timestamp || event.occurred_at,
+                  deviceOnline: radarStatus.deviceOnline !== undefined ? radarStatus.deviceOnline : true
+                };
+                
+                return (
+                  <div
+                    key={event.id}
+                    className={cn(
+                      "transition-all duration-300",
+                      index === 0 && "animate-in slide-in-from-top-4"
+                    )}
+                  >
+                    <LiveEventCard
+                      event={{
+                        ...event,
+                        realtime: realtimeData
+                      }}
+                      isNew={newEventIds.has(event.id)}
+                      onAcknowledge={(id) => handleUpdateStatus(id, 'ACK')}
+                      onResolve={(id) => handleUpdateStatus(id, 'RESOLVED')}
+                      onFalseAlarm={(id) => handleUpdateStatus(id, 'FALSE_ALARM')}
+                      onViewDetails={handleViewDetails}
+                      language={i18n.language}
+                    />
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
