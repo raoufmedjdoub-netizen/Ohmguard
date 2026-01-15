@@ -373,6 +373,18 @@ class MQTTService:
             logger.warning(f"Event payload is not a dict, using root payload. Type: {type(event_payload)}")
             event_payload = payload
         
+        # EARLY EXIT: Ignore PRESENCE events where presenceDetected is false
+        # These "absence" messages are noise and should not create events in the database
+        presence_detected = event_payload.get("presenceDetected", False)
+        if event_type_code == 4 and not presence_detected:  # type 4 = PRESENCE
+            logger.debug(f"Ignoring absence event from {device_id} (presenceDetected=false)")
+            # Still update sensor last_seen to show it's online
+            await self.db.sensors.update_one(
+                {"id": sensor['id']},
+                {"$set": {"status": "ONLINE", "last_seen": datetime.now(timezone.utc).isoformat()}}
+            )
+            return
+        
         # Log extracted presence data
         logger.debug(f"Presence data: detected={event_payload.get('presenceDetected')}, regionMap={event_payload.get('presenceRegionMap')}, targets={len(event_payload.get('trackerTargets', []))}")
         
