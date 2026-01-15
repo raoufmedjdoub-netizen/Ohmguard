@@ -575,9 +575,11 @@ class MQTTService:
         logger.info(f"Created legacy event {event_type} from device {device_id}")
         
         if self.broadcast_callback:
+            # Exclude _id for JSON serialization
+            event_for_broadcast = {k: v for k, v in event.items() if k != '_id'}
             await self.broadcast_callback(sensor['tenant_id'], {
                 "type": "new_event",
-                "event": event
+                "event": event_for_broadcast
             })
     
     def _determine_event_type(self, event_type_code: int, payload: Dict) -> str:
