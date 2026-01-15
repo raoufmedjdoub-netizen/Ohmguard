@@ -491,10 +491,21 @@ class MQTTService:
         
         await self.db.events.insert_one(event)
         
-        # Update sensor last_seen
+        # Update sensor last_seen AND current presence state
+        sensor_update = {
+            "status": "ONLINE", 
+            "last_seen": datetime.now(timezone.utc).isoformat()
+        }
+        # For PRESENCE events, also update the current presence state
+        if normalized.eventType == RadarEventType.PRESENCE:
+            sensor_update["current_presence"] = normalized.presenceDetected
+            sensor_update["current_target_count"] = normalized.targetCount
+            sensor_update["current_active_regions"] = normalized.activeRegions
+            sensor_update["presence_updated_at"] = datetime.now(timezone.utc).isoformat()
+        
         await self.db.sensors.update_one(
             {"id": sensor['id']},
-            {"$set": {"status": "ONLINE", "last_seen": datetime.now(timezone.utc).isoformat()}}
+            {"$set": sensor_update}
         )
         
         logger.info(f"Created {normalized.eventType.value} event from device {device_id}, "
