@@ -61,6 +61,7 @@ export function WebSocketProvider({ children }) {
     // Connection events
     socket.on('connect', () => {
       console.log('Socket.IO connected:', socket.id);
+      console.log('Socket.IO transport:', socket.io.engine.transport.name);
       setConnected(true);
       reconnectAttemptRef.current = 0;
 
@@ -69,6 +70,11 @@ export function WebSocketProvider({ children }) {
         tenant_id: user.tenant_id,
         token: token
       });
+    });
+
+    // Log transport upgrades
+    socket.io.engine.on('upgrade', (transport) => {
+      console.log('Socket.IO upgraded to:', transport.name);
     });
 
     socket.on('disconnect', (reason) => {
