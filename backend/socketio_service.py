@@ -1,0 +1,158 @@
+"""
+Socket.IO Service for OhmGuard
+Handles real-time communication between backend and frontend clients.
+
+Events emitted:
+- new_event: New radar event (fall, presence, etc.)
+- presence_update: Presence state change for a sensor
+- sensor_status: Sensor online/offline status change
+- sensor_registered: New sensor auto-registered
+
+Events received:
+- join_tenant: Client joins a tenant room for filtered events
+- leave_tenant: Client leaves a tenant room
+"""
+import socketio
+import logging
+from typing import Optional, Dict, Any
+
+logger = logging.getLogger(__name__)
+
+# Create Socket.IO server with CORS allowed for all origins (configure properly in production)
+sio = socketio.AsyncServer(
+    async_mode='asgi',
+    cors_allowed_origins='*',  # Allow all origins for development
+    logger=False,
+    engineio_logger=False,
+    ping_timeout=60,
+    ping_interval=25
+)
+
+# Create ASGI app
+socket_app = socketio.ASGIApp(
+    sio,
+    socketio_path='/socket.io'
+)
+
+# Store connected clients by tenant_id
+connected_clients: Dict[str, set] = {}
+
+
+@sio.event
+async def connect(sid, environ, auth):
+    """Handle client connection."""
+    logger.info(f"Client connected: {sid}")
+    # Client will join tenant room after authentication
+    return True
+
+
+@sio.event
+async def disconnect(sid):
+    """Handle client disconnection."""
+    logger.info(f"Client disconnected: {sid}")
+    # Remove from all tenant rooms
+    for tenant_id, clients in connected_clients.items():
+        if sid in clients:
+            clients.discard(sid)
+            await sio.leave_room(sid, f"tenant_{tenant_id}")
+
+
+@sio.event
+async def join_tenant(sid, data):
+    """
+    Client joins a tenant room to receive filtered events.
+    Expected data: {"tenant_id": "xxx", "token": "jwt_token"}
+    """
+    tenant_id = data.get('tenant_id')
+    if not tenant_id:
+        logger.warning(f"Client {sid} tried to join without tenant_id")
+        return {"success": False, "error": "tenant_id required"}
+    
+    room = f"tenant_{tenant_id}"
+    await sio.enter_room(sid, room)
+    
+    # Track connected clients
+    if tenant_id not in connected_clients:
+        connected_clients[tenant_id] = set()
+    connected_clients[tenant_id].add(sid)
+    
+    logger.info(f"Client {sid} joined room {room}")
+    
+    # Send confirmation
+    await sio.emit('joined', {
+        'tenant_id': tenant_id,
+        'room': room,
+        'message': 'Successfully joined tenant room'
+    }, room=sid)
+    
+    return {"success": True, "room": room}
+
+
+@sio.event
+async def leave_tenant(sid, data):
+    """Client leaves a tenant room."""
+    tenant_id = data.get('tenant_id')
+    if tenant_id:
+        room = f"tenant_{tenant_id}"
+        await sio.leave_room(sid, room)
+        if tenant_id in connected_clients:
+            connected_clients[tenant_id].discard(sid)
+        logger.info(f"Client {sid} left room {room}")
+    return {"success": True}
+
+
+# ==================== Broadcast Functions ====================
+# These are called by mqtt_service.py to emit events to clients
+
+async def broadcast_new_event(tenant_id: str, event: Dict[str, Any]):
+    """Broadcast a new radar event to all clients in the tenant room."""
+    room = f"tenant_{tenant_id}"
+    logger.debug(f"Broadcasting new_event to room {room}")
+    await sio.emit('new_event', {
+        'type': 'new_event',
+        'event': event
+    }, room=room)
+
+
+async def broadcast_presence_update(tenant_id: str, data: Dict[str, Any]):
+    """Broadcast presence state update to all clients in the tenant room."""
+    room = f"tenant_{tenant_id}"
+    logger.debug(f"Broadcasting presence_update to room {room}")
+    await sio.emit('presence_update', {
+        'type': 'presence_update',
+        **data
+    }, room=room)
+
+
+async def broadcast_sensor_status(tenant_id: str, sensor_id: str, status: str, last_seen: str):
+    """Broadcast sensor status change to all clients in the tenant room."""
+    room = f"tenant_{tenant_id}"
+    logger.debug(f"Broadcasting sensor_status to room {room}")
+    await sio.emit('sensor_status', {
+        'type': 'sensor_status',
+        'sensor_id': sensor_id,
+        'status': status,
+        'last_seen': last_seen
+    }, room=room)
+
+
+async def broadcast_sensor_registered(tenant_id: str, sensor: Dict[str, Any]):
+    """Broadcast new sensor registration to all clients in the tenant room."""
+    room = f"tenant_{tenant_id}"
+    logger.debug(f"Broadcasting sensor_registered to room {room}")
+    await sio.emit('sensor_registered', {
+        'type': 'sensor_registered',
+        'sensor': sensor
+    }, room=room)
+
+
+async def broadcast_to_all(event_name: str, data: Dict[str, Any]):
+    """Broadcast to all connected clients (for super admin notifications)."""
+    await sio.emit(event_name, data)
+
+
+def get_connected_count(tenant_id: Optional[str] = None) -> int:
+    """Get count of connected clients."""
+    if tenant_id:
+        return len(connected_clients.get(tenant_id, set()))
+    return sum(len(clients) for clients in connected_clients.values())
