@@ -661,19 +661,15 @@ export function LivePage() {
                 : "flex flex-col"
             )}>
               {filteredEvents.map((event, index) => {
-                // Récupérer le statut temps réel du radar associé à cet événement
+                // Récupérer le statut du radar (pour online/offline uniquement)
                 const radarStatus = radarStatuses[event.sensor_id] || {};
-                // Get real-time presence state from polling (for device online status only)
-                const sensorPresence = presenceState[event.sensor_id] || {};
                 
+                // Données temps réel simplifiées - NE PAS inclure l'état de présence
+                // Les cartes d'événements montrent l'état HISTORIQUE au moment de l'événement
                 const realtimeData = {
                   isActive: event.status === 'NEW' || event.status === 'ACK',
-                  lastUpdateTs: sensorPresence.presence_updated_at || radarStatus.last_seen || event.timestamp || event.occurred_at,
-                  deviceOnline: sensorPresence.is_online !== undefined ? sensorPresence.is_online : (radarStatus.deviceOnline !== undefined ? radarStatus.deviceOnline : true),
-                  // Real-time presence info (for reference, not to override event)
-                  currentSensorPresence: sensorPresence.presence_detected,
-                  currentTargetCount: sensorPresence.target_count,
-                  currentActiveRegions: sensorPresence.active_regions
+                  lastUpdateTs: radarStatus.last_seen || event.timestamp || event.occurred_at,
+                  deviceOnline: radarStatus.deviceOnline !== undefined ? radarStatus.deviceOnline : true
                 };
                 
                 return (
@@ -687,8 +683,6 @@ export function LivePage() {
                     <LiveEventCard
                       event={{
                         ...event,
-                        // Keep the event's original presence_detected value (historical)
-                        // Don't override with real-time sensor state
                         realtime: realtimeData
                       }}
                       isNew={newEventIds.has(event.id)}
