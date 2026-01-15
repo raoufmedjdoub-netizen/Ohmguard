@@ -89,10 +89,21 @@ export function WebSocketProvider({ children }) {
     const wsUrl = BACKEND_URL.replace('https://', 'wss://').replace('http://', 'ws://');
     
     try {
+      console.log('Attempting WebSocket connection...');
       const ws = new WebSocket(`${wsUrl}/ws/${user.tenant_id}?token=${token}`);
       
+      // Set a timeout - if not connected in 5 seconds, switch to polling
+      const connectionTimeout = setTimeout(() => {
+        if (ws.readyState !== WebSocket.OPEN) {
+          console.log('WebSocket connection timeout, switching to polling');
+          ws.close();
+          startPolling();
+        }
+      }, 5000);
+      
       ws.onopen = () => {
-        console.log('WebSocket connected');
+        console.log('WebSocket connected successfully');
+        clearTimeout(connectionTimeout);
         setConnected(true);
         stopPolling();
         wsRetriesRef.current = 0;
@@ -114,23 +125,25 @@ export function WebSocketProvider({ children }) {
       
       ws.onclose = () => {
         console.log('WebSocket disconnected');
+        clearTimeout(connectionTimeout);
         setConnected(false);
         wsRetriesRef.current++;
         
-        // After 3 failed attempts, switch to polling
-        if (wsRetriesRef.current >= 3) {
-          console.log('WebSocket unavailable, switching to polling');
+        // After 2 failed attempts, switch to polling
+        if (wsRetriesRef.current >= 2) {
+          console.log('WebSocket unavailable after retries, switching to polling');
           startPolling();
         } else if (isAuthenticated) {
-          // Reconnect after increasing delay
+          // Reconnect after delay
           setTimeout(() => {
             connect();
-          }, Math.min(1000 * wsRetriesRef.current, 5000));
+          }, 2000);
         }
       };
       
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        clearTimeout(connectionTimeout);
       };
       
       socketRef.current = ws;
@@ -143,11 +156,12 @@ export function WebSocketProvider({ children }) {
       }, 30000);
       
       return () => {
+        clearTimeout(connectionTimeout);
         clearInterval(pingInterval);
         ws.close();
       };
     } catch (error) {
-      console.error('WebSocket connection failed, using polling:', error);
+      console.error('WebSocket connection failed immediately, using polling:', error);
       startPolling();
     }
   }, [isAuthenticated, user?.tenant_id, startPolling, stopPolling]);
