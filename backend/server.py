@@ -1952,6 +1952,10 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup"""
+    
+    # Auto-seed database if empty (for production deployment)
+    await auto_seed_if_empty()
+    
     # Initialize Clients & Buildings service
     init_clients_buildings_service(db)
     logger.info("Clients & Buildings service initialized")
