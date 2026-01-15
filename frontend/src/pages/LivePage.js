@@ -44,7 +44,7 @@ import { LiveEventCard } from '@/components/live';
 export function LivePage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { subscribe, connected, isPolling } = useWebSocket();
+  const { subscribe, connected, connectionType } = useWebSocket();
   
   // États
   const [events, setEvents] = useState([]);
