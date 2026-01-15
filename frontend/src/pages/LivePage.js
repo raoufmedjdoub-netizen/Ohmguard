@@ -361,7 +361,7 @@ export function LivePage() {
                 {connected ? (
                   <>
                     <Wifi className="h-3 w-3 mr-1" />
-                    Temps réel
+                    {isPolling ? 'Auto-refresh (3s)' : 'Temps réel'}
                   </>
                 ) : (
                   <>
