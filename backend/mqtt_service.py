@@ -268,6 +268,11 @@ class MQTTService:
     
     async def _handle_device_state(self, device_id: str, payload: Dict):
         """Handle device state update - extracts serialProduct from payload"""
+        # Log full state payload for first device (for debugging)
+        if not hasattr(self, '_state_logged'):
+            self._state_logged = True
+            logger.info(f"STATE payload sample from {device_id}: {json.dumps(payload)[:800]}")
+        
         sensor = await self._get_sensor_by_device_id(device_id)
         
         if not sensor:
