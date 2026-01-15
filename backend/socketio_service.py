@@ -15,8 +15,26 @@ Events received:
 import socketio
 import logging
 from typing import Optional, Dict, Any
+from bson import ObjectId
 
 logger = logging.getLogger(__name__)
+
+
+def sanitize_for_json(obj):
+    """
+    Recursively convert MongoDB ObjectId to string for JSON serialization.
+    This ensures all data can be safely sent via Socket.IO.
+    """
+    if isinstance(obj, ObjectId):
+        return str(obj)
+    elif isinstance(obj, dict):
+        return {k: sanitize_for_json(v) for k, v in obj.items() if k != '_id'}
+    elif isinstance(obj, list):
+        return [sanitize_for_json(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(sanitize_for_json(item) for item in obj)
+    else:
+        return obj
 
 # Create Socket.IO server - CORS handled by FastAPI middleware
 sio = socketio.AsyncServer(
