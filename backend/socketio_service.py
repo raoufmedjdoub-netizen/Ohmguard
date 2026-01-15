@@ -22,16 +22,16 @@ logger = logging.getLogger(__name__)
 sio = socketio.AsyncServer(
     async_mode='asgi',
     cors_allowed_origins='*',  # Allow all origins for development
-    logger=False,
-    engineio_logger=False,
+    logger=True,  # Enable logging for debugging
+    engineio_logger=True,
     ping_timeout=60,
     ping_interval=25
 )
 
-# Create ASGI app
+# Create ASGI app - will be mounted on FastAPI
 socket_app = socketio.ASGIApp(
     sio,
-    socketio_path='/socket.io'
+    socketio_path=''  # Path will be determined by mount point
 )
 
 # Store connected clients by tenant_id
