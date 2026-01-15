@@ -16,6 +16,10 @@ from jose import JWTError, jwt
 import json
 import asyncio
 
+# Configure logging early
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 # MQTT Service import
 from mqtt_service import init_mqtt_service, stop_mqtt_service
 
