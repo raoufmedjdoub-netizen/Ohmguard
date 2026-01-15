@@ -1421,6 +1421,55 @@ async def websocket_endpoint(websocket: WebSocket, tenant_id: str, token: Option
     except WebSocketDisconnect:
         manager.disconnect(websocket, tenant_id)
 
+# ==================== SSE (Server-Sent Events) ====================
+
+@app.get("/api/events/stream/{tenant_id}")
+async def events_stream(tenant_id: str, token: str = Query(...)):
+    """
+    Server-Sent Events endpoint for real-time event streaming.
+    More reliable than WebSocket in proxy/Kubernetes environments.
+    """
+    # Validate token
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_tenant = payload.get("tenant_id")
+        user_role = payload.get("role")
+        if user_tenant and user_tenant != tenant_id and user_role != "SUPER_ADMIN":
+            raise HTTPException(status_code=403, detail="Access denied")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    async def event_generator():
+        queue = asyncio.Queue()
+        manager.add_sse_queue(tenant_id, queue)
+        
+        try:
+            # Send initial connection message
+            yield f"data: {json.dumps({'type': 'connected', 'tenant_id': tenant_id})}\n\n"
+            
+            while True:
+                try:
+                    # Wait for events with timeout (for keepalive)
+                    message = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    yield f"data: {json.dumps(message)}\n\n"
+                except asyncio.TimeoutError:
+                    # Send keepalive ping
+                    yield f"data: {json.dumps({'type': 'ping'})}\n\n"
+        except asyncio.CancelledError:
+            pass
+        finally:
+            manager.remove_sse_queue(tenant_id, queue)
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"  # Disable nginx buffering
+        }
+    )
+
 # ==================== SIMULATOR ====================
 
 @api_router.post("/simulator/event")
