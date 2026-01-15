@@ -19,6 +19,13 @@ import asyncio
 # MQTT Service import
 from mqtt_service import init_mqtt_service, stop_mqtt_service
 
+# Socket.IO Service import
+from socketio_service import (
+    sio, socket_app,
+    broadcast_new_event, broadcast_presence_update,
+    broadcast_sensor_status, broadcast_sensor_registered
+)
+
 # Vayyar Config Service import
 from vayyar_config_service import (
     init_vayyar_config_service, stop_vayyar_config_service,
