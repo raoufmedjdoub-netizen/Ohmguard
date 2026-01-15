@@ -425,9 +425,15 @@ export function LivePage() {
           </div>
           
           {/* Refresh */}
-          <Button variant="outline" size="sm" onClick={fetchData} data-testid="refresh-btn">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Actualiser
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={fetchData} 
+            disabled={loading}
+            data-testid="refresh-btn"
+          >
+            <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
+            {loading ? 'Chargement...' : 'Actualiser'}
           </Button>
         </div>
       </div>
