@@ -70,6 +70,7 @@ logger = logging.getLogger(__name__)
 class ConnectionManager:
     def __init__(self):
         self.active_connections: dict[str, list[WebSocket]] = {}
+        self.sse_queues: dict[str, list[asyncio.Queue]] = {}  # SSE queues per tenant
     
     async def connect(self, websocket: WebSocket, tenant_id: str):
         await websocket.accept()
@@ -81,11 +82,29 @@ class ConnectionManager:
         if tenant_id in self.active_connections:
             self.active_connections[tenant_id].remove(websocket)
     
+    def add_sse_queue(self, tenant_id: str, queue: asyncio.Queue):
+        if tenant_id not in self.sse_queues:
+            self.sse_queues[tenant_id] = []
+        self.sse_queues[tenant_id].append(queue)
+    
+    def remove_sse_queue(self, tenant_id: str, queue: asyncio.Queue):
+        if tenant_id in self.sse_queues and queue in self.sse_queues[tenant_id]:
+            self.sse_queues[tenant_id].remove(queue)
+    
     async def broadcast_to_tenant(self, tenant_id: str, message: dict):
+        # Broadcast to WebSocket clients
         if tenant_id in self.active_connections:
             for connection in self.active_connections[tenant_id]:
                 try:
                     await connection.send_json(message)
+                except:
+                    pass
+        
+        # Broadcast to SSE clients
+        if tenant_id in self.sse_queues:
+            for queue in self.sse_queues[tenant_id]:
+                try:
+                    await queue.put(message)
                 except:
                     pass
 
