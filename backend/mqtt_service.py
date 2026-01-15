@@ -121,8 +121,8 @@ class MQTTService:
                     
                     # Subscribe to device topics
                     await client.subscribe("/devices/+/state")
-                    await client.subscribe("/devices/+/event")
-                    logger.info("Subscribed to /devices/+/state and /devices/+/event")
+                    await client.subscribe("/devices/+/events")
+                    logger.info("Subscribed to /devices/+/state and /devices/+/events")
                     
                     # Process messages
                     async for message in client.messages:
