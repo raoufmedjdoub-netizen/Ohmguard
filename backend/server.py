@@ -1949,6 +1949,65 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+async def auto_seed_if_empty():
+    """
+    Auto-seed the database with default admin user and tenant if empty.
+    This ensures the application works immediately after deployment.
+    """
+    try:
+        # Check if users exist
+        user_count = await db.users.count_documents({})
+        if user_count > 0:
+            logger.info(f"Database already has {user_count} users, skipping auto-seed")
+            return
+        
+        logger.info("Database is empty, starting auto-seed...")
+        
+        # Create default tenant
+        default_tenant_id = str(uuid.uuid4())
+        default_tenant = {
+            "id": default_tenant_id,
+            "name": "Default Organization",
+            "slug": "default",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "settings": {}
+        }
+        await db.tenants.insert_one(default_tenant)
+        logger.info(f"Created default tenant: {default_tenant_id}")
+        
+        # Create admin user
+        admin_password = "admin123"  # Default password - should be changed after first login
+        admin_user = {
+            "id": str(uuid.uuid4()),
+            "email": "admin@ohmguard.io",
+            "password_hash": pwd_context.hash(admin_password),
+            "full_name": "Administrator",
+            "role": "SUPER_ADMIN",
+            "tenant_id": default_tenant_id,
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.users.insert_one(admin_user)
+        logger.info(f"Created admin user: admin@ohmguard.io (password: {admin_password})")
+        
+        # Create a default client for testing
+        default_client = {
+            "id": str(uuid.uuid4()),
+            "name": "OhmCare Demo",
+            "tenant_id": default_tenant_id,
+            "address": "Demo Address",
+            "contact_email": "demo@ohmcare.io",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.clients.insert_one(default_client)
+        logger.info(f"Created default client: OhmCare Demo")
+        
+        logger.info("Auto-seed completed successfully!")
+        
+    except Exception as e:
+        logger.error(f"Auto-seed failed: {e}")
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup"""
