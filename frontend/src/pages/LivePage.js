@@ -287,7 +287,9 @@ export function LivePage() {
     ack: events.filter(e => e.status === 'ACK').length,
     presence: events.filter(e => e.type === 'PRESENCE').length,
     active: events.filter(e => e.presence_detected).length,
-    critical: events.filter(e => e.severity === 'HIGH' || e.severity === 'CRITICAL').length
+    critical: events.filter(e => e.severity === 'HIGH' || e.severity === 'CRITICAL').length,
+    radarsOnline: Object.values(radarStatuses).filter(r => r.deviceOnline).length,
+    radarsTotal: Object.keys(radarStatuses).length
   };
 
   // Loading state
