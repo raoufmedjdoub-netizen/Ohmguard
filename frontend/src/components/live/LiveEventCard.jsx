@@ -162,7 +162,9 @@ export const LiveEventCard = memo(function LiveEventCard({
   // Label pour le type d'événement
   const getEventLabel = () => {
     if (isPresenceEvent) {
-      return presenceDetected ? 'Présence détectée' : 'Absence détectée';
+      // TOUJOURS afficher "Présence détectée" pour les événements PRESENCE
+      // car les événements d'absence ne devraient jamais être dans la liste
+      return 'Présence détectée';
     }
     return typeConfig.label;
   };
