@@ -68,15 +68,38 @@ export function WebSocketProvider({ children }) {
         }
       }
       
-      // Process presence state
+      // Process presence state - only update if changed
       if (presenceResponse.ok) {
         const presenceData = await presenceResponse.json();
-        setPresenceState(presenceData.sensors || {});
+        const newPresenceState = presenceData.sensors || {};
         
-        // Notify listeners of presence update
-        notifyListeners({ 
-          type: 'presence_state_update', 
-          sensors: presenceData.sensors || {} 
+        // Only update state and notify if there are actual changes
+        setPresenceState(prev => {
+          // Check if anything changed
+          const prevKeys = Object.keys(prev);
+          const newKeys = Object.keys(newPresenceState);
+          
+          if (prevKeys.length !== newKeys.length) {
+            notifyListeners({ type: 'presence_state_update', sensors: newPresenceState });
+            return newPresenceState;
+          }
+          
+          // Check for any changes in presence values
+          let hasChanges = false;
+          for (const key of newKeys) {
+            if (prev[key]?.presence_detected !== newPresenceState[key]?.presence_detected ||
+                prev[key]?.is_online !== newPresenceState[key]?.is_online) {
+              hasChanges = true;
+              break;
+            }
+          }
+          
+          if (hasChanges) {
+            notifyListeners({ type: 'presence_state_update', sensors: newPresenceState });
+            return newPresenceState;
+          }
+          
+          return prev; // No changes, keep previous state to avoid re-render
         });
       }
       
