@@ -18,11 +18,11 @@ from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
 
-# Create Socket.IO server with CORS allowed for all origins (configure properly in production)
+# Create Socket.IO server - CORS handled by FastAPI middleware
 sio = socketio.AsyncServer(
     async_mode='asgi',
-    cors_allowed_origins='*',  # Allow all origins for development
-    logger=True,  # Enable logging for debugging
+    cors_allowed_origins=[],  # Disable Socket.IO CORS - FastAPI handles it
+    logger=True,
     engineio_logger=True,
     ping_timeout=60,
     ping_interval=25
@@ -31,7 +31,7 @@ sio = socketio.AsyncServer(
 # Create ASGI app - will be mounted on FastAPI
 socket_app = socketio.ASGIApp(
     sio,
-    socketio_path=''  # Path will be determined by mount point
+    socketio_path=''
 )
 
 # Store connected clients by tenant_id
