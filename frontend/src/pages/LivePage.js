@@ -294,42 +294,69 @@ export function LivePage() {
     navigate(`/events/${eventId}`);
   };
 
-  // Filtrage par client et bâtiment
-  const filteredEvents = events.filter(event => {
-    // IMPORTANT: Ne jamais afficher les événements PRESENCE avec presenceDetected=false
-    // Ces événements "absence" ne devraient pas être dans la liste
-    if (event.type === 'PRESENCE' && event.presence_detected === false) {
-      return false;
-    }
-    
-    // Filtre par client
-    if (selectedClient !== 'all') {
-      if (event.location?.client_name) {
-        const client = clients.find(c => c.id === selectedClient);
-        if (client && event.location.client_name !== client.name) return false;
-      } else if (event.location_path) {
-        const client = clients.find(c => c.id === selectedClient);
-        if (client && !event.location_path.includes(client.name)) return false;
-      } else {
-        return false; // Pas de localisation, on l'exclut si un filtre client est actif
-      }
-    }
-    
-    // Filtre par bâtiment
-    if (selectedBuilding !== 'all') {
-      if (event.location?.building_name) {
-        const building = buildings.find(b => b.id === selectedBuilding);
-        if (building && event.location.building_name !== building.name) return false;
-      } else if (event.location_path) {
-        const building = buildings.find(b => b.id === selectedBuilding);
-        if (building && !event.location_path.includes(building.name)) return false;
-      } else {
+  // Filtrage par client et bâtiment + déduplication par sensor_id (garder le plus récent)
+  const filteredEvents = useMemo(() => {
+    // First, filter out unwanted events
+    const filtered = events.filter(event => {
+      // Never show PRESENCE events with presenceDetected=false
+      if (event.type === 'PRESENCE' && event.presence_detected === false) {
         return false;
       }
+      
+      // Client filter
+      if (selectedClient !== 'all') {
+        if (event.location?.client_name) {
+          const client = clients.find(c => c.id === selectedClient);
+          if (client && event.location.client_name !== client.name) return false;
+        } else if (event.location_path) {
+          const client = clients.find(c => c.id === selectedClient);
+          if (client && !event.location_path.includes(client.name)) return false;
+        } else {
+          return false;
+        }
+      }
+      
+      // Building filter
+      if (selectedBuilding !== 'all') {
+        if (event.location?.building_name) {
+          const building = buildings.find(b => b.id === selectedBuilding);
+          if (building && event.location.building_name !== building.name) return false;
+        } else if (event.location_path) {
+          const building = buildings.find(b => b.id === selectedBuilding);
+          if (building && !event.location_path.includes(building.name)) return false;
+        } else {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+    
+    // Then, keep only the LATEST event per sensor_id to avoid duplicates
+    const latestBySensor = new Map();
+    for (const event of filtered) {
+      const sensorId = event.sensor_id || event.device_id || 'unknown';
+      const existing = latestBySensor.get(sensorId);
+      
+      if (!existing) {
+        latestBySensor.set(sensorId, event);
+      } else {
+        // Compare timestamps - keep the more recent one
+        const existingTime = new Date(existing.timestamp || existing.occurred_at || 0).getTime();
+        const currentTime = new Date(event.timestamp || event.occurred_at || 0).getTime();
+        if (currentTime > existingTime) {
+          latestBySensor.set(sensorId, event);
+        }
+      }
     }
     
-    return true;
-  });
+    // Convert back to array and sort by timestamp (newest first)
+    return Array.from(latestBySensor.values()).sort((a, b) => {
+      const timeA = new Date(a.timestamp || a.occurred_at || 0).getTime();
+      const timeB = new Date(b.timestamp || b.occurred_at || 0).getTime();
+      return timeB - timeA;
+    });
+  }, [events, selectedClient, selectedBuilding, clients, buildings]);
 
   // Statistiques - based on local state only (no context dependencies)
   const stats = {
