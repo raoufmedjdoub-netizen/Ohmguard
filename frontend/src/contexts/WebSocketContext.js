@@ -1,20 +1,25 @@
+/**
+ * WebSocketContext - Real-time communication using Socket.IO
+ * 
+ * Provides real-time event streaming from the backend via Socket.IO.
+ * Socket.IO automatically handles reconnection and fallback to polling
+ * if WebSocket connection fails.
+ */
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 
 const WebSocketContext = createContext(null);
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const POLL_INTERVAL = 5000; // 5 seconds - reasonable for real-time feel without overload
 
 export function WebSocketProvider({ children }) {
   const { user, isAuthenticated } = useAuth();
   const [connected, setConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState(null);
-  const [presenceState, setPresenceState] = useState({}); // Real-time presence state by sensor_id
+  const socketRef = useRef(null);
   const listenersRef = useRef(new Map());
-  const pollingRef = useRef(null);
-  const lastEventIdRef = useRef(null);
-  const isPageVisibleRef = useRef(true);
+  const reconnectAttemptRef = useRef(0);
 
   // Notify all listeners of a message
   const notifyListeners = useCallback((data) => {
@@ -24,102 +29,107 @@ export function WebSocketProvider({ children }) {
     });
   }, []);
 
-  // Fetch latest events only (no presence state polling to avoid flickering)
-  const fetchLatestEvents = useCallback(async () => {
-    if (!isAuthenticated || !isPageVisibleRef.current) return;
-    
-    try {
-      const token = localStorage.getItem('access_token');
-      
-      // Only fetch events - no presence state to avoid constant re-renders
-      const eventsResponse = await fetch(`${BACKEND_URL}/api/events?limit=30`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      // Process events
-      if (eventsResponse.ok) {
-        const events = await eventsResponse.json();
-        
-        if (events.length > 0) {
-          const latestId = events[0].id;
-          
-          // If we have a previous ID, find new events
-          if (lastEventIdRef.current && latestId !== lastEventIdRef.current) {
-            const newEvents = [];
-            for (const event of events) {
-              if (event.id === lastEventIdRef.current) break;
-              newEvents.push(event);
-            }
-            
-            // Notify listeners of each new event (oldest first)
-            if (newEvents.length > 0) {
-              newEvents.reverse().forEach(event => {
-                notifyListeners({ type: 'new_radar_event', event });
-              });
-            }
-          }
-          
-          lastEventIdRef.current = latestId;
-        }
-      }
-      
+  // Initialize Socket.IO connection
+  useEffect(() => {
+    if (!isAuthenticated || !user?.tenant_id) {
+      return;
+    }
+
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      console.log('No token available for Socket.IO connection');
+      return;
+    }
+
+    // Create Socket.IO connection
+    const socket = io(BACKEND_URL, {
+      path: '/socket.io',
+      transports: ['websocket', 'polling'], // Try WebSocket first, fallback to polling
+      auth: {
+        token: token
+      },
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000
+    });
+
+    socketRef.current = socket;
+
+    // Connection events
+    socket.on('connect', () => {
+      console.log('Socket.IO connected:', socket.id);
       setConnected(true);
-    } catch (error) {
-      console.error('Polling error:', error);
+      reconnectAttemptRef.current = 0;
+
+      // Join tenant room after connection
+      socket.emit('join_tenant', {
+        tenant_id: user.tenant_id,
+        token: token
+      });
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('Socket.IO disconnected:', reason);
       setConnected(false);
-    }
-  }, [isAuthenticated, notifyListeners]);
+    });
 
-  // Start polling - DISABLED to debug flickering
-  const startPolling = useCallback(() => {
-    // Polling disabled - only manual refresh via forceRefresh
-    console.log('Polling disabled for stability - use manual refresh');
-    setConnected(true);
-  }, []);
-
-  // Stop polling
-  const stopPolling = useCallback(() => {
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
-      pollingRef.current = null;
-    }
-  }, []);
-
-  // Handle page visibility changes
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      isPageVisibleRef.current = !document.hidden;
-      
-      if (document.hidden) {
-        // Page is hidden - stop polling to save resources
-        stopPolling();
-      } else {
-        // Page is visible - resume polling
-        if (isAuthenticated) {
-          startPolling();
-        }
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [isAuthenticated, startPolling, stopPolling]);
-
-  // Start/stop polling based on auth state
-  useEffect(() => {
-    if (isAuthenticated && user?.tenant_id) {
-      startPolling();
-    } else {
-      stopPolling();
+    socket.on('connect_error', (error) => {
+      console.error('Socket.IO connection error:', error.message);
+      reconnectAttemptRef.current++;
       setConnected(false);
-    }
-    
+    });
+
+    // Confirmation of joining tenant room
+    socket.on('joined', (data) => {
+      console.log('Joined tenant room:', data);
+    });
+
+    // Listen for new events
+    socket.on('new_event', (data) => {
+      console.log('New event received:', data);
+      notifyListeners({
+        type: 'new_radar_event',
+        event: data.event || data
+      });
+    });
+
+    // Listen for presence updates
+    socket.on('presence_update', (data) => {
+      console.log('Presence update:', data);
+      notifyListeners({
+        type: 'presence_update',
+        ...data
+      });
+    });
+
+    // Listen for sensor status changes
+    socket.on('sensor_status', (data) => {
+      console.log('Sensor status:', data);
+      notifyListeners({
+        type: 'sensor_status',
+        ...data
+      });
+    });
+
+    // Listen for new sensor registrations
+    socket.on('sensor_registered', (data) => {
+      console.log('Sensor registered:', data);
+      notifyListeners({
+        type: 'sensor_registered',
+        ...data
+      });
+    });
+
+    // Cleanup on unmount
     return () => {
-      stopPolling();
+      console.log('Disconnecting Socket.IO...');
+      socket.emit('leave_tenant', { tenant_id: user.tenant_id });
+      socket.disconnect();
+      socketRef.current = null;
     };
-  }, [isAuthenticated, user?.tenant_id, startPolling, stopPolling]);
+  }, [isAuthenticated, user?.tenant_id, notifyListeners]);
 
   // Subscribe to events
   const subscribe = useCallback((id, callback) => {
@@ -129,7 +139,7 @@ export function WebSocketProvider({ children }) {
     };
   }, []);
 
-  // Force refresh - for manual refresh button
+  // Force refresh - fetch latest events manually
   const forceRefresh = useCallback(async () => {
     try {
       const token = localStorage.getItem('access_token');
@@ -140,24 +150,30 @@ export function WebSocketProvider({ children }) {
       if (response.ok) {
         const events = await response.json();
         notifyListeners({ type: 'force_refresh', events });
-        
-        // Update last event ID
-        if (events.length > 0) {
-          lastEventIdRef.current = events[0].id;
-        }
       }
     } catch (error) {
       console.error('Force refresh error:', error);
     }
   }, [notifyListeners]);
 
+  // Get connection status details
+  const getConnectionInfo = useCallback(() => {
+    const socket = socketRef.current;
+    return {
+      connected,
+      socketId: socket?.id,
+      transport: socket?.io?.engine?.transport?.name,
+      reconnectAttempts: reconnectAttemptRef.current
+    };
+  }, [connected]);
+
   return (
     <WebSocketContext.Provider value={{ 
       connected, 
       lastEvent, 
-      presenceState,  // Expose real-time presence state
       subscribe,
-      forceRefresh
+      forceRefresh,
+      getConnectionInfo
     }}>
       {children}
     </WebSocketContext.Provider>
