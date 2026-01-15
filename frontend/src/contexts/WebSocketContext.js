@@ -4,120 +4,106 @@ import { useAuth } from './AuthContext';
 const WebSocketContext = createContext(null);
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const POLLING_INTERVAL = 3000; // 3 seconds polling fallback
 
 export function WebSocketProvider({ children }) {
   const { user, isAuthenticated } = useAuth();
   const [connected, setConnected] = useState(false);
-  const [isPolling, setIsPolling] = useState(false);
   const [lastEvent, setLastEvent] = useState(null);
+  const [connectionType, setConnectionType] = useState(null); // 'websocket' | 'sse' | null
   const socketRef = useRef(null);
+  const eventSourceRef = useRef(null);
   const listenersRef = useRef(new Map());
-  const pollingRef = useRef(null);
-  const lastEventIdRef = useRef(null);
-  const wsRetriesRef = useRef(0);
+  const reconnectTimeoutRef = useRef(null);
 
-  // Polling fallback function
-  const startPolling = useCallback(() => {
-    if (pollingRef.current) return;
+  // Notify all listeners of a message
+  const notifyListeners = useCallback((data) => {
+    setLastEvent(data);
+    listenersRef.current.forEach((callback) => {
+      callback(data);
+    });
+  }, []);
+
+  // Connect via Server-Sent Events (more reliable in proxy environments)
+  const connectSSE = useCallback(() => {
+    if (!isAuthenticated || !user?.tenant_id) return;
     
-    console.log('Starting polling fallback for real-time updates');
-    setIsPolling(true);
-    setConnected(true); // Mark as connected since polling is working
+    const token = localStorage.getItem('access_token');
+    const sseUrl = `${BACKEND_URL}/api/events/stream/${user.tenant_id}?token=${token}`;
     
-    const poll = async () => {
+    console.log('Connecting via SSE...');
+    
+    const eventSource = new EventSource(sseUrl);
+    
+    eventSource.onopen = () => {
+      console.log('SSE connected');
+      setConnected(true);
+      setConnectionType('sse');
+    };
+    
+    eventSource.onmessage = (event) => {
       try {
-        const token = localStorage.getItem('access_token');
-        const response = await fetch(`${BACKEND_URL}/api/events?limit=20`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const data = JSON.parse(event.data);
         
-        if (response.ok) {
-          const events = await response.json();
-          
-          // Check for new events
-          if (events.length > 0) {
-            const latestId = events[0].id;
-            
-            if (lastEventIdRef.current && latestId !== lastEventIdRef.current) {
-              // Find new events
-              const newEvents = [];
-              for (const event of events) {
-                if (event.id === lastEventIdRef.current) break;
-                newEvents.push(event);
-              }
-              
-              // Notify listeners of new events
-              newEvents.reverse().forEach(event => {
-                const data = { type: 'new_radar_event', event };
-                setLastEvent(data);
-                listenersRef.current.forEach(callback => callback(data));
-              });
-            }
-            
-            lastEventIdRef.current = latestId;
-          }
+        // Ignore ping messages
+        if (data.type === 'ping' || data.type === 'connected') {
+          return;
         }
-      } catch (error) {
-        console.error('Polling error:', error);
+        
+        notifyListeners(data);
+      } catch (e) {
+        console.error('SSE message parse error:', e);
       }
     };
     
-    // Initial poll
-    poll();
+    eventSource.onerror = (error) => {
+      console.error('SSE error:', error);
+      setConnected(false);
+      setConnectionType(null);
+      eventSource.close();
+      
+      // Reconnect after 5 seconds
+      if (isAuthenticated) {
+        reconnectTimeoutRef.current = setTimeout(() => {
+          connectSSE();
+        }, 5000);
+      }
+    };
     
-    // Set up interval
-    pollingRef.current = setInterval(poll, POLLING_INTERVAL);
-  }, []);
+    eventSourceRef.current = eventSource;
+  }, [isAuthenticated, user?.tenant_id, notifyListeners]);
 
-  const stopPolling = useCallback(() => {
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
-      pollingRef.current = null;
-    }
-    setIsPolling(false);
-  }, []);
-
-  const connect = useCallback(() => {
-    if (!isAuthenticated || !user?.tenant_id) {
-      console.log('WebSocket: Not authenticated or no tenant_id, starting polling');
-      startPolling();
-      return;
-    }
+  // Connect via WebSocket (try first, fallback to SSE)
+  const connectWebSocket = useCallback(() => {
+    if (!isAuthenticated || !user?.tenant_id) return;
     
     const token = localStorage.getItem('access_token');
     const wsUrl = BACKEND_URL.replace('https://', 'wss://').replace('http://', 'ws://');
     
+    console.log('Attempting WebSocket connection...');
+    
     try {
-      console.log('Attempting WebSocket connection...');
       const ws = new WebSocket(`${wsUrl}/ws/${user.tenant_id}?token=${token}`);
       
-      // Set a timeout - if not connected in 5 seconds, switch to polling
+      // Set connection timeout
       const connectionTimeout = setTimeout(() => {
         if (ws.readyState !== WebSocket.OPEN) {
-          console.log('WebSocket connection timeout, switching to polling');
+          console.log('WebSocket timeout, falling back to SSE');
           ws.close();
-          startPolling();
+          connectSSE();
         }
       }, 5000);
       
       ws.onopen = () => {
-        console.log('WebSocket connected successfully');
+        console.log('WebSocket connected');
         clearTimeout(connectionTimeout);
         setConnected(true);
-        stopPolling();
-        wsRetriesRef.current = 0;
+        setConnectionType('websocket');
       };
       
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          setLastEvent(data);
-          
-          // Notify all listeners
-          listenersRef.current.forEach((callback) => {
-            callback(data);
-          });
+          notifyListeners(data);
         } catch (e) {
           console.error('WebSocket message parse error:', e);
         }
@@ -126,18 +112,13 @@ export function WebSocketProvider({ children }) {
       ws.onclose = () => {
         console.log('WebSocket disconnected');
         clearTimeout(connectionTimeout);
-        wsRetriesRef.current++;
+        setConnected(false);
+        setConnectionType(null);
         
-        // After 2 failed attempts, switch to polling
-        if (wsRetriesRef.current >= 2) {
-          console.log('WebSocket unavailable after retries, switching to polling');
-          startPolling();
-        } else if (isAuthenticated) {
-          setConnected(false);
-          // Reconnect after delay
-          setTimeout(() => {
-            connect();
-          }, 2000);
+        // Fall back to SSE on disconnect
+        if (isAuthenticated) {
+          console.log('Falling back to SSE');
+          connectSSE();
         }
       };
       
@@ -161,22 +142,49 @@ export function WebSocketProvider({ children }) {
         ws.close();
       };
     } catch (error) {
-      console.error('WebSocket connection failed immediately, using polling:', error);
-      startPolling();
+      console.error('WebSocket failed, falling back to SSE:', error);
+      connectSSE();
     }
-  }, [isAuthenticated, user?.tenant_id, startPolling, stopPolling]);
+  }, [isAuthenticated, user?.tenant_id, notifyListeners, connectSSE]);
 
+  // Main connect function - tries WebSocket first, then SSE
+  const connect = useCallback(() => {
+    if (!isAuthenticated || !user?.tenant_id) {
+      console.log('Not authenticated or no tenant_id');
+      return;
+    }
+    
+    // Try WebSocket first
+    connectWebSocket();
+  }, [isAuthenticated, user?.tenant_id, connectWebSocket]);
+
+  // Cleanup and connect on mount/auth change
   useEffect(() => {
-    const cleanup = connect();
-    return () => {
-      if (cleanup) cleanup();
+    // Cleanup function
+    const cleanup = () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
       if (socketRef.current) {
         socketRef.current.close();
+        socketRef.current = null;
       }
-      stopPolling();
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
     };
-  }, [connect, stopPolling]);
+    
+    cleanup();
+    
+    if (isAuthenticated && user?.tenant_id) {
+      connect();
+    }
+    
+    return cleanup;
+  }, [isAuthenticated, user?.tenant_id, connect]);
 
+  // Subscribe to events
   const subscribe = useCallback((id, callback) => {
     listenersRef.current.set(id, callback);
     return () => {
@@ -184,7 +192,7 @@ export function WebSocketProvider({ children }) {
     };
   }, []);
 
-  // Force refresh function for manual updates
+  // Force refresh - for manual refresh button
   const forceRefresh = useCallback(async () => {
     try {
       const token = localStorage.getItem('access_token');
@@ -194,23 +202,20 @@ export function WebSocketProvider({ children }) {
       
       if (response.ok) {
         const events = await response.json();
-        // Notify listeners to refresh
-        listenersRef.current.forEach(callback => {
-          callback({ type: 'force_refresh', events });
-        });
+        notifyListeners({ type: 'force_refresh', events });
       }
     } catch (error) {
       console.error('Force refresh error:', error);
     }
-  }, []);
+  }, [notifyListeners]);
 
   return (
     <WebSocketContext.Provider value={{ 
       connected, 
+      connectionType,
       lastEvent, 
       subscribe,
-      forceRefresh,
-      isPolling
+      forceRefresh
     }}>
       {children}
     </WebSocketContext.Provider>
