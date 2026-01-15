@@ -300,6 +300,12 @@ export function LivePage() {
 
   // Filtrage par client et bâtiment
   const filteredEvents = events.filter(event => {
+    // IMPORTANT: Ne jamais afficher les événements PRESENCE avec presenceDetected=false
+    // Ces événements "absence" ne devraient pas être dans la liste
+    if (event.type === 'PRESENCE' && event.presence_detected === false) {
+      return false;
+    }
+    
     // Filtre par client
     if (selectedClient !== 'all') {
       if (event.location?.client_name) {
