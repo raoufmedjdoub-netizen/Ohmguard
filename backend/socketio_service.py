@@ -152,7 +152,7 @@ async def broadcast_sensor_status(tenant_id: str, sensor_id: str, status: str, l
     logger.debug(f"Broadcasting sensor_status to room {room}")
     await sio.emit('sensor_status', {
         'type': 'sensor_status',
-        'sensor_id': sensor_id,
+        'sensor_id': str(sensor_id) if sensor_id else sensor_id,
         'status': status,
         'last_seen': last_seen
     }, room=room)
@@ -162,15 +162,19 @@ async def broadcast_sensor_registered(tenant_id: str, sensor: Dict[str, Any]):
     """Broadcast new sensor registration to all clients in the tenant room."""
     room = f"tenant_{tenant_id}"
     logger.debug(f"Broadcasting sensor_registered to room {room}")
+    # Sanitize sensor data to ensure no ObjectId fields
+    clean_sensor = sanitize_for_json(sensor)
     await sio.emit('sensor_registered', {
         'type': 'sensor_registered',
-        'sensor': sensor
+        'sensor': clean_sensor
     }, room=room)
 
 
 async def broadcast_to_all(event_name: str, data: Dict[str, Any]):
     """Broadcast to all connected clients (for super admin notifications)."""
-    await sio.emit(event_name, data)
+    # Sanitize data to ensure no ObjectId fields
+    clean_data = sanitize_for_json(data)
+    await sio.emit(event_name, clean_data)
 
 
 def get_connected_count(tenant_id: Optional[str] = None) -> int:
