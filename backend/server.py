@@ -1908,12 +1908,34 @@ async def startup_event():
     init_clients_buildings_service(db)
     logger.info("Clients & Buildings service initialized")
     
+    # Socket.IO broadcast callback for MQTT service
+    async def socketio_broadcast(tenant_id: str, message: dict):
+        """Broadcast message via Socket.IO instead of WebSocket"""
+        msg_type = message.get('type', '')
+        
+        if msg_type == 'new_radar_event' or msg_type == 'new_event':
+            await broadcast_new_event(tenant_id, message.get('event', message))
+        elif msg_type == 'presence_update':
+            await broadcast_presence_update(tenant_id, message)
+        elif msg_type == 'sensor_status':
+            await broadcast_sensor_status(
+                tenant_id,
+                message.get('sensor_id', ''),
+                message.get('status', ''),
+                message.get('last_seen', '')
+            )
+        elif msg_type == 'sensor_registered':
+            await broadcast_sensor_registered(tenant_id, message.get('sensor', message))
+        else:
+            # Fallback: broadcast as generic event
+            await broadcast_new_event(tenant_id, message)
+    
     if MQTT_ENABLED:
         try:
-            # Initialize main MQTT service for events
+            # Initialize main MQTT service for events with Socket.IO broadcast
             await init_mqtt_service(
                 db=db,
-                broadcast_callback=manager.broadcast_to_tenant,
+                broadcast_callback=socketio_broadcast,  # Use Socket.IO instead of WebSocket
                 broker_host=MQTT_BROKER_HOST,
                 broker_port=MQTT_BROKER_PORT
             )
@@ -1925,7 +1947,7 @@ async def startup_event():
                 broker_host=MQTT_BROKER_HOST,
                 broker_port=MQTT_BROKER_PORT
             )
-            config_svc.set_broadcast_callback(manager.broadcast_to_tenant)
+            config_svc.set_broadcast_callback(socketio_broadcast)  # Use Socket.IO
             logger.info("Vayyar Config service initialized")
             
         except Exception as e:
