@@ -24,22 +24,17 @@ export function WebSocketProvider({ children }) {
     });
   }, []);
 
-  // Fetch latest events AND presence state
+  // Fetch latest events only (no presence state polling to avoid flickering)
   const fetchLatestEvents = useCallback(async () => {
     if (!isAuthenticated || !isPageVisibleRef.current) return;
     
     try {
       const token = localStorage.getItem('access_token');
       
-      // Fetch both events and presence state in parallel
-      const [eventsResponse, presenceResponse] = await Promise.all([
-        fetch(`${BACKEND_URL}/api/events?limit=30`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(`${BACKEND_URL}/api/presence/sensors`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-      ]);
+      // Only fetch events - no presence state to avoid constant re-renders
+      const eventsResponse = await fetch(`${BACKEND_URL}/api/events?limit=30`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       
       // Process events
       if (eventsResponse.ok) {
@@ -66,41 +61,6 @@ export function WebSocketProvider({ children }) {
           
           lastEventIdRef.current = latestId;
         }
-      }
-      
-      // Process presence state - only update if changed
-      if (presenceResponse.ok) {
-        const presenceData = await presenceResponse.json();
-        const newPresenceState = presenceData.sensors || {};
-        
-        // Only update state and notify if there are actual changes
-        setPresenceState(prev => {
-          // Check if anything changed
-          const prevKeys = Object.keys(prev);
-          const newKeys = Object.keys(newPresenceState);
-          
-          if (prevKeys.length !== newKeys.length) {
-            notifyListeners({ type: 'presence_state_update', sensors: newPresenceState });
-            return newPresenceState;
-          }
-          
-          // Check for any changes in presence values
-          let hasChanges = false;
-          for (const key of newKeys) {
-            if (prev[key]?.presence_detected !== newPresenceState[key]?.presence_detected ||
-                prev[key]?.is_online !== newPresenceState[key]?.is_online) {
-              hasChanges = true;
-              break;
-            }
-          }
-          
-          if (hasChanges) {
-            notifyListeners({ type: 'presence_state_update', sensors: newPresenceState });
-            return newPresenceState;
-          }
-          
-          return prev; // No changes, keep previous state to avoid re-render
-        });
       }
       
       setConnected(true);
