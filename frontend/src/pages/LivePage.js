@@ -326,7 +326,7 @@ export function LivePage() {
           
           <div>
             <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
-              État des radars
+              Présences en direct
               <Badge variant="outline" className={cn(
                 "text-xs font-normal",
                 connected ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"
@@ -339,7 +339,10 @@ export function LivePage() {
               </Badge>
             </h1>
             <p className="text-xs text-muted-foreground">
-              {stats.online}/{stats.total} en ligne
+              {radarCards.length === 0 
+                ? 'En attente d\'événements temps réel...'
+                : `${stats.online}/${stats.total} radar${stats.total > 1 ? 's' : ''} avec présence`
+              }
               {stats.falls > 0 && (
                 <span className="text-red-500 font-medium ml-2">
                   • {stats.falls} chute{stats.falls > 1 ? 's' : ''}
