@@ -936,6 +936,51 @@ function UserDetailSheet({ user, open, onOpenChange, clientId, onRoleChange, onS
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Reset Password Dialog */}
+        <Dialog open={showResetPasswordDialog} onOpenChange={setShowResetPasswordDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Réinitialiser le mot de passe</DialogTitle>
+              <DialogDescription>
+                Définissez un nouveau mot de passe pour {user.user_full_name || user.user_email}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">Nouveau mot de passe</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="Minimum 6 caractères"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  data-testid="new-password-input"
+                />
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowResetPasswordDialog(false);
+                  setNewPassword('');
+                }}
+              >
+                Annuler
+              </Button>
+              <Button 
+                onClick={handleResetPassword}
+                disabled={resettingPassword || !newPassword}
+                data-testid="confirm-reset-password-btn"
+              >
+                {resettingPassword ? 'Réinitialisation...' : 'Réinitialiser'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </SheetContent>
     </Sheet>
   );
