@@ -83,6 +83,11 @@ from vayyar_config_schema import (
 from clients_buildings_service import init_clients_buildings_service, get_clients_buildings_service
 from clients_buildings_routes import create_clients_buildings_router
 
+# RBAC imports
+from rbac_service import init_rbac_service, get_rbac_service, RBACService
+from rbac_routes import create_rbac_routes
+from rbac_models import ClientRole, PermissionEffect, ScopeType, AccessLevel
+
 # MongoDB connection
 mongo_url = os.environ.get('MONGO_URL')
 if not mongo_url:
