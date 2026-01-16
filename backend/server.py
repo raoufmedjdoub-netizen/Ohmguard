@@ -866,15 +866,15 @@ async def list_events(
             # Batch fetch all sensors
             sensors = await db.sensors.find(
                 {"id": {"$in": sensor_ids}},
-                {"_id": 0, "id": 1, "clientId": 1, "buildingId": 1, "floorId": 1, "roomId": 1, "roomSpaceId": 1}
+                {"_id": 0, "id": 1, "client_id": 1, "building_id": 1, "floor_id": 1, "room_id": 1, "room_space_id": 1}
             ).to_list(len(sensor_ids))
             sensor_map = {s["id"]: s for s in sensors}
             
-            # Collect all entity IDs
-            client_ids = list(set(s.get("clientId") for s in sensors if s.get("clientId")))
-            building_ids = list(set(s.get("buildingId") for s in sensors if s.get("buildingId")))
-            floor_ids = list(set(s.get("floorId") for s in sensors if s.get("floorId")))
-            room_ids = list(set(s.get("roomId") for s in sensors if s.get("roomId")))
+            # Collect all entity IDs (use snake_case field names)
+            client_ids = list(set(s.get("client_id") for s in sensors if s.get("client_id")))
+            building_ids = list(set(s.get("building_id") for s in sensors if s.get("building_id")))
+            floor_ids = list(set(s.get("floor_id") for s in sensors if s.get("floor_id")))
+            room_ids = list(set(s.get("room_id") for s in sensors if s.get("room_id")))
             
             # Batch fetch all related entities
             clients = await db.clients.find({"id": {"$in": client_ids}}, {"_id": 0, "id": 1, "name": 1}).to_list(len(client_ids)) if client_ids else []
