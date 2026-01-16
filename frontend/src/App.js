@@ -18,7 +18,7 @@ import { EventDetailPage } from '@/pages/EventDetailPage';
 import { RadarsPage } from '@/pages/RadarsPage';
 import { RadarConfigPage } from '@/pages/RadarConfigPage';
 import { RulesPage } from '@/pages/RulesPage';
-import { UsersPage } from '@/pages/UsersPage';
+import UsersPage from '@/pages/UsersPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import { SimulatorPage } from '@/pages/SimulatorPage';
 import { PresenceSimulatorPage } from '@/pages/PresenceSimulatorPage';
