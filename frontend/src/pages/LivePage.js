@@ -165,15 +165,26 @@ export function LivePage() {
         const newEvent = message.event;
         if (!newEvent) return;
         
+        const sensorId = newEvent.sensor_id || newEvent.device_id;
+        
+        // Si presence_detected === false, SUPPRIMER la carte du radar
         if (newEvent.type === 'PRESENCE' && newEvent.presence_detected === false) {
+          setEvents(prev => prev.filter(e => {
+            const eventSensorId = e.sensor_id || e.device_id;
+            // Supprimer tous les événements de ce sensor
+            return eventSensorId !== sensorId;
+          }));
           return;
         }
         
+        // Sinon, ajouter/mettre à jour l'événement
         setEvents(prev => {
-          if (prev.some(e => e.id === newEvent.id)) {
-            return prev;
-          }
-          return [newEvent, ...prev.slice(0, 99)];
+          // Supprimer les anciens événements du même sensor pour éviter les doublons
+          const filtered = prev.filter(e => {
+            const eventSensorId = e.sensor_id || e.device_id;
+            return eventSensorId !== sensorId;
+          });
+          return [newEvent, ...filtered.slice(0, 99)];
         });
         
         setNewEventIds(prev => new Set([...prev, newEvent.id]));
