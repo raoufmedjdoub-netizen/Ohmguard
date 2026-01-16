@@ -392,20 +392,42 @@ export function LivePage() {
         )}
       </div>
 
-      {/* Grille compacte de radars */}
+      {/* Grille compacte de radars - TEMPS RÉEL UNIQUEMENT */}
       <Card>
         <CardHeader className="border-b border-border py-2 px-4">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
             <Radio className="h-4 w-4 text-primary" />
-            Radars ({radarCards.length})
+            Radars en présence ({radarCards.length})
+            {connected && (
+              <span className="ml-2 flex items-center gap-1 text-xs text-green-600 font-normal">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+                </span>
+                temps réel
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
         
         <CardContent className="p-3">
           {radarCards.length === 0 ? (
-            <div className="py-8 text-center">
-              <Radio className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
-              <p className="text-sm text-muted-foreground">Aucun radar</p>
+            <div className="py-12 text-center">
+              <div className="relative mx-auto w-12 h-12 mb-3">
+                <Radio className="h-12 w-12 text-muted-foreground/20" />
+                {connected && (
+                  <span className="absolute top-0 right-0 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                  </span>
+                )}
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">
+                {connected ? 'En attente de présence...' : 'Connexion en cours...'}
+              </p>
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                Les radars apparaîtront dès détection de présence
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
