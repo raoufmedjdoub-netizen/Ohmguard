@@ -176,7 +176,15 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
   - Création d'un fichier `.dockerignore` pour exclure les fichiers `.env` de l'image Docker
 
 ### P1 - High Priority (Next)
-- [ ] Full RBAC with granular permissions
+- [x] **Module RBAC complet (January 16, 2026)** - Système d'administration des utilisateurs avec:
+  - Gestion des rôles (CLIENT_ADMIN, SUPERVISOR, OPERATOR, VIEWER)
+  - 36 permissions organisées par catégories (Pages, Events, Devices, Admin, System)
+  - Permissions par défaut selon le rôle + surcharges par utilisateur (ALLOW/DENY)
+  - Périmètres de localisation (Client > Building > Floor > Room > RoomSpace)
+  - Héritage automatique des périmètres (Building → tous les étages/chambres enfants)
+  - API complète: `/api/clients/{id}/users`, `/api/client-users/{id}/permissions`, `/api/client-users/{id}/scopes`
+  - Page /users avec onglets Profil, Permissions, Périmètres, Aperçu
+  - Journal d'audit pour les changements RBAC
 - [ ] Email integration (currently mocked)
 - [ ] Webhook delivery with HMAC signature
 - [ ] Escalation automation
