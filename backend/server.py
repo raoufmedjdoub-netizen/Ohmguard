@@ -708,6 +708,102 @@ async def rotate_sensor_key(sensor_id: str, current_user: UserInDB = Depends(get
     await log_audit(current_user.id, sensor['tenant_id'], "rotate_key", "sensor", sensor_id)
     return {"api_key": new_key}
 
+# ==================== RADAR ASSIGNMENT ENDPOINTS ====================
+
+class RadarAssignment(BaseModel):
+    client_id: str
+    building_id: Optional[str] = None
+    floor_id: Optional[str] = None
+    room_id: Optional[str] = None
+    room_space_id: Optional[str] = None
+
+@api_router.post("/radars/{radar_id}/assign")
+async def assign_radar(radar_id: str, assignment: RadarAssignment, current_user: UserInDB = Depends(get_current_user)):
+    """Assign a radar to a location (client/building/floor/room/space)"""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    
+    sensor = await db.sensors.find_one({"id": radar_id}, {"_id": 0})
+    if not sensor:
+        raise HTTPException(status_code=404, detail="Radar not found")
+    
+    if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != sensor['tenant_id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Verify client exists
+    client = await db.clients.find_one({"id": assignment.client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Update sensor with assignment
+    update_data = {
+        "client_id": assignment.client_id,
+        "building_id": assignment.building_id,
+        "floor_id": assignment.floor_id,
+        "room_id": assignment.room_id,
+        "room_space_id": assignment.room_space_id,
+        "assignment_status": "ASSIGNED"
+    }
+    
+    await db.sensors.update_one({"id": radar_id}, {"$set": update_data})
+    
+    await log_audit(current_user.id, sensor['tenant_id'], "assign", "sensor", radar_id)
+    
+    updated = await db.sensors.find_one({"id": radar_id}, {"_id": 0})
+    return {"status": "success", "message": "Radar assigned successfully", "sensor": updated}
+
+@api_router.post("/radars/{radar_id}/unassign")
+async def unassign_radar(radar_id: str, current_user: UserInDB = Depends(get_current_user)):
+    """Unassign a radar from its current location"""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    
+    sensor = await db.sensors.find_one({"id": radar_id}, {"_id": 0})
+    if not sensor:
+        raise HTTPException(status_code=404, detail="Radar not found")
+    
+    if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != sensor['tenant_id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Clear assignment
+    update_data = {
+        "client_id": None,
+        "building_id": None,
+        "floor_id": None,
+        "room_id": None,
+        "room_space_id": None,
+        "assignment_status": "PENDING"
+    }
+    
+    await db.sensors.update_one({"id": radar_id}, {"$set": update_data})
+    
+    await log_audit(current_user.id, sensor['tenant_id'], "unassign", "sensor", radar_id)
+    
+    return {"status": "success", "message": "Radar unassigned successfully"}
+
+@api_router.delete("/sensors/{sensor_id}")
+async def delete_sensor(sensor_id: str, current_user: UserInDB = Depends(get_current_user)):
+    """Delete a sensor/radar from the system"""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    
+    sensor = await db.sensors.find_one({"id": sensor_id}, {"_id": 0})
+    if not sensor:
+        raise HTTPException(status_code=404, detail="Sensor not found")
+    
+    if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != sensor['tenant_id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Delete the sensor
+    await db.sensors.delete_one({"id": sensor_id})
+    
+    # Also delete related events
+    deleted_events = await db.events.delete_many({"sensor_id": sensor_id})
+    
+    await log_audit(current_user.id, sensor['tenant_id'], "delete", "sensor", sensor_id)
+    
+    return {
+        "status": "success", 
+        "message": f"Sensor deleted successfully. {deleted_events.deleted_count} related events also deleted."
+    }
+
 # ==================== SENSOR DEVICE API ====================
 
 @api_router.post("/device/heartbeat")
