@@ -655,6 +655,27 @@ function UserDetailSheet({ user, open, onOpenChange, clientId, onRoleChange, onS
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      toast.error('Le mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+    
+    setResettingPassword(true);
+    try {
+      await api.post(`/client-users/${user.id}/reset-password`, {
+        new_password: newPassword
+      });
+      toast.success('Mot de passe réinitialisé avec succès');
+      setShowResetPasswordDialog(false);
+      setNewPassword('');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la réinitialisation');
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
   const groupedPermissions = permissions.reduce((acc, perm) => {
     const group = perm.group || 'Autre';
     if (!acc[group]) acc[group] = [];
