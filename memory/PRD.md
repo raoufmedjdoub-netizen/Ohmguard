@@ -7,7 +7,7 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - **Frontend:** React (JavaScript) + Tailwind CSS + shadcn/ui
 - **Backend:** FastAPI (Python) + Motor (async MongoDB)
 - **Database:** MongoDB
-- **Real-time:** WebSocket (native FastAPI) + MQTT (aiomqtt)
+- **Real-time:** **Socket.IO** (`python-socketio` backend, `socket.io-client` frontend) + MQTT (aiomqtt)
 - **Auth:** JWT + Refresh tokens
 - **Theme:** Turquoise/Blue color scheme
 - **Sensors:** Vayyar Radars only (MQTT integration)
