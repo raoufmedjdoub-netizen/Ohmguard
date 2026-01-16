@@ -92,7 +92,10 @@ export const sensorsAPI = {
   get: (id) => api.get(`/sensors/${id}`),
   create: (data) => api.post('/sensors', data),
   update: (id, data) => api.patch(`/sensors/${id}`, data),
-  rotateKey: (id) => api.post(`/sensors/${id}/rotate-key`)
+  rotateKey: (id) => api.post(`/sensors/${id}/rotate-key`),
+  delete: (id) => api.delete(`/sensors/${id}`),
+  assign: (id, data) => api.post(`/radars/${id}/assign`, data),
+  unassign: (id) => api.post(`/radars/${id}/unassign`)
 };
 
 // Events API
