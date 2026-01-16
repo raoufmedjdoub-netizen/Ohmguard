@@ -760,6 +760,19 @@ function UserDetailSheet({ user, open, onOpenChange, clientId, onRoleChange, onS
                   }) : 'N/A'}
                 </p>
               </div>
+              
+              {/* Reset Password Button */}
+              <div className="pt-4 border-t">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setShowResetPasswordDialog(true)}
+                  data-testid="reset-password-btn"
+                >
+                  <Key className="h-4 w-4 mr-2" />
+                  Réinitialiser le mot de passe
+                </Button>
+              </div>
             </div>
           </TabsContent>
 
