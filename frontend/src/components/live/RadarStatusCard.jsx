@@ -5,6 +5,7 @@
  * ┌────────────────────┐
  * │ ● VC0001           │
  * │   Online | Présence│
+ * │   Il y a 2 min     │
  * └────────────────────┘
  */
 import React, { memo } from 'react';
@@ -12,31 +13,54 @@ import { cn } from '@/lib/utils';
 
 // Types d'événements avec couleurs
 const EVENT_TYPE_CONFIG = {
-  FALL: { label: 'Chute', color: 'text-red-600', dot: 'bg-red-500' },
-  PRE_FALL: { label: 'Pré-chute', color: 'text-orange-600', dot: 'bg-orange-500' },
-  PRESENCE: { label: 'Présence', color: 'text-emerald-600', dot: 'bg-emerald-500' },
-  INACTIVITY: { label: 'Inactivité', color: 'text-amber-600', dot: 'bg-amber-500' },
-  UNKNOWN: { label: 'Inconnu', color: 'text-slate-500', dot: 'bg-slate-400' }
+  FALL: { label: 'Chute', color: 'text-red-600' },
+  PRE_FALL: { label: 'Pré-chute', color: 'text-orange-600' },
+  PRESENCE: { label: 'Présence', color: 'text-emerald-600' },
+  INACTIVITY: { label: 'Inactivité', color: 'text-amber-600' },
+  UNKNOWN: { label: 'Inconnu', color: 'text-slate-500' }
 };
+
+// Formater le temps relatif
+function formatRelativeTime(timestamp) {
+  if (!timestamp) return null;
+  
+  const now = new Date();
+  const date = new Date(timestamp);
+  const diffMs = now - date;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+  
+  if (diffSec < 60) return `${diffSec}s`;
+  if (diffMin < 60) return `${diffMin}min`;
+  if (diffHour < 24) return `${diffHour}h`;
+  return `${diffDay}j`;
+}
 
 export const RadarStatusCard = memo(function RadarStatusCard({
   radarName,
   isOnline = true,
   eventType = 'PRESENCE',
+  presenceActive = false,
+  lastEventTime = null,
   isNew = false
 }) {
   const typeConfig = EVENT_TYPE_CONFIG[eventType?.toUpperCase()] || EVENT_TYPE_CONFIG.UNKNOWN;
+  const relativeTime = formatRelativeTime(lastEventTime);
   
   return (
     <div
       className={cn(
-        "p-2 rounded-md shadow-sm border",
-        "bg-white dark:bg-slate-900",
-        "transition-opacity duration-300",
-        isNew && "animate-pulse"
+        "p-2 rounded-md shadow-sm border transition-all duration-300",
+        // Fond bleu clair si présence active
+        presenceActive 
+          ? "bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800" 
+          : "bg-white dark:bg-slate-900 border-border",
+        isNew && "animate-pulse ring-2 ring-blue-400"
       )}
       role="status"
-      aria-label={`Radar ${radarName} ${isOnline ? 'en ligne' : 'hors ligne'}`}
+      aria-label={`Radar ${radarName} ${isOnline ? 'en ligne' : 'hors ligne'}${presenceActive ? ', présence active' : ''}`}
       data-testid={`radar-card-${radarName}`}
     >
       {/* Ligne 1: Indicateur + Nom */}
@@ -48,7 +72,10 @@ export const RadarStatusCard = memo(function RadarStatusCard({
           )}
           aria-hidden="true"
         />
-        <span className="font-medium text-sm truncate">
+        <span className={cn(
+          "font-medium text-sm truncate",
+          presenceActive && "text-blue-700 dark:text-blue-300"
+        )}>
           {radarName || 'N/A'}
         </span>
       </div>
@@ -62,10 +89,19 @@ export const RadarStatusCard = memo(function RadarStatusCard({
           {isOnline ? 'Online' : 'Offline'}
         </span>
         <span className="text-muted-foreground text-xs">|</span>
-        <span className={cn("text-xs", typeConfig.color)}>
+        <span className={cn("text-xs", presenceActive ? "text-blue-600 dark:text-blue-400 font-medium" : typeConfig.color)}>
           {typeConfig.label}
         </span>
       </div>
+      
+      {/* Ligne 3: Timestamp */}
+      {relativeTime && (
+        <div className="mt-1 ml-4">
+          <span className="text-[10px] text-muted-foreground">
+            {relativeTime}
+          </span>
+        </div>
+      )}
     </div>
   );
 });
