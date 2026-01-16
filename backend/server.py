@@ -893,10 +893,11 @@ async def list_events(
                 sensor_id = event.get("sensor_id")
                 if sensor_id and sensor_id in sensor_map:
                     sensor = sensor_map[sensor_id]
-                    client = client_map.get(sensor.get("clientId"), {})
-                    building = building_map.get(sensor.get("buildingId"), {})
-                    floor = floor_map.get(sensor.get("floorId"), {})
-                    room = room_map.get(sensor.get("roomId"), {})
+                    # Use snake_case field names
+                    client = client_map.get(sensor.get("client_id"), {})
+                    building = building_map.get(sensor.get("building_id"), {})
+                    floor = floor_map.get(sensor.get("floor_id"), {})
+                    room = room_map.get(sensor.get("room_id"), {})
                     
                     # Build location path
                     path_parts = []
