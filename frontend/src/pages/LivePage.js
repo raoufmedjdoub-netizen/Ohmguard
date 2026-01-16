@@ -411,12 +411,20 @@ export function LivePage() {
                                   event.sensor_id?.substring(0, 8) || 
                                   'N/A';
                 
+                // Présence active si type PRESENCE et presence_detected === true
+                const presenceActive = event.type === 'PRESENCE' && event.presence_detected === true;
+                
+                // Timestamp du dernier événement
+                const lastEventTime = event.timestamp || event.occurred_at;
+                
                 return (
                   <RadarStatusCard
                     key={event.sensor_id || event.id}
                     radarName={radarName}
                     isOnline={radarStatus.deviceOnline !== false}
                     eventType={event.type}
+                    presenceActive={presenceActive}
+                    lastEventTime={lastEventTime}
                     isNew={newEventIds.has(event.id)}
                   />
                 );
