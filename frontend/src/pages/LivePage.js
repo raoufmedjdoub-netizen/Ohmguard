@@ -136,7 +136,19 @@ export function LivePage() {
         return;
       }
       
+      // Mise à jour de l'état de présence - gérer la disparition des cartes
       if (message.type === 'presence_state_update' || message.type === 'presence_update') {
+        const { sensor_id, device_id, presence_detected, presenceDetected } = message;
+        const sensorId = sensor_id || device_id;
+        const hasPresence = presence_detected ?? presenceDetected;
+        
+        if (sensorId && hasPresence === false) {
+          // Présence disparue - supprimer la carte
+          setEvents(prev => prev.filter(e => {
+            const eventSensorId = e.sensor_id || e.device_id;
+            return eventSensorId !== sensorId;
+          }));
+        }
         return;
       }
       
