@@ -1052,6 +1052,8 @@ async def list_events(
         for event in events:
             event["location_path"] = None
             event["location"] = None
+            event["radar_name"] = None
+            event["serial_product"] = None
     
     return events
 
