@@ -354,6 +354,9 @@ class MQTTService:
         - Presence detection status
         - Active regions extraction
         - Target count
+        
+        IMPORTANT: Only radars with assigned locations (room_id set) will have their
+        events recorded in the database and displayed on the Live page.
         """
         sensor = await self._get_sensor_by_device_id(device_id)
         
@@ -363,8 +366,16 @@ class MQTTService:
             if not sensor:
                 return
         
+        # CHECK: Only record events for ASSIGNED radars (those with a room location)
+        # Radars without assignment will still update their status but won't create events
+        is_assigned = (
+            sensor.get('assignment_status') == 'ASSIGNED' or 
+            sensor.get('room_id') is not None or
+            sensor.get('room_space_id') is not None
+        )
+        
         # Log the raw payload for debugging
-        logger.info(f"Event from {device_id}: type={payload.get('type')}, payload_keys={list(payload.get('payload', {}).keys()) if isinstance(payload.get('payload'), dict) else 'N/A'}")
+        logger.info(f"Event from {device_id}: type={payload.get('type')}, assigned={is_assigned}, payload_keys={list(payload.get('payload', {}).keys()) if isinstance(payload.get('payload'), dict) else 'N/A'}")
         
         event_type_code = payload.get("type", 0)
         event_payload = payload.get("payload", {})
