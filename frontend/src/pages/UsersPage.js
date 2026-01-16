@@ -13,7 +13,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Plus, Search, Shield, MapPin, Eye, 
-  Check, X, UserPlus, Trash2, RefreshCw
+  Check, X, UserPlus, Trash2, RefreshCw, Key
 } from 'lucide-react';
 import { toast } from 'sonner';
 
