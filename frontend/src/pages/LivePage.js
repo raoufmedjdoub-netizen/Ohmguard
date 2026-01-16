@@ -308,31 +308,44 @@ export function LivePage() {
         return false;
       }
       
-      // Client filter
+      // Client filter - only apply if a specific client is selected
       if (selectedClient !== 'all') {
-        if (event.location?.client_name) {
-          const client = clients.find(c => c.id === selectedClient);
-          if (client && event.location.client_name !== client.name) return false;
-        } else if (event.location_path) {
-          const client = clients.find(c => c.id === selectedClient);
-          if (client && !event.location_path.includes(client.name)) return false;
-        } else {
-          return false;
+        const client = clients.find(c => c.id === selectedClient);
+        if (client) {
+          // Check if event belongs to this client
+          const eventClientName = event.location?.client_name;
+          const eventPath = event.location_path;
+          
+          if (eventClientName) {
+            if (eventClientName !== client.name) return false;
+          } else if (eventPath) {
+            if (!eventPath.includes(client.name)) return false;
+          } else {
+            // Event has no location - exclude from filtered view
+            return false;
+          }
         }
       }
+      // If selectedClient is 'all', show ALL events including those without location
       
-      // Building filter
+      // Building filter - only apply if a specific building is selected
       if (selectedBuilding !== 'all') {
-        if (event.location?.building_name) {
-          const building = buildings.find(b => b.id === selectedBuilding);
-          if (building && event.location.building_name !== building.name) return false;
-        } else if (event.location_path) {
-          const building = buildings.find(b => b.id === selectedBuilding);
-          if (building && !event.location_path.includes(building.name)) return false;
-        } else {
-          return false;
+        const building = buildings.find(b => b.id === selectedBuilding);
+        if (building) {
+          const eventBuildingName = event.location?.building_name;
+          const eventPath = event.location_path;
+          
+          if (eventBuildingName) {
+            if (eventBuildingName !== building.name) return false;
+          } else if (eventPath) {
+            if (!eventPath.includes(building.name)) return false;
+          } else {
+            // Event has no building info - exclude from filtered view
+            return false;
+          }
         }
       }
+      // If selectedBuilding is 'all', show ALL events including those without building
       
       return true;
     });
