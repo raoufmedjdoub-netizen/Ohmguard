@@ -36,10 +36,13 @@ def sanitize_for_json(obj):
     else:
         return obj
 
-# Create Socket.IO server with proper CORS for production
+# Create Socket.IO server
+# IMPORTANT: CORS is handled by FastAPI CORSMiddleware, so we set cors_allowed_origins=[]
+# to avoid duplicate CORS headers which cause browser errors.
+# In production, the Kubernetes ingress also handles CORS.
 sio = socketio.AsyncServer(
     async_mode='asgi',
-    cors_allowed_origins='*',  # Allow all origins (production uses ingress for security)
+    cors_allowed_origins=[],  # Disable Socket.IO CORS - let FastAPI handle it
     logger=False,
     engineio_logger=False,
     ping_timeout=60,
