@@ -938,8 +938,38 @@ async def list_events(
     current_user: UserInDB = Depends(get_current_user)
 ):
     query = {}
-    if current_user.role != "SUPER_ADMIN":
-        query["tenant_id"] = current_user.tenant_id
+    
+    # RBAC-aware filtering: check if user has a client association via tenant_id
+    # tenant_id in user might reference a client_id in the new Clients module
+    user_client_id = current_user.tenant_id
+    
+    if current_user.role == "SUPER_ADMIN":
+        # Super admin sees everything - no filter
+        pass
+    elif current_user.role in ["TENANT_ADMIN", "SUPERVISOR", "OPERATOR", "VIEWER"]:
+        # For RBAC users: filter by sensors assigned to their client
+        # First, check if tenant_id is actually a client_id (new model)
+        client_exists = await db.clients.find_one({"id": user_client_id})
+        
+        if client_exists:
+            # User's tenant_id is a client_id - filter by sensors assigned to this client
+            client_sensors = await db.sensors.find(
+                {"client_id": user_client_id},
+                {"_id": 0, "id": 1}
+            ).to_list(10000)
+            client_sensor_ids = [s["id"] for s in client_sensors]
+            
+            if client_sensor_ids:
+                query["sensor_id"] = {"$in": client_sensor_ids}
+            else:
+                # No sensors assigned to this client
+                return []
+        else:
+            # Legacy mode: filter by tenant_id directly
+            query["tenant_id"] = user_client_id
+    else:
+        # Default: filter by tenant_id
+        query["tenant_id"] = user_client_id
     
     if site_id:
         query["site_id"] = site_id
