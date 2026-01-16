@@ -30,10 +30,38 @@ def create_clients_buildings_router(get_current_user, check_permission, db, pwd_
     
     @router.get("/clients")
     async def list_clients(current_user = Depends(get_current_user)):
-        """List all clients (SUPER_ADMIN only)"""
-        check_permission(current_user, ["SUPER_ADMIN"])
+        """List all clients (filtered by user access)"""
         service = get_service()
-        return await service.list_clients()
+        
+        if current_user.role == "SUPER_ADMIN":
+            # Super admin sees all clients
+            return await service.list_clients()
+        else:
+            # For other users, return only their associated clients
+            # First check if user has client associations via client_users
+            client_users = await db.client_users.find(
+                {"user_id": current_user.id, "is_active": True},
+                {"_id": 0, "client_id": 1}
+            ).to_list(100)
+            
+            client_ids = [cu["client_id"] for cu in client_users]
+            
+            # Also include the user's tenant_id if it's a valid client
+            if current_user.tenant_id:
+                client_ids.append(current_user.tenant_id)
+            
+            client_ids = list(set(client_ids))  # Remove duplicates
+            
+            if not client_ids:
+                return []
+            
+            # Fetch the clients
+            clients = await db.clients.find(
+                {"id": {"$in": client_ids}},
+                {"_id": 0}
+            ).to_list(100)
+            
+            return clients
     
     @router.post("/clients")
     async def create_client(data: ClientCreate, current_user = Depends(get_current_user)):
