@@ -1491,6 +1491,52 @@ async def health_check():
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
+@api_router.get("/health/debug")
+async def health_debug():
+    """
+    Detailed health check with environment diagnostics.
+    Useful for debugging production deployment issues.
+    """
+    # Get safe MongoDB URL (hide credentials)
+    mongo_url = os.environ.get('MONGO_URL', 'NOT_SET')
+    if mongo_url != 'NOT_SET' and '@' in mongo_url:
+        safe_mongo = f"...@{mongo_url.split('@')[-1]}"
+    else:
+        safe_mongo = mongo_url[:30] + '...' if len(mongo_url) > 30 else mongo_url
+    
+    # Check DB connection
+    try:
+        await client.admin.command('ping')
+        db_status = "connected"
+        db_name_actual = db.name
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+        db_name_actual = "unknown"
+    
+    # Get Socket.IO status
+    from socketio_service import get_connected_count
+    socketio_clients = get_connected_count()
+    
+    return {
+        "status": "ok" if db_status == "connected" else "degraded",
+        "environment": {
+            "is_production": is_production,
+            "kubernetes_detected": os.environ.get('KUBERNETES_SERVICE_HOST') is not None,
+            "mongo_url_source": "system_env" if _system_mongo_url else "dotenv_file",
+            "mongo_url_preview": safe_mongo,
+            "db_name": db_name_actual,
+        },
+        "database": {
+            "status": db_status,
+            "is_atlas": "mongodb+srv" in (os.environ.get('MONGO_URL') or ''),
+        },
+        "socketio": {
+            "connected_clients": socketio_clients,
+            "mount_path": "/api/socket.io"
+        },
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
 # ==================== REAL-TIME PRESENCE STATE ====================
 
 @api_router.get("/presence/sensors")
