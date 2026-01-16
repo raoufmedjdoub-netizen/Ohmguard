@@ -959,10 +959,10 @@ async def list_events(
         sensor_ids = list(set(e.get("sensor_id") for e in events if e.get("sensor_id")))
         
         if sensor_ids:
-            # Batch fetch all sensors
+            # Batch fetch all sensors with full info (including name and serial)
             sensors = await db.sensors.find(
                 {"id": {"$in": sensor_ids}},
-                {"_id": 0, "id": 1, "client_id": 1, "building_id": 1, "floor_id": 1, "room_id": 1, "room_space_id": 1}
+                {"_id": 0, "id": 1, "name": 1, "serial_product": 1, "client_id": 1, "building_id": 1, "floor_id": 1, "room_id": 1, "room_space_id": 1}
             ).to_list(len(sensor_ids))
             sensor_map = {s["id"]: s for s in sensors}
             
