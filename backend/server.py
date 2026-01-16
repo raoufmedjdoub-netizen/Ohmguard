@@ -2219,6 +2219,14 @@ clients_buildings_router = create_clients_buildings_router(
 )
 api_router.include_router(clients_buildings_router)
 
+# Create and include RBAC router
+rbac_router = create_rbac_routes(
+    get_current_user=get_current_user,
+    check_permission=check_permission,
+    db=db
+)
+app.include_router(rbac_router)
+
 app.include_router(api_router)
 
 # Mount Socket.IO at /api/socket.io path
