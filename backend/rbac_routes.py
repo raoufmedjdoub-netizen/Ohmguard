@@ -303,6 +303,54 @@ def create_rbac_routes(get_current_user, check_permission, db):
         
         return {"status": "success", "message": "User removed from client"}
     
+    @router.post("/client-users/{client_user_id}/reset-password")
+    async def reset_user_password(
+        client_user_id: str,
+        request: ResetPasswordRequest,
+        current_user = Depends(get_current_user)
+    ):
+        """Reset a user's password (admin only)"""
+        rbac = get_rbac_service()
+        
+        client_user = await rbac.get_client_user_by_id(client_user_id)
+        if not client_user:
+            raise HTTPException(status_code=404, detail="Client user not found")
+        
+        # Check permission - require USER_EDIT permission
+        has_perm = await rbac.has_permission(
+            current_user.id, client_user["client_id"], "USER_EDIT"
+        )
+        if not has_perm and current_user.role != "SUPER_ADMIN":
+            raise HTTPException(status_code=403, detail="Permission denied")
+        
+        # Hash the new password
+        from passlib.context import CryptContext
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        
+        # Update the user's password
+        result = await db.users.update_one(
+            {"id": client_user["user_id"]},
+            {"$set": {"hashed_password": pwd_context.hash(request.new_password)}}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="User not found in database")
+        
+        # Log the action
+        from datetime import datetime, timezone
+        from rbac_models import RBACAuditLog, RBACActionType
+        log = RBACAuditLog(
+            action=RBACActionType.ROLE_CHANGE,  # We could add a PASSWORD_RESET action type
+            target_user_id=client_user["user_id"],
+            target_client_user_id=client_user_id,
+            performed_by_user_id=current_user.id,
+            client_id=client_user["client_id"],
+            details={"action": "password_reset"}
+        )
+        await db.rbac_audit_logs.insert_one(log.model_dump())
+        
+        return {"status": "success", "message": "Password reset successfully"}
+    
     # -------------------------------------------------------------------------
     # PERMISSIONS
     # -------------------------------------------------------------------------
