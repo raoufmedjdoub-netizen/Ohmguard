@@ -2303,6 +2303,11 @@ async def startup_event():
     init_clients_buildings_service(db)
     logger.info("Clients & Buildings service initialized")
     
+    # Initialize RBAC service
+    rbac_service = init_rbac_service(db)
+    await rbac_service.init_permissions_catalog()
+    logger.info("RBAC service initialized with permissions catalog")
+    
     # Socket.IO broadcast callback for MQTT service
     async def socketio_broadcast(tenant_id: str, message: dict):
         """Broadcast message via Socket.IO instead of WebSocket"""
