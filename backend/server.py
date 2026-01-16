@@ -1538,6 +1538,68 @@ async def health_debug():
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
+
+# ==================== ADMIN DATABASE OPERATIONS ====================
+
+@api_router.delete("/admin/events/clear")
+async def clear_all_events(current_user: UserInDB = Depends(get_current_user)):
+    """
+    Clear all events from the database.
+    Only SUPER_ADMIN can perform this operation.
+    Sensors, users, clients, buildings, etc. are preserved.
+    """
+    if current_user.role != "SUPER_ADMIN":
+        raise HTTPException(status_code=403, detail="Only SUPER_ADMIN can clear events")
+    
+    # Count events before deletion
+    event_count = await db.events.count_documents({})
+    
+    # Delete all events
+    result = await db.events.delete_many({})
+    
+    logger.info(f"ADMIN: Cleared {result.deleted_count} events from database by {current_user.email}")
+    
+    return {
+        "status": "success",
+        "message": f"Cleared {result.deleted_count} events",
+        "events_deleted": result.deleted_count,
+        "previous_count": event_count
+    }
+
+@api_router.get("/admin/stats")
+async def get_admin_stats(current_user: UserInDB = Depends(get_current_user)):
+    """
+    Get detailed database statistics for admin dashboard.
+    """
+    if current_user.role != "SUPER_ADMIN":
+        raise HTTPException(status_code=403, detail="Only SUPER_ADMIN can view admin stats")
+    
+    # Count all collections
+    events_count = await db.events.count_documents({})
+    sensors_count = await db.sensors.count_documents({})
+    assigned_sensors = await db.sensors.count_documents({"room_id": {"$ne": None}})
+    unassigned_sensors = await db.sensors.count_documents({"room_id": None})
+    clients_count = await db.clients.count_documents({})
+    buildings_count = await db.buildings.count_documents({})
+    floors_count = await db.floors.count_documents({})
+    rooms_count = await db.rooms.count_documents({})
+    users_count = await db.users.count_documents({})
+    
+    return {
+        "events": events_count,
+        "sensors": {
+            "total": sensors_count,
+            "assigned": assigned_sensors,
+            "unassigned": unassigned_sensors
+        },
+        "clients": clients_count,
+        "buildings": buildings_count,
+        "floors": floors_count,
+        "rooms": rooms_count,
+        "users": users_count
+    }
+
+
 # ==================== REAL-TIME PRESENCE STATE ====================
 
 @api_router.get("/presence/sensors")
