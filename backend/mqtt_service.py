@@ -402,8 +402,8 @@ class MQTTService:
                     "presence_updated_at": datetime.now(timezone.utc).isoformat()
                 }}
             )
-            # Broadcast presence update to frontend
-            if self.broadcast_callback:
+            # Broadcast presence update to frontend (only for assigned radars)
+            if self.broadcast_callback and is_assigned:
                 await self.broadcast_callback(sensor['tenant_id'], {
                     "type": "presence_update",
                     "sensor_id": sensor['id'],
@@ -412,6 +412,23 @@ class MQTTService:
                     "target_count": 0,
                     "timestamp": datetime.now(timezone.utc).isoformat()
                 })
+            return
+        
+        # IMPORTANT: For unassigned radars, we update their status but do NOT create events
+        # This keeps the Live page clean with only events from radars with known locations
+        if not is_assigned:
+            logger.debug(f"Skipping event creation for unassigned radar {device_id} (sensor: {sensor['id']})")
+            # Still update sensor status and presence
+            await self.db.sensors.update_one(
+                {"id": sensor['id']},
+                {"$set": {
+                    "status": "ONLINE",
+                    "last_seen": datetime.now(timezone.utc).isoformat(),
+                    "current_presence": presence_detected,
+                    "current_target_count": len(event_payload.get('trackerTargets', [])),
+                    "presence_updated_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
             return
         
         # Log extracted presence data
