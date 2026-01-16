@@ -336,6 +336,9 @@ class Event(EventBase):
     # Location fields (enriched from sensor assignment)
     location_path: Optional[str] = None
     location: Optional[dict] = None
+    # Radar info fields (enriched from sensor)
+    radar_name: Optional[str] = None
+    serial_product: Optional[str] = None
 
 class AlertRuleBase(BaseModel):
     name: str
