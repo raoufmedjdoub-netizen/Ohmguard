@@ -20,6 +20,45 @@ import asyncio
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+ROOT_DIR = Path(__file__).parent
+
+# =============================================================================
+# ENVIRONMENT VARIABLE LOADING STRATEGY (Critical for Production)
+# =============================================================================
+# In Kubernetes/production: Environment variables are injected directly by the platform.
+# We should NEVER override them with values from .env file.
+# 
+# Strategy:
+# 1. Check if MONGO_URL is already set in the system environment BEFORE loading .env
+# 2. Only load .env if running locally (MONGO_URL not pre-set and no K8s indicators)
+# =============================================================================
+
+# Capture system env vars BEFORE any .env loading
+_system_mongo_url = os.environ.get('MONGO_URL')
+_kubernetes_detected = os.environ.get('KUBERNETES_SERVICE_HOST') is not None
+_is_atlas_url = _system_mongo_url.startswith('mongodb+srv') if _system_mongo_url else False
+
+# Debug logging for production troubleshooting
+logger.info(f"[ENV DEBUG] KUBERNETES_SERVICE_HOST detected: {_kubernetes_detected}")
+logger.info(f"[ENV DEBUG] MONGO_URL pre-set in system env: {bool(_system_mongo_url)}")
+logger.info(f"[ENV DEBUG] MONGO_URL is Atlas (mongodb+srv): {_is_atlas_url}")
+
+# Determine if we're in production
+# Production = Kubernetes OR Atlas URL already set OR running in Emergent deployment
+is_production = _kubernetes_detected or _is_atlas_url or _system_mongo_url is not None
+
+if not is_production:
+    # Only load .env in local development when MONGO_URL is NOT set
+    env_path = ROOT_DIR / '.env'
+    if env_path.exists():
+        load_dotenv(env_path, override=False)  # CRITICAL: override=False preserves existing env vars
+        logger.info(f"[ENV] Loaded .env file (development mode) from {env_path}")
+    else:
+        logger.info(f"[ENV] No .env file found at {env_path}, using system environment only")
+else:
+    logger.info(f"[ENV] Production mode detected - using system environment variables only")
+    logger.info(f"[ENV] .env file will NOT be loaded to prevent override of production values")
+
 # MQTT Service import
 from mqtt_service import init_mqtt_service, stop_mqtt_service
 
@@ -43,20 +82,6 @@ from vayyar_config_schema import (
 # Clients & Buildings imports
 from clients_buildings_service import init_clients_buildings_service, get_clients_buildings_service
 from clients_buildings_routes import create_clients_buildings_router
-
-ROOT_DIR = Path(__file__).parent
-
-# In production (Kubernetes), env vars are injected directly
-# In preview/development, load from .env file
-# Check if we're in production by looking for a production-specific env var
-is_production = os.environ.get('KUBERNETES_SERVICE_HOST') is not None or os.environ.get('MONGO_URL', '').startswith('mongodb+srv')
-
-if not is_production:
-    # Only load .env in development/preview
-    load_dotenv(ROOT_DIR / '.env')
-    logger.info("Loaded .env file (development mode)")
-else:
-    logger.info("Production mode - using Kubernetes environment variables")
 
 # MongoDB connection
 mongo_url = os.environ.get('MONGO_URL')
