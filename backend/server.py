@@ -1011,14 +1011,21 @@ async def list_events(
                         "room_number": room.get("room_number") or room.get("name"),
                         "zone_name": None
                     }
+                    # Ajouter le nom et le numéro de série du radar
+                    event["radar_name"] = sensor.get("name")
+                    event["serial_product"] = sensor.get("serial_product")
                 else:
                     event["location_path"] = None
                     event["location"] = None
+                    event["radar_name"] = None
+                    event["serial_product"] = None
         else:
             # No sensors to enrich
             for event in events:
                 event["location_path"] = None
                 event["location"] = None
+                event["radar_name"] = None
+                event["serial_product"] = None
                 
     except Exception as e:
         logger.error(f"Failed to enrich events with location: {e}")
