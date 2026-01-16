@@ -242,7 +242,14 @@ export const LiveEventCard = memo(function LiveEventCard({
                 <TooltipTrigger asChild>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Radio className="h-3.5 w-3.5" />
-                    <span className="font-mono">{deviceSerial}</span>
+                    {radarName ? (
+                      <span className="font-medium text-foreground">{radarName}</span>
+                    ) : (
+                      <span className="font-mono">{deviceSerial}</span>
+                    )}
+                    {radarSerial && radarName && (
+                      <span className="font-mono text-muted-foreground/70">({radarSerial})</span>
+                    )}
                     <span className="text-border">•</span>
                     {realtime.deviceOnline !== false ? (
                       <span className="flex items-center gap-1 text-green-600">
@@ -258,7 +265,11 @@ export const LiveEventCard = memo(function LiveEventCard({
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  <p className="text-xs">ID Radar: {event.device_id || event.sensor_id}</p>
+                  <div className="text-xs space-y-1">
+                    {radarName && <p>Radar: {radarName}</p>}
+                    {radarSerial && <p>Série: {radarSerial}</p>}
+                    <p>ID: {event.device_id || event.sensor_id}</p>
+                  </div>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
