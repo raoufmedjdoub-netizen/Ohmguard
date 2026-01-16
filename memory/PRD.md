@@ -185,6 +185,11 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
   - API complète: `/api/clients/{id}/users`, `/api/client-users/{id}/permissions`, `/api/client-users/{id}/scopes`
   - Page /users avec onglets Profil, Permissions, Périmètres, Aperçu
   - Journal d'audit pour les changements RBAC
+- [x] **Correction bug connexion nouveaux utilisateurs (January 16, 2026)**
+  - Diagnostiqué : utilisateurs créés via le module RBAC peuvent se connecter
+  - Ajout d'un endpoint `POST /api/client-users/{id}/reset-password` pour réinitialiser les mots de passe
+  - Ajout d'un bouton "Réinitialiser le mot de passe" dans l'interface UsersPage
+  - Correction du champ `password_hash` → `hashed_password` dans le script de seed
 - [ ] Email integration (currently mocked)
 - [ ] Webhook delivery with HMAC signature
 - [ ] Escalation automation
