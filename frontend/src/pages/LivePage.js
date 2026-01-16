@@ -1,13 +1,11 @@
 /**
- * LivePage - Vue compacte du parc de radars
+ * LivePage - Vue temps réel du parc de radars
  * 
- * Affiche l'état de chaque radar:
- * - Nom/identifiant
- * - Type d'événement (présence/chute)
- * - Statut en ligne/hors ligne
+ * Affiche UNIQUEMENT les événements reçus en temps réel via WebSocket.
+ * La page démarre vide et se remplit au fur et à mesure des événements.
+ * Quand presence_detected: false, la carte disparaît.
  */
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { eventsAPI } from '@/lib/api';
 import api from '@/lib/api';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
