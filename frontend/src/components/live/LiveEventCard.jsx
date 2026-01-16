@@ -150,8 +150,11 @@ export const LiveEventCard = memo(function LiveEventCard({
   const location = event.location || null;
   const locationPath = event.location_path || null;
   
-  // Info radar
-  const deviceSerial = event.device_id?.replace('id_', '').substring(0, 12) || 
+  // Info radar - utiliser le nom du radar si disponible
+  const radarName = event.radar_name || event.sensor_name || null;
+  const radarSerial = event.serial_product || null;
+  const deviceSerial = radarSerial || 
+                       event.device_id?.replace('id_', '').substring(0, 12) || 
                        event.sensor_id?.substring(0, 8) || 
                        'N/A';
   
