@@ -169,6 +169,11 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - [x] **État de présence temps réel (January 15, 2026)** - Nouvel endpoint `/api/presence/sensors` pour obtenir l'état de présence actuel de tous les capteurs. Le badge de présence sur la page Live reflète maintenant l'état temps réel du radar, pas l'événement historique.
 - [x] **Stabilisation de la page Live (January 15, 2026)** - Correction du clignotement des cartes causé par le polling. Déduplication des événements par capteur (un seul événement affiché par radar). Nettoyage de 951 événements en double dans la base de données.
 - [x] **Implémentation Socket.IO (January 15, 2026)** - Remplacement du polling par Socket.IO pour les mises à jour temps réel. Backend: `python-socketio` intégré à FastAPI. Frontend: `socket.io-client`. Connexion stable avec fallback automatique vers long-polling HTTP.
+- [x] **Correction des problèmes de déploiement production (January 16, 2026)**
+  - Refonte de la logique de chargement des variables d'environnement pour éviter que le fichier `.env` local n'écrase les variables Kubernetes
+  - Correction du conflit CORS double-header entre Socket.IO et FastAPI
+  - Ajout d'un endpoint de diagnostic `/api/health/debug` pour le troubleshooting en production
+  - Création d'un fichier `.dockerignore` pour exclure les fichiers `.env` de l'image Docker
 
 ### P1 - High Priority (Next)
 - [ ] Full RBAC with granular permissions
