@@ -214,8 +214,10 @@ export function LivePage() {
   }, [subscribe]);
 
   // Filtrage et déduplication par sensor_id (garder le plus récent)
+  // IMPORTANT: Exclure les événements où presence_detected === false
   const radarCards = useMemo(() => {
     const filtered = events.filter(event => {
+      // Exclure les événements PRESENCE avec presence_detected === false
       if (event.type === 'PRESENCE' && event.presence_detected === false) {
         return false;
       }
