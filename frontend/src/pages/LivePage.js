@@ -44,7 +44,8 @@ export function LivePage() {
   
   const isFetchingRef = useRef(false);
 
-  // Chargement des données
+  // Chargement des métadonnées uniquement (pas d'événements historiques)
+  // La page démarre vide et se remplit via WebSocket temps réel
   const fetchData = useCallback(async () => {
     if (isFetchingRef.current) return;
     
@@ -52,32 +53,17 @@ export function LivePage() {
     setLoading(true);
     
     try {
-      const params = {
-        limit: 100,
-        ...(selectedClient !== 'all' && { client_id: selectedClient }),
-        ...(selectedBuilding !== 'all' && { building_id: selectedBuilding })
-      };
-      
-      const [eventsRes, clientsRes, sensorsRes] = await Promise.all([
-        eventsAPI.list(params),
+      // Ne PAS charger les événements - uniquement les métadonnées
+      const [clientsRes, sensorsRes] = await Promise.all([
         api.get('/clients'),
         api.get('/sensors')
       ]);
       
-      // Déduplication des événements
-      const uniqueEvents = [];
-      const seenIds = new Set();
-      for (const event of eventsRes.data) {
-        if (!seenIds.has(event.id)) {
-          seenIds.add(event.id);
-          uniqueEvents.push(event);
-        }
-      }
-      
-      setEvents(uniqueEvents);
+      // Pas d'événements au démarrage - page vide, temps réel uniquement
+      setEvents([]);
       setClients(clientsRes.data);
       
-      // Statuts des radars
+      // Statuts des radars (pour info online/offline)
       const statuses = {};
       sensorsRes.data.forEach(sensor => {
         statuses[sensor.id] = {
@@ -95,7 +81,7 @@ export function LivePage() {
       setLoading(false);
       isFetchingRef.current = false;
     }
-  }, [selectedClient, selectedBuilding]);
+  }, []);
 
   // Charger les bâtiments quand un client est sélectionné
   useEffect(() => {
