@@ -36,14 +36,15 @@ def sanitize_for_json(obj):
     else:
         return obj
 
-# Create Socket.IO server - CORS handled by FastAPI middleware
+# Create Socket.IO server with proper CORS for production
 sio = socketio.AsyncServer(
     async_mode='asgi',
-    cors_allowed_origins=[],  # Disable Socket.IO CORS - FastAPI handles it
+    cors_allowed_origins='*',  # Allow all origins (production uses ingress for security)
     logger=False,
     engineio_logger=False,
     ping_timeout=60,
-    ping_interval=25
+    ping_interval=25,
+    max_http_buffer_size=1e6  # 1MB max message size
 )
 
 # Create ASGI app - will be mounted on FastAPI
