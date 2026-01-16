@@ -918,6 +918,8 @@ async def list_events(
     site_id: Optional[str] = None,
     zone_id: Optional[str] = None,
     sensor_id: Optional[str] = None,
+    client_id: Optional[str] = None,
+    building_id: Optional[str] = None,
     event_type: Optional[EventType] = None,
     status: Optional[EventStatus] = None,
     severity: Optional[SeverityType] = None,
@@ -937,6 +939,24 @@ async def list_events(
         query["zone_id"] = zone_id
     if sensor_id:
         query["sensor_id"] = sensor_id
+    
+    # Filtrage par client/building: on doit d'abord trouver les sensors associés
+    if client_id or building_id:
+        sensor_query = {}
+        if client_id:
+            sensor_query["client_id"] = client_id
+        if building_id:
+            sensor_query["building_id"] = building_id
+        
+        matching_sensors = await db.sensors.find(sensor_query, {"_id": 0, "id": 1}).to_list(1000)
+        matching_sensor_ids = [s["id"] for s in matching_sensors]
+        
+        if matching_sensor_ids:
+            query["sensor_id"] = {"$in": matching_sensor_ids}
+        else:
+            # Aucun capteur correspondant, retourner une liste vide
+            return []
+    
     if event_type:
         query["type"] = event_type
     if status:
