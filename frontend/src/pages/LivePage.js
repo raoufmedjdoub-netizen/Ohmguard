@@ -123,7 +123,6 @@ export function LivePage() {
           name: sensor.name,
           serial_product: sensor.serial_product
         };
-        };
       });
       setRadarStatuses(statuses);
     } catch (error) {
@@ -133,7 +132,7 @@ export function LivePage() {
       setLoading(false);
       isFetchingRef.current = false;
     }
-  }, [selectedStatus, selectedType]);
+  }, [selectedStatus, selectedType, selectedClient, selectedBuilding]);
 
   // Charger les bâtiments quand un client est sélectionné
   useEffect(() => {
