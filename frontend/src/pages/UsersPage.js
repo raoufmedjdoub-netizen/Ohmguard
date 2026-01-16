@@ -554,6 +554,9 @@ function UserDetailSheet({ user, open, onOpenChange, clientId, onRoleChange, onS
   const [buildings, setBuildings] = useState([]);
   const [floors, setFloors] = useState([]);
   const [rooms, setRooms] = useState([]);
+  const [showResetPasswordDialog, setShowResetPasswordDialog] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   // Load data when tab changes
   useEffect(() => {
