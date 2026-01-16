@@ -73,6 +73,11 @@ class BulkScopesRequest(BaseModel):
     scopes: List[ScopeRequest]
 
 
+class ResetPasswordRequest(BaseModel):
+    """Request to reset a user's password"""
+    new_password: str
+
+
 # =============================================================================
 # ROUTES
 # =============================================================================
