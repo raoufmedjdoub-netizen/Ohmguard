@@ -81,7 +81,10 @@ export function LivePage() {
       const params = {
         limit: 50,
         ...(selectedStatus !== 'all' && { status: selectedStatus }),
-        ...(selectedType !== 'all' && { event_type: selectedType })
+        ...(selectedType !== 'all' && { event_type: selectedType }),
+        // Ajouter les filtres client/building pour que l'API retourne les bons événements
+        ...(selectedClient !== 'all' && { client_id: selectedClient }),
+        ...(selectedBuilding !== 'all' && { building_id: selectedBuilding })
       };
       
       const [eventsRes, clientsRes, sensorsRes] = await Promise.all([
@@ -103,6 +106,12 @@ export function LivePage() {
       setEvents(uniqueEvents);
       setClients(clientsRes.data);
       
+      // Construire un map sensor_id -> sensor pour enrichir les événements
+      const sensorMap = {};
+      sensorsRes.data.forEach(sensor => {
+        sensorMap[sensor.id] = sensor;
+      });
+      
       // Initialiser les statuts des radars
       const statuses = {};
       sensorsRes.data.forEach(sensor => {
@@ -111,7 +120,9 @@ export function LivePage() {
           last_seen: sensor.last_seen,
           deviceOnline: sensor.status === 'ONLINE',
           device_id: sensor.device_id,
-          name: sensor.name
+          name: sensor.name,
+          serial_product: sensor.serial_product
+        };
         };
       });
       setRadarStatuses(statuses);
