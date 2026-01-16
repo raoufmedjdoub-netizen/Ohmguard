@@ -1,15 +1,12 @@
 /**
- * LivePage - Mur d'événements temps réel
+ * LivePage - Vue compacte du parc de radars
  * 
- * Affiche les événements en temps réel avec:
- * - Localisation hiérarchique complète
- * - État temps réel (actif/acquitté/résolu)
- * - Statut du radar (en ligne/hors ligne)
- * - Animations pour les nouveaux événements
+ * Affiche l'état de chaque radar:
+ * - Nom/identifiant
+ * - Type d'événement (présence/chute)
+ * - Statut en ligne/hors ligne
  */
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { eventsAPI } from '@/lib/api';
 import api from '@/lib/api';
 import { useWebSocket } from '@/contexts/WebSocketContext';
@@ -21,68 +18,42 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
   Radio,
-  AlertTriangle,
   RefreshCw,
   Filter,
   Loader2,
-  Volume2,
-  VolumeX,
-  Activity,
-  Clock,
-  CheckCircle2,
-  Users,
   Wifi,
   WifiOff,
-  LayoutGrid,
-  List,
-  Building2
+  Building2,
+  Activity
 } from 'lucide-react';
 
-// Import du nouveau composant LiveEventCard
-import { LiveEventCard } from '@/components/live';
+import { RadarStatusCard } from '@/components/live';
 
 export function LivePage() {
-  const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
-  const { subscribe, connected } = useWebSocket(); // Removed presenceState to avoid re-renders
+  const { subscribe, connected } = useWebSocket();
   
   // États
   const [events, setEvents] = useState([]);
   const [clients, setClients] = useState([]);
   const [buildings, setBuildings] = useState([]);
-  const [radarStatuses, setRadarStatuses] = useState({}); // {sensor_id: {status, last_seen, deviceOnline}}
+  const [radarStatuses, setRadarStatuses] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedClient, setSelectedClient] = useState('all');
   const [selectedBuilding, setSelectedBuilding] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
-  const [selectedType, setSelectedType] = useState('all');
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [newEventIds, setNewEventIds] = useState(new Set());
   
-  // Référence pour le son d'alerte
-  const alertSoundRef = useRef(null);
-  
-  // Référence pour éviter les appels multiples simultanés
   const isFetchingRef = useRef(false);
 
   // Chargement des données
   const fetchData = useCallback(async () => {
-    // Prevent multiple simultaneous fetches
-    if (isFetchingRef.current) {
-      console.log('Fetch already in progress, skipping...');
-      return;
-    }
+    if (isFetchingRef.current) return;
     
     isFetchingRef.current = true;
     setLoading(true);
     
     try {
       const params = {
-        limit: 50,
-        ...(selectedStatus !== 'all' && { status: selectedStatus }),
-        ...(selectedType !== 'all' && { event_type: selectedType }),
-        // Ajouter les filtres client/building pour que l'API retourne les bons événements
+        limit: 100,
         ...(selectedClient !== 'all' && { client_id: selectedClient }),
         ...(selectedBuilding !== 'all' && { building_id: selectedBuilding })
       };
@@ -93,7 +64,7 @@ export function LivePage() {
         api.get('/sensors')
       ]);
       
-      // Deduplicate events before setting
+      // Déduplication des événements
       const uniqueEvents = [];
       const seenIds = new Set();
       for (const event of eventsRes.data) {
@@ -106,20 +77,12 @@ export function LivePage() {
       setEvents(uniqueEvents);
       setClients(clientsRes.data);
       
-      // Construire un map sensor_id -> sensor pour enrichir les événements
-      const sensorMap = {};
-      sensorsRes.data.forEach(sensor => {
-        sensorMap[sensor.id] = sensor;
-      });
-      
-      // Initialiser les statuts des radars
+      // Statuts des radars
       const statuses = {};
       sensorsRes.data.forEach(sensor => {
         statuses[sensor.id] = {
           status: sensor.status,
-          last_seen: sensor.last_seen,
           deviceOnline: sensor.status === 'ONLINE',
-          device_id: sensor.device_id,
           name: sensor.name,
           serial_product: sensor.serial_product
         };
@@ -132,7 +95,7 @@ export function LivePage() {
       setLoading(false);
       isFetchingRef.current = false;
     }
-  }, [selectedStatus, selectedType, selectedClient, selectedBuilding]);
+  }, [selectedClient, selectedBuilding]);
 
   // Charger les bâtiments quand un client est sélectionné
   useEffect(() => {
@@ -150,8 +113,7 @@ export function LivePage() {
     fetchData();
   }, [fetchData]);
 
-  // Gestion WebSocket/Polling pour les événements temps réel
-  // Note: Using a ref for radarStatuses inside the callback to avoid re-subscriptions
+  // WebSocket pour les mises à jour temps réel
   const radarStatusesRef = useRef(radarStatuses);
   useEffect(() => {
     radarStatusesRef.current = radarStatuses;
@@ -159,10 +121,8 @@ export function LivePage() {
 
   useEffect(() => {
     const unsubscribe = subscribe('live', (message) => {
-      // Force refresh - reload all events (from manual refresh button)
       if (message.type === 'force_refresh') {
         if (message.events && Array.isArray(message.events)) {
-          // Deduplicate events by ID before setting
           const uniqueEvents = [];
           const seenIds = new Set();
           for (const event of message.events) {
@@ -176,28 +136,25 @@ export function LivePage() {
         return;
       }
       
-      // Ignore other message types to avoid re-renders
       if (message.type === 'presence_state_update' || message.type === 'presence_update') {
         return;
       }
       
       // Mise à jour du statut d'un radar
       if (message.type === 'sensor_status') {
-        const { sensor_id, status, last_seen } = message;
+        const { sensor_id, status } = message;
         setRadarStatuses(prev => ({
           ...prev,
           [sensor_id]: {
             ...prev[sensor_id],
             status: status,
-            last_seen: last_seen || new Date().toISOString(),
             deviceOnline: status === 'ONLINE'
           }
         }));
         
-        // Notification si un radar passe hors ligne
         if (status === 'OFFLINE') {
           const prevStatus = radarStatusesRef.current[sensor_id];
-          toast.warning(`Radar hors ligne`, {
+          toast.warning('Radar hors ligne', {
             description: prevStatus?.name || sensor_id,
             duration: 5000
           });
@@ -206,28 +163,20 @@ export function LivePage() {
       // Nouvel événement
       else if (message.type === 'new_event' || message.type === 'new_radar_event') {
         const newEvent = message.event;
+        if (!newEvent) return;
         
-        if (!newEvent) {
-          console.error('[LivePage] newEvent is undefined!', message);
-          return;
-        }
-        
-        // Skip events with presence_detected=false
         if (newEvent.type === 'PRESENCE' && newEvent.presence_detected === false) {
           return;
         }
         
-        // Check if event already exists to avoid duplicates
         setEvents(prev => {
           if (prev.some(e => e.id === newEvent.id)) {
-            return prev; // Event already exists, don't add
+            return prev;
           }
-          return [newEvent, ...prev.slice(0, 49)];
+          return [newEvent, ...prev.slice(0, 99)];
         });
         
         setNewEventIds(prev => new Set([...prev, newEvent.id]));
-        
-        // Retirer le marqueur après 3 secondes
         setTimeout(() => {
           setNewEventIds(prev => {
             const next = new Set(prev);
@@ -236,93 +185,44 @@ export function LivePage() {
           });
         }, 3000);
         
-        // Alerte pour événements critiques
-        if (newEvent.type === 'FALL' || newEvent.severity === 'HIGH' || newEvent.severity === 'CRITICAL') {
-          if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('🚨 OhmGuard - Alerte', {
-              body: `${newEvent.type === 'FALL' ? 'Chute détectée' : newEvent.type} - ${newEvent.location_path || 'Localisation inconnue'}`,
-              icon: '/favicon.ico',
-              requireInteraction: true
-            });
-          }
-          
-          if (soundEnabled && alertSoundRef.current) {
-            alertSoundRef.current.play().catch(() => {});
-          }
-          
-          toast.error(`🚨 ${newEvent.type === 'FALL' ? 'Chute détectée!' : 'Alerte haute priorité'}`, {
-            description: newEvent.location_path || 'Vérifier la localisation',
+        // Alerte pour chutes
+        if (newEvent.type === 'FALL') {
+          toast.error('🚨 Chute détectée!', {
+            description: newEvent.radar_name || newEvent.location_path || 'Localisation inconnue',
             duration: 10000
           });
         }
-      } 
-      // Mise à jour d'événement
+      }
       else if (message.type === 'event_updated') {
         setEvents(prev => prev.map(e => 
           e.id === message.event_id ? { ...e, ...message.update } : e
         ));
-        
-        setNewEventIds(prev => new Set([...prev, message.event_id]));
-        setTimeout(() => {
-          setNewEventIds(prev => {
-            const next = new Set(prev);
-            next.delete(message.event_id);
-            return next;
-          });
-        }, 2000);
       }
-      // Nouveau radar enregistré
       else if (message.type === 'sensor_registered') {
         const { sensor } = message;
         setRadarStatuses(prev => ({
           ...prev,
           [sensor.id]: {
             status: sensor.status,
-            last_seen: sensor.last_seen,
             deviceOnline: sensor.status === 'ONLINE',
-            device_id: sensor.device_id,
             name: sensor.name
           }
         }));
-        toast.success('Nouveau radar détecté', {
-          description: sensor.name || sensor.device_id
-        });
       }
     });
     return unsubscribe;
-  }, [subscribe, soundEnabled]);
+  }, [subscribe]);
 
-  // Actions sur les événements
-  const handleUpdateStatus = async (eventId, newStatus) => {
-    try {
-      await eventsAPI.update(eventId, { status: newStatus });
-      setEvents(prev => prev.map(e => 
-        e.id === eventId ? { ...e, status: newStatus } : e
-      ));
-      toast.success(t('events.event_updated'));
-    } catch (error) {
-      toast.error(t('errors.generic'));
-    }
-  };
-
-  const handleViewDetails = (eventId) => {
-    navigate(`/events/${eventId}`);
-  };
-
-  // Filtrage par client et bâtiment + déduplication par sensor_id (garder le plus récent)
-  const filteredEvents = useMemo(() => {
-    // First, filter out unwanted events
+  // Filtrage et déduplication par sensor_id (garder le plus récent)
+  const radarCards = useMemo(() => {
     const filtered = events.filter(event => {
-      // Never show PRESENCE events with presenceDetected=false
       if (event.type === 'PRESENCE' && event.presence_detected === false) {
         return false;
       }
       
-      // Client filter - only apply if a specific client is selected
       if (selectedClient !== 'all') {
         const client = clients.find(c => c.id === selectedClient);
         if (client) {
-          // Check if event belongs to this client
           const eventClientName = event.location?.client_name;
           const eventPath = event.location_path;
           
@@ -331,14 +231,11 @@ export function LivePage() {
           } else if (eventPath) {
             if (!eventPath.includes(client.name)) return false;
           } else {
-            // Event has no location - exclude from filtered view
             return false;
           }
         }
       }
-      // If selectedClient is 'all', show ALL events including those without location
       
-      // Building filter - only apply if a specific building is selected
       if (selectedBuilding !== 'all') {
         const building = buildings.find(b => b.id === selectedBuilding);
         if (building) {
@@ -350,17 +247,15 @@ export function LivePage() {
           } else if (eventPath) {
             if (!eventPath.includes(building.name)) return false;
           } else {
-            // Event has no building info - exclude from filtered view
             return false;
           }
         }
       }
-      // If selectedBuilding is 'all', show ALL events including those without building
       
       return true;
     });
     
-    // Then, keep only the LATEST event per sensor_id to avoid duplicates
+    // Garder le plus récent par sensor_id
     const latestBySensor = new Map();
     for (const event of filtered) {
       const sensorId = event.sensor_id || event.device_id || 'unknown';
@@ -369,7 +264,6 @@ export function LivePage() {
       if (!existing) {
         latestBySensor.set(sensorId, event);
       } else {
-        // Compare timestamps - keep the more recent one
         const existingTime = new Date(existing.timestamp || existing.occurred_at || 0).getTime();
         const currentTime = new Date(event.timestamp || event.occurred_at || 0).getTime();
         if (currentTime > existingTime) {
@@ -378,7 +272,6 @@ export function LivePage() {
       }
     }
     
-    // Convert back to array and sort by timestamp (newest first)
     return Array.from(latestBySensor.values()).sort((a, b) => {
       const timeA = new Date(a.timestamp || a.occurred_at || 0).getTime();
       const timeB = new Date(b.timestamp || b.occurred_at || 0).getTime();
@@ -386,363 +279,144 @@ export function LivePage() {
     });
   }, [events, selectedClient, selectedBuilding, clients, buildings]);
 
-  // Statistiques - based on local state only (no context dependencies)
+  // Stats
   const stats = {
-    new: events.filter(e => e.status === 'NEW').length,
-    ack: events.filter(e => e.status === 'ACK').length,
-    presence: events.filter(e => e.type === 'PRESENCE').length,
-    // Count events with presence detected (from events, not real-time)
-    active: events.filter(e => e.type === 'PRESENCE' && e.presence_detected).length,
-    critical: events.filter(e => e.severity === 'HIGH' || e.severity === 'CRITICAL').length,
-    radarsOnline: Object.values(radarStatuses).filter(r => r.deviceOnline).length,
-    radarsTotal: Object.keys(radarStatuses).length
+    total: radarCards.length,
+    online: radarCards.filter(e => {
+      const status = radarStatuses[e.sensor_id];
+      return status?.deviceOnline !== false;
+    }).length,
+    falls: radarCards.filter(e => e.type === 'FALL').length
   };
 
-  // Loading state
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center space-y-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">Chargement des événements...</p>
+          <p className="text-muted-foreground">Chargement...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div data-testid="live-page" className="space-y-6">
-      {/* Son d'alerte (invisible) */}
-      <audio ref={alertSoundRef} preload="auto">
-        <source src="/alert.mp3" type="audio/mpeg" />
-      </audio>
-      
-      {/* === HEADER === */}
+    <div data-testid="live-page" className="space-y-4">
+      {/* Header compact */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {/* Indicateur de connexion WebSocket */}
+        <div className="flex items-center gap-3">
           <div className="relative">
-            <Activity className="h-7 w-7 text-primary" />
-            {connected ? (
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+            <Activity className="h-6 w-6 text-primary" />
+            {connected && (
+              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-              </span>
-            ) : (
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
               </span>
             )}
           </div>
           
           <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              Mur d'événements
+            <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
+              État des radars
               <Badge variant="outline" className={cn(
-                "ml-2 font-normal",
+                "text-xs font-normal",
                 connected ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"
               )}>
                 {connected ? (
-                  <>
-                    <Wifi className="h-3 w-3 mr-1" />
-                    Temps réel
-                  </>
+                  <><Wifi className="h-3 w-3 mr-1" />Live</>
                 ) : (
-                  <>
-                    <WifiOff className="h-3 w-3 mr-1" />
-                    Connexion...
-                  </>
+                  <><WifiOff className="h-3 w-3 mr-1" />...</>
                 )}
               </Badge>
             </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {filteredEvents.length} événement{filteredEvents.length > 1 ? 's' : ''} • 
-              {stats.critical > 0 && (
-                <span className="text-red-500 font-medium ml-1">
-                  {stats.critical} critique{stats.critical > 1 ? 's' : ''}
+            <p className="text-xs text-muted-foreground">
+              {stats.online}/{stats.total} en ligne
+              {stats.falls > 0 && (
+                <span className="text-red-500 font-medium ml-2">
+                  • {stats.falls} chute{stats.falls > 1 ? 's' : ''}
                 </span>
               )}
             </p>
           </div>
         </div>
         
-        {/* Actions rapides */}
-        <div className="flex items-center gap-2">
-          {/* Toggle son */}
-          <Button
-            variant={soundEnabled ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            data-testid="sound-toggle"
-            className={cn(!soundEnabled && "text-muted-foreground")}
-          >
-            {soundEnabled ? (
-              <Volume2 className="h-4 w-4" />
-            ) : (
-              <VolumeX className="h-4 w-4" />
-            )}
-          </Button>
-          
-          {/* Toggle vue */}
-          <div className="flex border rounded-lg overflow-hidden">
-            <Button
-              variant={viewMode === 'grid' ? 'default' : 'ghost'}
-              size="sm"
-              className="rounded-none"
-              onClick={() => setViewMode('grid')}
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              className="rounded-none"
-              onClick={() => setViewMode('list')}
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          {/* Refresh */}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={fetchData} 
-            disabled={loading}
-            data-testid="refresh-btn"
-          >
-            <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
-            {loading ? 'Chargement...' : 'Actualiser'}
-          </Button>
-        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={fetchData} 
+          disabled={loading}
+          data-testid="refresh-btn"
+        >
+          <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+        </Button>
       </div>
 
-      {/* === FILTRES === */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Filtres:</span>
-            </div>
-            
-            {/* Filtre Client */}
-            <Select value={selectedClient} onValueChange={(v) => { setSelectedClient(v); setSelectedBuilding('all'); }}>
-              <SelectTrigger className="w-52" data-testid="client-filter">
-                <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
-                <SelectValue placeholder="Client" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les clients</SelectItem>
-                {clients.map(client => (
-                  <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            {/* Filtre Bâtiment (visible seulement si client sélectionné) */}
-            {selectedClient !== 'all' && buildings.length > 0 && (
-              <Select value={selectedBuilding} onValueChange={setSelectedBuilding}>
-                <SelectTrigger className="w-48" data-testid="building-filter">
-                  <SelectValue placeholder="Bâtiment" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les bâtiments</SelectItem>
-                  {buildings.map(building => (
-                    <SelectItem key={building.id} value={building.id}>{building.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            
-            {/* Filtre Type */}
-            <Select value={selectedType} onValueChange={(v) => { setSelectedType(v); setLoading(true); }}>
-              <SelectTrigger className="w-40" data-testid="type-filter">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les types</SelectItem>
-                <SelectItem value="FALL">🔴 Chute</SelectItem>
-                <SelectItem value="PRE_FALL">🟠 Pré-chute</SelectItem>
-                <SelectItem value="PRESENCE">🟢 Présence</SelectItem>
-                <SelectItem value="INACTIVITY">🟡 Inactivité</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            {/* Filtre Statut */}
-            <Select value={selectedStatus} onValueChange={(v) => { setSelectedStatus(v); setLoading(true); }}>
-              <SelectTrigger className="w-40" data-testid="status-filter">
-                <SelectValue placeholder="Statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="NEW">Nouveau</SelectItem>
-                <SelectItem value="ACK">Acquitté</SelectItem>
-                <SelectItem value="RESOLVED">Résolu</SelectItem>
-                <SelectItem value="FALSE_ALARM">Fausse alerte</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* === STATISTIQUES === */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card className={cn(stats.new > 0 && "border-blue-500/50 bg-blue-500/5")}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-blue-600">{stats.new}</div>
-                <div className="text-xs text-muted-foreground">Nouveaux</div>
-              </div>
-              <AlertTriangle className="h-8 w-8 text-blue-500/30" />
-            </div>
-          </CardContent>
-        </Card>
+      {/* Filtres compacts */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <Filter className="h-4 w-4 text-muted-foreground" />
         
-        <Card className={cn(stats.ack > 0 && "border-amber-500/50 bg-amber-500/5")}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-amber-600">{stats.ack}</div>
-                <div className="text-xs text-muted-foreground">Acquittés</div>
-              </div>
-              <Clock className="h-8 w-8 text-amber-500/30" />
-            </div>
-          </CardContent>
-        </Card>
+        <Select value={selectedClient} onValueChange={(v) => { setSelectedClient(v); setSelectedBuilding('all'); }}>
+          <SelectTrigger className="w-44 h-8 text-xs" data-testid="client-filter">
+            <Building2 className="h-3 w-3 mr-1.5 text-muted-foreground" />
+            <SelectValue placeholder="Client" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les clients</SelectItem>
+            {clients.map(client => (
+              <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         
-        <Card className={cn(stats.critical > 0 && "border-red-500/50 bg-red-500/5")}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-red-600">{stats.critical}</div>
-                <div className="text-xs text-muted-foreground">Critiques</div>
-              </div>
-              <AlertTriangle className="h-8 w-8 text-red-500/30" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-emerald-600">{stats.presence}</div>
-                <div className="text-xs text-muted-foreground">Présences</div>
-              </div>
-              <Users className="h-8 w-8 text-emerald-500/30" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-                <div className="text-xs text-muted-foreground">Actifs</div>
-              </div>
-              <CheckCircle2 className="h-8 w-8 text-green-500/30" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Radars en ligne - Temps réel */}
-        <Card className="border-primary/30">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-primary">
-                  {stats.radarsOnline}/{stats.radarsTotal}
-                </div>
-                <div className="text-xs text-muted-foreground">Radars en ligne</div>
-              </div>
-              <div className="relative">
-                <Wifi className="h-8 w-8 text-primary/30" />
-                {connected && (
-                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                  </span>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {selectedClient !== 'all' && buildings.length > 0 && (
+          <Select value={selectedBuilding} onValueChange={setSelectedBuilding}>
+            <SelectTrigger className="w-40 h-8 text-xs" data-testid="building-filter">
+              <SelectValue placeholder="Bâtiment" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous</SelectItem>
+              {buildings.map(building => (
+                <SelectItem key={building.id} value={building.id}>{building.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
-      {/* === GRILLE D'ÉVÉNEMENTS === */}
+      {/* Grille compacte de radars */}
       <Card>
-        <CardHeader className="border-b border-border py-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Radio className="h-5 w-5 text-primary" />
-              Événements en direct
-            </CardTitle>
-            {connected && (
-              <div className="flex items-center gap-1.5 text-xs text-green-600">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                </span>
-                En direct
-              </div>
-            )}
-          </div>
+        <CardHeader className="border-b border-border py-2 px-4">
+          <CardTitle className="flex items-center gap-2 text-sm font-medium">
+            <Radio className="h-4 w-4 text-primary" />
+            Radars ({radarCards.length})
+          </CardTitle>
         </CardHeader>
         
-        <CardContent className="p-4">
-          {filteredEvents.length === 0 ? (
-            <div className="py-16 text-center">
-              <Radio className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
-              <p className="text-muted-foreground">
-                Aucun événement à afficher
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Les nouveaux événements apparaîtront automatiquement
-              </p>
+        <CardContent className="p-3">
+          {radarCards.length === 0 ? (
+            <div className="py-8 text-center">
+              <Radio className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
+              <p className="text-sm text-muted-foreground">Aucun radar</p>
             </div>
           ) : (
-            <div className={cn(
-              "gap-4",
-              viewMode === 'grid' 
-                ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3" 
-                : "flex flex-col"
-            )}>
-              {filteredEvents.map((event, index) => {
-                // Récupérer le statut du radar (pour online/offline uniquement)
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+              {radarCards.map((event) => {
                 const radarStatus = radarStatuses[event.sensor_id] || {};
-                
-                // Données temps réel simplifiées - NE PAS inclure l'état de présence
-                // Les cartes d'événements montrent l'état HISTORIQUE au moment de l'événement
-                const realtimeData = {
-                  isActive: event.status === 'NEW' || event.status === 'ACK',
-                  lastUpdateTs: radarStatus.last_seen || event.timestamp || event.occurred_at,
-                  deviceOnline: radarStatus.deviceOnline !== undefined ? radarStatus.deviceOnline : true
-                };
+                const radarName = event.radar_name || 
+                                  radarStatus.name || 
+                                  radarStatus.serial_product || 
+                                  event.serial_product ||
+                                  event.sensor_id?.substring(0, 8) || 
+                                  'N/A';
                 
                 return (
-                  <div
-                    key={event.id}
-                    className={cn(
-                      "transition-all duration-300",
-                      index === 0 && "animate-in slide-in-from-top-4"
-                    )}
-                  >
-                    <LiveEventCard
-                      event={{
-                        ...event,
-                        realtime: realtimeData
-                      }}
-                      isNew={newEventIds.has(event.id)}
-                      onAcknowledge={(id) => handleUpdateStatus(id, 'ACK')}
-                      onResolve={(id) => handleUpdateStatus(id, 'RESOLVED')}
-                      onFalseAlarm={(id) => handleUpdateStatus(id, 'FALSE_ALARM')}
-                      onViewDetails={handleViewDetails}
-                      language={i18n.language}
-                    />
-                  </div>
+                  <RadarStatusCard
+                    key={event.sensor_id || event.id}
+                    radarName={radarName}
+                    isOnline={radarStatus.deviceOnline !== false}
+                    eventType={event.type}
+                    isNew={newEventIds.has(event.id)}
+                  />
                 );
               })}
             </div>
