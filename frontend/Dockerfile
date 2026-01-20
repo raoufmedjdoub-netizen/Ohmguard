@@ -5,11 +5,15 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json yarn.lock ./
+# Install yarn
+RUN corepack enable && corepack prepare yarn@stable --activate
 
-# Install dependencies with yarn
-RUN yarn install --frozen-lockfile --network-timeout 100000
+# Copy package.json first
+COPY package.json ./
+
+# Generate yarn.lock and install dependencies
+# Using --no-immutable because yarn.lock might not exist in repo
+RUN yarn install --no-immutable
 
 # Copy source code
 COPY . .
