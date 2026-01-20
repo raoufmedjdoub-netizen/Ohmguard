@@ -1,19 +1,15 @@
 # Frontend Dockerfile - React (Multi-stage build)
 
-# Stage 1: Build
-FROM node:18-alpine AS builder
+# Stage 1: Build - Using Node 20 for react-router-dom compatibility
+FROM node:20-alpine AS builder
 
 WORKDIR /app
-
-# Install yarn
-RUN corepack enable && corepack prepare yarn@stable --activate
 
 # Copy package.json first
 COPY package.json ./
 
-# Generate yarn.lock and install dependencies
-# Using --no-immutable because yarn.lock might not exist in repo
-RUN yarn install --no-immutable
+# Install dependencies
+RUN yarn install --no-immutable --network-timeout 100000
 
 # Copy source code
 COPY . .
