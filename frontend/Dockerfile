@@ -5,18 +5,15 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+# Install yarn
+RUN corepack enable && corepack prepare yarn@1.22.22 --activate
+
 # Copy package files
 COPY package.json ./
-COPY yarn.lock* package-lock.json* ./
+COPY yarn.lock ./
 
-# Install dependencies (yarn if yarn.lock exists, npm otherwise)
-RUN if [ -f yarn.lock ]; then \
-      yarn install --frozen-lockfile; \
-    elif [ -f package-lock.json ]; then \
-      npm ci; \
-    else \
-      npm install; \
-    fi
+# Install dependencies with yarn
+RUN yarn install --frozen-lockfile
 
 # Copy source code
 COPY . .
@@ -26,11 +23,7 @@ ARG REACT_APP_BACKEND_URL
 ENV REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL
 
 # Build the application
-RUN if [ -f yarn.lock ]; then \
-      yarn build; \
-    else \
-      npm run build; \
-    fi
+RUN yarn build
 
 # Stage 2: Production with Nginx
 FROM nginx:alpine
