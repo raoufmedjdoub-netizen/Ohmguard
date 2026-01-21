@@ -1,23 +1,4 @@
 services:
-  # MongoDB Database
-  mongodb:
-    image: mongo:7
-    container_name: ohmguard-mongodb
-    restart: unless-stopped
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-ohmguard}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
-      - MONGO_INITDB_DATABASE=${DB_NAME:-ohmguard}
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - ohmguard-network
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
   # FastAPI Backend
   backend:
     build:
@@ -26,25 +7,19 @@ services:
     container_name: ohmguard-backend
     restart: unless-stopped
     environment:
-      - MONGO_URL=mongodb://${MONGO_USER:-ohmguard}:${MONGO_PASSWORD}@mongodb:27017/${DB_NAME:-ohmguard}?authSource=admin
-      - DB_NAME=${DB_NAME:-ohmguard}
+      - MONGO_URL=${MONGO_URL}?authSource=admin
+      - DB_NAME=${DB_NAME}
       - JWT_SECRET=${JWT_SECRET}
-      - MQTT_BROKER=${MQTT_BROKER:-}
-      - MQTT_PORT=${MQTT_PORT:-1883}
-      - MQTT_USERNAME=${MQTT_USERNAME:-}
-      - MQTT_PASSWORD=${MQTT_PASSWORD:-}
-      - CORS_ORIGINS=${CORS_ORIGINS:-*}
-    depends_on:
-      mongodb:
-        condition: service_healthy
+      - MQTT_ENABLED=${MQTT_ENABLED}
+      - MQTT_BROKER_HOST=${MQTT_BROKER_HOST}
+      - MQTT_BROKER_PORT=${MQTT_BROKER_PORT}
+      - MQTT_PUB_TOPIC=${MQTT_PUB_TOPIC}
+      - MQTT_ACK_TOPIC=${MQTT_ACK_TOPIC}
+      - CORS_ORIGINS=https://app.ohmguard.fr
     networks:
-      - ohmguard-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      - dokploy-network
+    expose:
+      - "8001"
 
   # React Frontend with Nginx
   frontend:
@@ -52,26 +27,14 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
+        - REACT_APP_BACKEND_URL=https://app.ohmguard.fr
     container_name: ohmguard-frontend
     restart: unless-stopped
-    ports:
-      - "${HTTP_PORT:-80}:80"
-    depends_on:
-      backend:
-        condition: service_healthy
     networks:
-      - ohmguard-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-volumes:
-  mongodb_data:
-    driver: local
+      - dokploy-network
+    expose:
+      - "80"
 
 networks:
-  ohmguard-network:
-    driver: bridge
+  dokploy-network:
+    external: true
