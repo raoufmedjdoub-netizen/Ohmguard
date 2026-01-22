@@ -407,21 +407,42 @@ const resources = {
       
       // Navigation
       nav: {
+        home: 'Accueil',
         dashboard: 'Tableau de bord',
+        dashboard_desc: 'Vue d\'ensemble du système',
         live: 'En direct',
+        live_desc: 'Événements en temps réel',
         history: 'Historique',
+        history_desc: 'Historique des alertes',
         statistics: 'Statistiques',
+        statistics_desc: 'Rapports et analyses',
         radars: 'Radars',
+        radars_desc: 'Gestion des capteurs',
         clients: 'Clients & Bâtiments',
+        clients_desc: 'Gestion des clients et bâtiments',
         sites: 'Sites & Zones',
+        alert_rules: 'Règles d\'alerte',
+        alert_rules_desc: 'Configuration des alertes',
         rules: 'Règles d\'alerte',
         users: 'Utilisateurs',
+        users_desc: 'Gestion des utilisateurs',
         notifications: 'Notifications',
+        notifications_desc: 'Centre de notifications',
         settings: 'Paramètres',
+        settings_desc: 'Paramètres système',
         simulator: 'Simulateur',
+        simulator_desc: 'Simulateur d\'événements',
         presence_simulator: 'Simulateur Présence',
+        presence_simulator_desc: 'Simulation de présence',
         widgets: 'Widgets',
+        widgets_desc: 'Widgets personnalisés',
         logout: 'Déconnexion'
+      },
+      
+      // Theme
+      theme: {
+        light: 'Mode clair',
+        dark: 'Mode sombre'
       },
       
       // Radars page
