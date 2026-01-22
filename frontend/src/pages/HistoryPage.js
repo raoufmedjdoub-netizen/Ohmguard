@@ -110,15 +110,9 @@ export function HistoryPage() {
   return (
     <div data-testid="history-page" className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <History className="h-6 w-6 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">{t('events.history_title')}</h1>
-            <p className="text-muted-foreground">
-              {totalCount} {t('events.title').toLowerCase()}
-            </p>
-          </div>
-        </div>
+        <span className="text-sm text-muted-foreground">
+          {totalCount} {t('events.title').toLowerCase()}
+        </span>
         
         <Button variant="outline" onClick={handleExport} data-testid="export-btn">
           <Download className="h-4 w-4 mr-2" />
