@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { eventsAPI, sitesAPI } from '@/lib/api';
+import api, { eventsAPI, sitesAPI } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn, formatDate, getEventTypeColor, getSeverityColor, getStatusColor } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
-  History,
   Search,
   Filter,
   ChevronLeft,
@@ -20,9 +19,9 @@ import {
   Loader2,
   Eye,
   User,
-  MapPin,
   Target,
-  Building
+  Building2,
+  Home
 } from 'lucide-react';
 
 export function HistoryPage() {
