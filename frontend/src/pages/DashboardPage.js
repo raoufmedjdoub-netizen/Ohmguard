@@ -115,12 +115,8 @@ export function DashboardPage() {
 
   return (
     <div data-testid="dashboard-page" className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('dashboard.title')}</h1>
-          <p className="text-muted-foreground">{t('dashboard.overview')}</p>
-        </div>
+      {/* System Health indicator */}
+      <div className="flex items-center justify-end">
         <div className="flex items-center gap-2">
           <Activity className="h-5 w-5 text-success animate-pulse" />
           <span className="text-sm font-medium">{t('dashboard.system_health')}</span>
