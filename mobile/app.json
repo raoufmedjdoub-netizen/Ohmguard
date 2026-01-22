@@ -43,8 +43,12 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "your-project-id"
+        "projectId": "ohmguard-alerts"
+      },
+      "router": {
+        "origin": false
       }
-    }
+    },
+    "owner": "ohmguard"
   }
 }
