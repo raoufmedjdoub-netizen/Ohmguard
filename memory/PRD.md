@@ -197,6 +197,12 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
   - Modification de `/api/events` pour filtrer par `client_id` des capteurs assignés (pas seulement `tenant_id`)
   - Modification de `/api/clients` pour retourner les clients auxquels l'utilisateur a accès (via `client_users`)
   - Les utilisateurs avec rôle VIEWER peuvent maintenant voir les événements de leurs clients assignés
+- [x] **Nouvelle structure de navigation (January 22, 2026)**
+  - Navbar principale avec logo, indicateur WebSocket, sélecteur langue, toggle thème, email, déconnexion
+  - SubNavbar contextuelle avec fil d'Ariane dynamique et titre/description de page
+  - Sidebar responsive : collapsible sur desktop, overlay sur mobile avec fermeture automatique
+  - Bouton hamburger pour menu mobile
+  - Traductions FR/EN complètes pour toute la navigation
 - [ ] Email integration (currently mocked)
 - [ ] Webhook delivery with HMAC signature
 - [ ] Escalation automation
