@@ -71,7 +71,6 @@ openai==1.99.9
 packaging==25.0
 paho-mqtt==2.1.0
 pandas==2.3.3
-passlib==1.7.4
 pathspec==0.12.1
 pillow==12.1.0
 platformdirs==4.5.1
