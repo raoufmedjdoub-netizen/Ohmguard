@@ -32,21 +32,42 @@ const resources = {
       
       // Navigation
       nav: {
+        home: 'Home',
         dashboard: 'Dashboard',
+        dashboard_desc: 'System overview',
         live: 'Live',
+        live_desc: 'Real-time events',
         history: 'History',
+        history_desc: 'Alert history',
         statistics: 'Statistics',
+        statistics_desc: 'Reports and analytics',
         radars: 'Radars',
+        radars_desc: 'Sensor management',
         clients: 'Clients & Buildings',
+        clients_desc: 'Client and building management',
         sites: 'Sites & Zones',
+        alert_rules: 'Alert Rules',
+        alert_rules_desc: 'Alert configuration',
         rules: 'Alert Rules',
         users: 'Users',
+        users_desc: 'User management',
         notifications: 'Notifications',
+        notifications_desc: 'Notification center',
         settings: 'Settings',
+        settings_desc: 'System settings',
         simulator: 'Simulator',
+        simulator_desc: 'Event simulator',
         presence_simulator: 'Presence Simulator',
+        presence_simulator_desc: 'Presence simulation',
         widgets: 'Widgets',
+        widgets_desc: 'Custom widgets',
         logout: 'Logout'
+      },
+      
+      // Theme
+      theme: {
+        light: 'Light mode',
+        dark: 'Dark mode'
       },
       
       // Radars page
