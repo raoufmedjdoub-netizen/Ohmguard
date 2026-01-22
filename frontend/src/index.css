@@ -6,21 +6,29 @@
 
 @layer base {
   :root {
-    /* Light Theme - Clinical/Modern Blue */
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
+    /* Light Theme - OhmGuard Blue */
+    /* Blanc : Fond des écrans et cartes */
+    --background: 0 0% 100%;
+    --foreground: 210 50% 20%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 210 50% 20%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 174 72% 40%;
+    --popover-foreground: 210 50% 20%;
+    
+    /* Bleu (#2563EB) : Couleur primaire, liens */
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 187 85% 43%;
+    
+    /* Bleu Turquoise (#06B6D4) : Boutons d'action, accents */
+    --secondary: 189 94% 43%;
     --secondary-foreground: 0 0% 100%;
+    
+    /* Bleu foncé (#1E3A5F) : Header, textes principaux */
+    --accent: 210 52% 25%;
+    --accent-foreground: 0 0% 100%;
+    
     --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 174 40% 92%;
-    --accent-foreground: 174 72% 25%;
+    --muted-foreground: 210 25% 45%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --success: 142 71% 45%;
@@ -29,42 +37,49 @@
     --warning-foreground: 0 0% 0%;
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 174 72% 40%;
+    --ring: 217 91% 60%;
     --radius: 0.5rem;
     
-    /* Chart colors - Turquoise palette */
-    --chart-1: 174 72% 40%;
-    --chart-2: 187 85% 43%;
+    /* Chart colors - Blue palette */
+    --chart-1: 217 91% 60%;
+    --chart-2: 189 94% 43%;
     --chart-3: 142 71% 45%;
-    --chart-4: 199 89% 48%;
+    --chart-4: 210 52% 25%;
     --chart-5: 0 84% 60%;
   }
 
   .dark {
-    /* Dark Theme - Tactical/SOC Turquoise */
-    --background: 222 47% 2%;
+    /* Dark Theme - OhmGuard Blue Dark */
+    --background: 210 50% 8%;
     --foreground: 210 40% 98%;
-    --card: 222 47% 5%;
+    --card: 210 50% 12%;
     --card-foreground: 210 40% 98%;
-    --popover: 222 47% 5%;
+    --popover: 210 50% 12%;
     --popover-foreground: 210 40% 98%;
-    --primary: 174 72% 45%;
+    
+    /* Bleu (#2563EB) : Couleur primaire */
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 187 85% 43%;
+    
+    /* Bleu Turquoise (#06B6D4) : Accents */
+    --secondary: 189 94% 43%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 174 40% 15%;
-    --accent-foreground: 174 72% 70%;
-    --destructive: 0 63% 31%;
+    
+    /* Bleu foncé ajusté pour dark mode */
+    --accent: 210 52% 35%;
+    --accent-foreground: 0 0% 100%;
+    
+    --muted: 210 30% 20%;
+    --muted-foreground: 210 20% 65%;
+    --destructive: 0 63% 40%;
     --destructive-foreground: 210 40% 98%;
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 0%;
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 174 72% 45%;
+    --border: 210 30% 25%;
+    --input: 210 30% 25%;
+    --ring: 217 91% 60%;
   }
 }
 
