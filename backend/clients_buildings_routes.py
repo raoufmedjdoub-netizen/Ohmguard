@@ -18,7 +18,7 @@ from clients_buildings_models import (
 from clients_buildings_service import get_clients_buildings_service, ClientsBuildingsService
 
 
-def create_clients_buildings_router(get_current_user, check_permission, db, pwd_context):
+def create_clients_buildings_router(get_current_user, check_permission, db, get_password_hash=None):
     """Factory function to create router with dependencies"""
     
     router = APIRouter(tags=["Clients & Buildings"])
