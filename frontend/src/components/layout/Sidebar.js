@@ -3,6 +3,7 @@
  * 
  * Positionnée sous la navbar principale (top: 56px / 3.5rem)
  * Contient uniquement les liens de navigation
+ * Responsive: overlay sur mobile, fixe sur desktop
  */
 import React from 'react';
 import { NavLink } from 'react-router-dom';
@@ -25,7 +26,8 @@ import {
   Radar,
   Building2,
   AlertTriangle,
-  Wifi
+  Wifi,
+  X
 } from 'lucide-react';
 
 const navItems = [
@@ -44,7 +46,7 @@ const navItems = [
   { path: '/settings', icon: Settings, labelKey: 'nav.settings' }
 ];
 
-export function Sidebar({ collapsed, setCollapsed }) {
+export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
   const { t } = useTranslation();
   const { canManageUsers, isOperator } = useAuth();
 
@@ -60,15 +62,31 @@ export function Sidebar({ collapsed, setCollapsed }) {
       className={cn(
         'fixed left-0 top-14 z-30 h-[calc(100vh-3.5rem)] border-r border-border transition-all duration-300',
         'bg-[#1E3A5F]',
-        collapsed ? 'w-16' : 'w-64'
+        // Desktop
+        'hidden lg:block',
+        collapsed ? 'lg:w-16' : 'lg:w-64',
+        // Mobile: slide-in depuis la gauche
+        mobileOpen && 'block w-64 shadow-2xl'
       )}
     >
-      {/* Toggle collapse button */}
-      <div className="flex items-center justify-end h-10 px-2 border-b border-white/10">
+      {/* Header avec bouton toggle/fermer */}
+      <div className="flex items-center justify-between h-10 px-2 border-b border-white/10">
+        {/* Bouton fermer (mobile) */}
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-white/60 hover:text-white hover:bg-white/10"
+          className="h-7 w-7 text-white/60 hover:text-white hover:bg-white/10 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+          data-testid="sidebar-close"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+        
+        {/* Bouton collapse (desktop) */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-white/60 hover:text-white hover:bg-white/10 hidden lg:flex ml-auto"
           onClick={() => setCollapsed(!collapsed)}
           data-testid="sidebar-toggle"
         >
@@ -95,7 +113,7 @@ export function Sidebar({ collapsed, setCollapsed }) {
             title={collapsed ? t(item.labelKey, item.labelKey.split('.').pop()) : undefined}
           >
             <item.icon className="h-5 w-5 flex-shrink-0" />
-            {!collapsed && (
+            {(!collapsed || mobileOpen) && (
               <span className="truncate text-sm">
                 {t(item.labelKey, item.labelKey.split('.').pop())}
               </span>
@@ -105,7 +123,7 @@ export function Sidebar({ collapsed, setCollapsed }) {
       </nav>
 
       {/* Version info at bottom */}
-      {!collapsed && (
+      {(!collapsed || mobileOpen) && (
         <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-white/10">
           <p className="text-[10px] text-white/40 text-center">
             OhmGuard v1.0.0
