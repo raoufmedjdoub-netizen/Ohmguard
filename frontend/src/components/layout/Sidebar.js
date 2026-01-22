@@ -19,8 +19,8 @@ import {
   Users,
   Settings,
   Play,
-  ChevronLeft,
-  ChevronRight,
+  PanelLeftClose,
+  PanelLeft,
   BarChart3,
   LayoutGrid,
   Radar,
@@ -60,42 +60,30 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) 
     <aside
       data-testid="sidebar"
       className={cn(
-        'fixed left-0 top-14 z-30 h-[calc(100vh-3.5rem)] border-r border-border transition-all duration-300',
+        'fixed left-0 top-14 z-30 h-[calc(100vh-3.5rem)] border-r border-border transition-all duration-300 flex flex-col',
         'bg-[#1E3A5F]',
         // Desktop
-        'hidden lg:block',
+        'hidden lg:flex',
         collapsed ? 'lg:w-16' : 'lg:w-64',
         // Mobile: slide-in depuis la gauche
-        mobileOpen && 'block w-64 shadow-2xl'
+        mobileOpen && 'flex w-64 shadow-2xl'
       )}
     >
-      {/* Header avec bouton toggle/fermer */}
-      <div className="flex items-center justify-between h-10 px-2 border-b border-white/10">
-        {/* Bouton fermer (mobile) */}
+      {/* Header mobile uniquement - bouton fermer */}
+      <div className="flex items-center justify-end h-10 px-2 border-b border-white/10 lg:hidden">
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-white/60 hover:text-white hover:bg-white/10 lg:hidden"
+          className="h-7 w-7 text-white/60 hover:text-white hover:bg-white/10"
           onClick={() => setMobileOpen(false)}
           data-testid="sidebar-close"
         >
           <X className="h-4 w-4" />
         </Button>
-        
-        {/* Bouton collapse (desktop) */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-white/60 hover:text-white hover:bg-white/10 hidden lg:flex ml-auto"
-          onClick={() => setCollapsed(!collapsed)}
-          data-testid="sidebar-toggle"
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </Button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-2 py-3 space-y-1 overflow-y-auto h-[calc(100%-2.5rem)] scrollbar-thin">
+      <nav className="flex-1 px-2 py-3 space-y-1 overflow-y-auto scrollbar-thin">
         {filteredNavItems.map((item) => (
           <NavLink
             key={item.path}
@@ -122,14 +110,27 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) 
         ))}
       </nav>
 
-      {/* Version info at bottom */}
-      {(!collapsed || mobileOpen) && (
-        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-white/10">
-          <p className="text-[10px] text-white/40 text-center">
-            OhmGuard v1.0.0
-          </p>
-        </div>
-      )}
+      {/* Bouton collapse en bas (desktop uniquement) */}
+      <div className="hidden lg:block border-t border-white/10 p-2">
+        <Button
+          variant="ghost"
+          className={cn(
+            'w-full h-9 text-white/60 hover:text-white hover:bg-white/10 transition-all',
+            collapsed ? 'justify-center px-0' : 'justify-start px-3'
+          )}
+          onClick={() => setCollapsed(!collapsed)}
+          data-testid="sidebar-toggle"
+        >
+          {collapsed ? (
+            <PanelLeft className="h-4 w-4" />
+          ) : (
+            <>
+              <PanelLeftClose className="h-4 w-4 mr-2" />
+              <span className="text-xs">{t('nav.collapse_menu', 'Réduire le menu')}</span>
+            </>
+          )}
+        </Button>
+      </div>
     </aside>
   );
 }
