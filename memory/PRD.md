@@ -83,7 +83,10 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - ✅ Statistics page with charts
 - ✅ Widgets page (embeddable dashboards)
 - ✅ Settings (theme, language)
-- ✅ Responsive sidebar navigation
+- ✅ **Nouvelle structure de navigation (January 22, 2026)**
+  - **Navbar principale** : Logo OhmGuard, indicateur WebSocket (Live/Offline), sélecteur langue (FR/EN), toggle thème, email utilisateur, déconnexion, bouton hamburger (mobile)
+  - **SubNavbar contextuelle** : Fil d'Ariane dynamique, titre page avec icône, description page
+  - **Sidebar responsive** : Navigation latérale collapsible (desktop), overlay avec fermeture auto (mobile)
 - ✅ Bilingual (FR/EN) interface
 - ✅ Dark/Light theme
 
