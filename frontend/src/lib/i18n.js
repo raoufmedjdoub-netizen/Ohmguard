@@ -61,7 +61,9 @@ const resources = {
         presence_simulator_desc: 'Presence simulation',
         widgets: 'Widgets',
         widgets_desc: 'Custom widgets',
-        logout: 'Logout'
+        logout: 'Logout',
+        collapse_menu: 'Collapse menu',
+        expand_menu: 'Expand menu'
       },
       
       // Theme
