@@ -2302,7 +2302,7 @@ async def auto_seed_if_empty():
         admin_user = {
             "id": str(uuid.uuid4()),
             "email": "admin@ohmguard.io",
-            "hashed_password": pwd_context.hash(admin_password),
+            "hashed_password": get_password_hash(admin_password),
             "full_name": "Administrator",
             "role": "SUPER_ADMIN",
             "tenant_id": default_tenant_id,
