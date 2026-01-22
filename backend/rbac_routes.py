@@ -323,13 +323,13 @@ def create_rbac_routes(get_current_user, check_permission, db):
             raise HTTPException(status_code=403, detail="Permission denied")
         
         # Hash the new password
-        from passlib.context import CryptContext
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        import bcrypt
+        hashed_pw = bcrypt.hashpw(request.new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         
         # Update the user's password
         result = await db.users.update_one(
             {"id": client_user["user_id"]},
-            {"$set": {"hashed_password": pwd_context.hash(request.new_password)}}
+            {"$set": {"hashed_password": hashed_pw}}
         )
         
         if result.modified_count == 0:
