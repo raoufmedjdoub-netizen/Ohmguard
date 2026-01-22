@@ -2244,7 +2244,7 @@ clients_buildings_router = create_clients_buildings_router(
     get_current_user=get_current_user,
     check_permission=check_permission,
     db=db,
-    pwd_context=pwd_context
+    get_password_hash=get_password_hash
 )
 api_router.include_router(clients_buildings_router)
 
