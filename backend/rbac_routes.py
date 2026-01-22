@@ -163,16 +163,15 @@ def create_rbac_routes(get_current_user, check_permission, db):
             # Create new user
             import uuid
             from datetime import datetime, timezone
-            from passlib.context import CryptContext
-            
-            pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+            import bcrypt
             
             user_id = str(uuid.uuid4())
+            hashed_pw = bcrypt.hashpw(request.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             new_user = {
                 "id": user_id,
                 "email": request.email,
                 "full_name": request.full_name,
-                "hashed_password": pwd_context.hash(request.password),
+                "hashed_password": hashed_pw,
                 "role": "VIEWER",  # Default system role
                 "tenant_id": client_id,
                 "language": "fr",
