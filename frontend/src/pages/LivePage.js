@@ -311,11 +311,11 @@ export function LivePage() {
 
   return (
     <div data-testid="live-page" className="space-y-4">
-      {/* Header compact */}
+      {/* Header compact - uniquement indicateur temps réel et bouton refresh */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <Activity className="h-6 w-6 text-primary" />
+            <Activity className="h-5 w-5 text-primary" />
             {connected && (
               <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
@@ -324,31 +324,28 @@ export function LivePage() {
             )}
           </div>
           
-          <div>
-            <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
-              Présences en direct
-              <Badge variant="outline" className={cn(
-                "text-xs font-normal",
-                connected ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"
-              )}>
-                {connected ? (
-                  <><Wifi className="h-3 w-3 mr-1" />Live</>
-                ) : (
-                  <><WifiOff className="h-3 w-3 mr-1" />...</>
-                )}
-              </Badge>
-            </h1>
-            <p className="text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className={cn(
+              "text-xs font-normal",
+              connected ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"
+            )}>
+              {connected ? (
+                <><Wifi className="h-3 w-3 mr-1" />Live</>
+              ) : (
+                <><WifiOff className="h-3 w-3 mr-1" />...</>
+              )}
+            </Badge>
+            <span className="text-xs text-muted-foreground">
               {radarCards.length === 0 
-                ? 'En attente d\'événements temps réel...'
-                : `${stats.online}/${stats.total} radar${stats.total > 1 ? 's' : ''} avec présence`
+                ? 'En attente d\'événements...'
+                : `${stats.online}/${stats.total} radar${stats.total > 1 ? 's' : ''}`
               }
               {stats.falls > 0 && (
                 <span className="text-red-500 font-medium ml-2">
                   • {stats.falls} chute{stats.falls > 1 ? 's' : ''}
                 </span>
               )}
-            </p>
+            </span>
           </div>
         </div>
         
