@@ -50,32 +50,27 @@ export function LoginPage() {
 
   return (
     <div 
-      className="min-h-screen flex items-center justify-center p-4 relative"
-      style={{
-        backgroundImage: 'url(https://images.unsplash.com/photo-1584876981516-db6024a82322?crop=entropy&cs=srgb&fm=jpg&q=85)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center'
-      }}
+      className="min-h-screen flex items-center justify-center p-4 relative bg-gradient-to-br from-[#1E3A5F] to-[#2563EB]"
     >
-      <div className="absolute inset-0 bg-background/90 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-white/5 backdrop-blur-sm" />
       
       <Button
         variant="ghost"
         size="icon"
-        className="absolute top-4 right-4 z-10"
+        className="absolute top-4 right-4 z-10 text-white hover:bg-white/10"
         onClick={toggleTheme}
         data-testid="login-theme-toggle"
       >
         {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
       </Button>
       
-      <Card className="w-full max-w-md relative z-10 shadow-2xl" data-testid="login-card">
+      <Card className="w-full max-w-md relative z-10 shadow-2xl bg-white" data-testid="login-card">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center">
-            <Shield className="h-8 w-8 text-primary" />
+          <div className="mx-auto bg-[#06B6D4]/10 w-16 h-16 rounded-full flex items-center justify-center">
+            <Shield className="h-8 w-8 text-[#06B6D4]" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold">{t('app_name')}</CardTitle>
+            <CardTitle className="text-2xl font-bold text-[#1E3A5F]">{t('app_name')}</CardTitle>
             <CardDescription className="mt-1">{t('app_tagline')}</CardDescription>
           </div>
         </CardHeader>
@@ -120,7 +115,7 @@ export function LoginPage() {
             
             <Button 
               type="submit" 
-              className="w-full" 
+              className="w-full bg-[#06B6D4] hover:bg-[#0891B2] text-white" 
               disabled={loading}
               data-testid="login-submit"
             >
