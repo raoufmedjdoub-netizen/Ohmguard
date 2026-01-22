@@ -438,7 +438,9 @@ const resources = {
         presence_simulator_desc: 'Simulation de présence',
         widgets: 'Widgets',
         widgets_desc: 'Widgets personnalisés',
-        logout: 'Déconnexion'
+        logout: 'Déconnexion',
+        collapse_menu: 'Réduire le menu',
+        expand_menu: 'Agrandir le menu'
       },
       
       // Theme
