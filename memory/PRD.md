@@ -228,21 +228,25 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - `backend/mqtt_service.py` - MQTT integration with RadarEvent support
 - `backend/radar_event_models.py` - RadarEvent enums and models
 - `backend/vayyar_config_service.py` - Config publish/versioning
-- `backend/clients_buildings_models.py` - **NEW: Multi-tenant hierarchy models**
-- `backend/clients_buildings_service.py` - **NEW: Multi-tenant business logic**
-- `backend/clients_buildings_routes.py` - **NEW: Clients & Buildings API**
-- `backend/seed_clients_buildings.py` - **NEW: Demo data seeder**
+- `backend/clients_buildings_models.py` - Multi-tenant hierarchy models
+- `backend/clients_buildings_service.py` - Multi-tenant business logic
+- `backend/clients_buildings_routes.py` - Clients & Buildings API
+- `backend/seed_clients_buildings.py` - Demo data seeder
+- `frontend/src/components/layout/MainLayout.js` - **NEW: Layout with Navbar/SubNavbar/Sidebar**
+- `frontend/src/components/layout/Navbar.js` - **NEW: Main navigation bar**
+- `frontend/src/components/layout/SubNavbar.js` - **NEW: Contextual sub-navigation with breadcrumb**
+- `frontend/src/components/layout/Sidebar.js` - **UPDATED: Responsive sidebar navigation**
 - `frontend/src/pages/LivePage.js` - Live event wall with cards
 - `frontend/src/pages/HistoryPage.js` - Event history table
 - `frontend/src/pages/EventDetailPage.js` - Event detail view
 - `frontend/src/pages/PresenceSimulatorPage.js` - Presence simulator
-- `frontend/src/pages/ClientsPage.js` - **NEW: Clients list & management**
-- `frontend/src/pages/ClientDetailPage.js` - **NEW: Client detail with tree view**
-- `frontend/src/pages/BuildingDetailPage.js` - **NEW: Building management**
-- `frontend/src/pages/FloorDetailPage.js` - **NEW: Floor & rooms management**
-- `frontend/src/pages/RoomDetailPage.js` - **NEW: Room & spaces with radar assignment**
-- `frontend/src/lib/api.js` - API client with new endpoints
-- `frontend/src/lib/i18n.js` - Translations (FR/EN)
+- `frontend/src/pages/ClientsPage.js` - Clients list & management
+- `frontend/src/pages/ClientDetailPage.js` - Client detail with tree view
+- `frontend/src/pages/BuildingDetailPage.js` - Building management
+- `frontend/src/pages/FloorDetailPage.js` - Floor & rooms management
+- `frontend/src/pages/RoomDetailPage.js` - Room & spaces with radar assignment
+- `frontend/src/lib/api.js` - API client with all endpoints
+- `frontend/src/lib/i18n.js` - **UPDATED: Complete FR/EN translations for navigation**
 
 ## Clients & Buildings Module (January 14, 2026 - COMPLETE)
 
