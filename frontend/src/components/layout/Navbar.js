@@ -2,6 +2,7 @@
  * Navbar - Barre de navigation principale
  * 
  * Position fixe en haut, contient:
+ * - Bouton menu (mobile)
  * - Logo à gauche
  * - Sélecteur de langue, mode nuit, déconnexion à droite
  */
@@ -27,7 +28,8 @@ import {
   Globe, 
   ChevronDown,
   Wifi,
-  WifiOff
+  WifiOff,
+  Menu
 } from 'lucide-react';
 
 // Langues disponibles
@@ -36,7 +38,7 @@ const LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇬🇧' },
 ];
 
-export function Navbar() {
+export function Navbar({ onMenuClick, showMenuButton }) {
   const { t, i18n } = useTranslation();
   const { logout, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -59,17 +61,33 @@ export function Navbar() {
       data-testid="main-navbar"
     >
       <div className="h-full px-4 flex items-center justify-between">
-        {/* Logo à gauche */}
-        <Link 
-          to="/dashboard" 
-          className="flex items-center gap-2 hover:opacity-90 transition-opacity"
-          data-testid="navbar-logo"
-        >
-          <Shield className="h-7 w-7 text-[#06B6D4]" />
-          <span className="font-bold text-lg text-white tracking-tight">
-            OhmGuard
-          </span>
-        </Link>
+        {/* Gauche: Menu burger + Logo */}
+        <div className="flex items-center gap-2">
+          {/* Bouton menu hamburger (mobile uniquement) */}
+          {showMenuButton && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onMenuClick}
+              className="h-9 w-9 text-white/80 hover:text-white hover:bg-white/10 lg:hidden"
+              data-testid="navbar-menu-btn"
+              aria-label="Menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
+          
+          <Link 
+            to="/dashboard" 
+            className="flex items-center gap-2 hover:opacity-90 transition-opacity"
+            data-testid="navbar-logo"
+          >
+            <Shield className="h-7 w-7 text-[#06B6D4]" />
+            <span className="font-bold text-lg text-white tracking-tight">
+              OhmGuard
+            </span>
+          </Link>
+        </div>
 
         {/* Actions à droite */}
         <div className="flex items-center gap-2">
