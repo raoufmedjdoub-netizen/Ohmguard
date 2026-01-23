@@ -144,13 +144,46 @@ export function HistoryPage() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">{t('filter')}:</span>
             </div>
             
-            <div className="relative flex-1 min-w-48 max-w-sm">
+            {/* Filtre Client */}
+            <Select value={selectedClient} onValueChange={(v) => { setSelectedClient(v); setSelectedBuilding('all'); setPage(0); }}>
+              <SelectTrigger className="w-44" data-testid="filter-client">
+                <Home className="h-4 w-4 mr-2 text-muted-foreground" />
+                <SelectValue placeholder={t('history.client', 'Client')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('all')}</SelectItem>
+                {clients.map(client => (
+                  <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            {/* Filtre Bâtiment (dépend du client) */}
+            <Select 
+              value={selectedBuilding} 
+              onValueChange={(v) => { setSelectedBuilding(v); setPage(0); }}
+              disabled={selectedClient === 'all'}
+            >
+              <SelectTrigger className="w-44" data-testid="filter-building">
+                <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                <SelectValue placeholder={t('history.building', 'Bâtiment')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('all')}</SelectItem>
+                {buildings.map(building => (
+                  <SelectItem key={building.id} value={building.id}>{building.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            {/* Recherche */}
+            <div className="relative flex-1 min-w-40 max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder={t('search')}
@@ -161,18 +194,7 @@ export function HistoryPage() {
               />
             </div>
             
-            <Select value={selectedSite} onValueChange={(v) => { setSelectedSite(v); setPage(0); }}>
-              <SelectTrigger className="w-40" data-testid="filter-site">
-                <SelectValue placeholder={t('events.site')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('all')}</SelectItem>
-                {sites.map(site => (
-                  <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
+            {/* Type d'événement */}
             <Select value={selectedType} onValueChange={(v) => { setSelectedType(v); setPage(0); }}>
               <SelectTrigger className="w-32" data-testid="filter-type">
                 <SelectValue placeholder={t('events.event_type')} />
@@ -187,6 +209,7 @@ export function HistoryPage() {
               </SelectContent>
             </Select>
             
+            {/* Gravité */}
             <Select value={selectedSeverity} onValueChange={(v) => { setSelectedSeverity(v); setPage(0); }}>
               <SelectTrigger className="w-32" data-testid="filter-severity">
                 <SelectValue placeholder={t('events.severity')} />
@@ -199,8 +222,9 @@ export function HistoryPage() {
               </SelectContent>
             </Select>
             
+            {/* Statut */}
             <Select value={selectedStatus} onValueChange={(v) => { setSelectedStatus(v); setPage(0); }}>
-              <SelectTrigger className="w-36" data-testid="filter-status">
+              <SelectTrigger className="w-32" data-testid="filter-status">
                 <SelectValue placeholder={t('status')} />
               </SelectTrigger>
               <SelectContent>
