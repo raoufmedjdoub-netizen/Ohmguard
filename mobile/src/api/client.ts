@@ -1,19 +1,9 @@
 // API Client - Connexion au backend OhmGuard
 import * as SecureStore from 'expo-secure-store';
-import Constants from 'expo-constants';
 
-// URL de l'API - configurable via app.json extra ou par défaut
-const getApiUrl = () => {
-  // En développement, on peut utiliser l'URL de preview
-  // En production, ce sera l'URL du serveur déployé
-  const configuredUrl = Constants.expoConfig?.extra?.apiUrl;
-  if (configuredUrl) return configuredUrl;
-  
-  // Default pour le développement - à changer pour la production
-  return 'https://live-monitor-2.preview.emergentagent.com/api';
-};
-
-const API_URL = getApiUrl();
+// URL de l'API - directement configurée pour le preview
+// En production, remplacer par l'URL du serveur déployé
+const API_URL = 'https://live-monitor-2.preview.emergentagent.com/api';
 
 // Log pour debug
 console.log('[API] Using URL:', API_URL);
@@ -24,6 +14,7 @@ class ApiClient {
 
   constructor() {
     this.baseUrl = API_URL;
+    console.log('[API] Client initialized with URL:', this.baseUrl);
   }
 
   async setToken(token: string) {
