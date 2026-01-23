@@ -47,10 +47,18 @@ export function useAlerts() {
       setError(null);
       console.log('[Alerts] Fetching alerts...');
       const data = await apiClient.getAlerts();
+      console.log('[Alerts] Raw data received:', JSON.stringify(data?.slice(0, 2)));
       console.log('[Alerts] Received', data?.length || 0, 'events');
       
+      if (!data || !Array.isArray(data)) {
+        console.log('[Alerts] Invalid data format, expected array');
+        setAlerts([]);
+        return;
+      }
+      
       // Normalize all alerts
-      const normalizedAlerts = (data || []).map(normalizeAlert);
+      const normalizedAlerts = data.map(normalizeAlert);
+      console.log('[Alerts] Normalized alerts:', normalizedAlerts.length);
       
       // Sort by timestamp (newest first)
       normalizedAlerts.sort((a, b) => 
@@ -58,6 +66,7 @@ export function useAlerts() {
       );
       
       setAlerts(normalizedAlerts);
+      console.log('[Alerts] State updated with', normalizedAlerts.length, 'alerts');
     } catch (err: any) {
       console.log('[Alerts] Error fetching:', err.message);
       setError(err.message);
