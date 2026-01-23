@@ -621,6 +621,15 @@ const resources = {
         event_created: 'Nouvel événement détecté'
       },
       
+      // History page filters
+      history: {
+        client: 'Client',
+        building: 'Bâtiment',
+        all_clients: 'Tous les clients',
+        all_buildings: 'Tous les bâtiments',
+        select_client_first: 'Sélectionnez un client'
+      },
+      
       // Sensors
       sensors: {
         title: 'Capteurs',
