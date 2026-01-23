@@ -27,13 +27,15 @@ import {
   Building2,
   AlertTriangle,
   Wifi,
-  X
+  X,
+  FileText
 } from 'lucide-react';
 
 const navItems = [
   { path: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard' },
   { path: '/live', icon: Wifi, labelKey: 'nav.live' },
   { path: '/history', icon: History, labelKey: 'nav.history' },
+  { path: '/reports', icon: FileText, labelKey: 'nav.reports' },
   { path: '/statistics', icon: BarChart3, labelKey: 'nav.statistics' },
   { path: '/radars', icon: Radar, labelKey: 'nav.radars' },
   { path: '/clients', icon: Building2, labelKey: 'nav.clients' },
