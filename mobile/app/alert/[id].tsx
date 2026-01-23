@@ -47,7 +47,7 @@ export default function AlertDetailScreen() {
             setAcknowledging(true);
             try {
               await apiClient.acknowledgeAlert(id!);
-              setAlert(prev => prev ? { ...prev, status: 'ACKNOWLEDGED' } : null);
+              setAlert(prev => prev ? { ...prev, status: 'ACK' } : null);
               RNAlert.alert('Succès', 'Alerte acquittée', [
                 { text: 'OK', onPress: () => router.back() }
               ]);
