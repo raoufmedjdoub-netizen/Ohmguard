@@ -1,136 +1,146 @@
 # OhmGuard Mobile - Application d'Alertes
 
-## 📱 Application React Native / Expo
+Application mobile React Native (Expo) pour la réception et l'acquittement des alertes de chute OhmGuard.
 
-Application mobile simplifiée pour la réception et l'acquittement des alertes de chute.
+## 🎯 Fonctionnalités
 
-## Fonctionnalités
+- **Connexion sécurisée** avec les identifiants OhmGuard
+- **Liste des alertes** en temps réel (chutes détectées)
+- **Acquittement des alertes** avec confirmation
+- **Notifications push** pour les nouvelles alertes
+- **WebSocket** pour les mises à jour en temps réel
+- **Mode hors ligne** avec synchronisation au retour
 
-- ✅ Authentification JWT
-- ✅ Liste des alertes de chute
-- ✅ Détail d'une alerte
-- ✅ Acquittement des alertes
-- ✅ Temps réel via WebSocket
-- ✅ Notifications push
+## 📱 Écrans
 
-## Prérequis
+1. **Login** - Connexion avec email/mot de passe
+2. **Alertes** - Liste des alertes actives et acquittées
+3. **Détail Alerte** - Informations détaillées + bouton acquitter
+
+## 🚀 Démarrage rapide
+
+### Prérequis
 
 - Node.js 18+
-- Expo CLI
-- Compte Expo (pour les builds)
+- Expo CLI (`npm install -g expo-cli`)
+- Application Expo Go sur votre téléphone (pour le développement)
 
-## Installation
+### Installation
 
 ```bash
-cd mobile
-npm install
-# ou
+cd /app/mobile
 yarn install
 ```
 
-## Développement
+### Développement
 
 ```bash
-# Démarrer le serveur de développement
+# Démarrer le serveur de développement Expo
 npx expo start
 
-# Android
-npx expo start --android
-
-# iOS
-npx expo start --ios
+# Scanner le QR code avec Expo Go (Android) ou Camera (iOS)
 ```
 
-## Configuration
+### Test avec identifiants
 
-### 1. URL Backend
-
-Modifier `src/api/client.ts` :
-```typescript
-const API_URL = 'https://app.ohmguard.fr/api';
+```
+Email: admin@ohmguard.io
+Password: admin123
 ```
 
-### 2. Notifications Push
+## 🔧 Configuration
 
-1. Créer un projet sur [Expo](https://expo.dev)
-2. Remplacer `projectId` dans :
-   - `app.json`
-   - `src/services/notifications.ts`
+### URL de l'API
 
-### 3. Firebase (Android)
+L'URL de l'API est configurée dans `app.json` :
 
-1. Créer un projet Firebase
-2. Télécharger `google-services.json`
-3. Le placer à la racine `/mobile/`
+```json
+{
+  "expo": {
+    "extra": {
+      "apiUrl": "https://live-monitor-2.preview.emergentagent.com/api"
+    }
+  }
+}
+```
 
-## Build Production
+Pour la production, modifier cette URL vers le serveur déployé.
 
-### Configuration EAS
+### Notifications Push
+
+1. Créer un projet sur [Expo EAS](https://expo.dev)
+2. Configurer `projectId` dans `app.json` et `eas.json`
+3. Les notifications locales fonctionnent sans configuration
+
+## 📦 Build pour distribution
+
+### Android (APK/AAB)
 
 ```bash
-# Installer EAS CLI
+# Installation EAS CLI
 npm install -g eas-cli
 
-# Se connecter
+# Login Expo
 eas login
 
-# Configurer le projet
-eas build:configure
-```
-
-### Build Android
-
-```bash
-# APK de développement
+# Build APK pour test interne
 eas build --platform android --profile preview
 
-# AAB pour Google Play
+# Build AAB pour Play Store
 eas build --platform android --profile production
 ```
 
-### Build iOS
+### iOS (IPA)
 
 ```bash
-# Simulateur
-eas build --platform ios --profile preview
-
-# App Store
+# Nécessite un compte Apple Developer
 eas build --platform ios --profile production
 ```
 
-## Structure
+## 🏗️ Architecture
 
 ```
-mobile/
-├── app/                 # Écrans (Expo Router)
-│   ├── _layout.tsx     # Layout principal
-│   ├── index.tsx       # Login
-│   ├── alerts.tsx      # Liste alertes
-│   └── alert/[id].tsx  # Détail alerte
+/app/mobile/
+├── app/                    # Écrans (Expo Router)
+│   ├── _layout.tsx        # Layout racine
+│   ├── index.tsx          # Écran Login
+│   ├── alerts.tsx         # Liste des alertes
+│   └── alert/
+│       └── [id].tsx       # Détail alerte
 ├── src/
-│   ├── api/            # Client API
-│   ├── hooks/          # Hooks React
-│   ├── services/       # Notifications
-│   └── types/          # TypeScript
-└── assets/             # Images, sons
+│   ├── api/
+│   │   └── client.ts      # Client API
+│   ├── hooks/
+│   │   ├── useAuth.ts     # Hook authentification
+│   │   ├── useAlerts.ts   # Hook gestion alertes
+│   │   └── useWebSocket.ts # Hook WebSocket
+│   ├── services/
+│   │   └── notifications.ts # Service notifications
+│   └── types/
+│       └── index.ts       # Types TypeScript
+├── app.json               # Configuration Expo
+├── eas.json               # Configuration EAS Build
+└── package.json           # Dépendances
 ```
 
-## API Backend Requises
+## 🔌 API Endpoints utilisés
 
-| Endpoint | Méthode | Description |
-|----------|---------|-------------|
-| `/api/auth/login` | POST | Authentification |
-| `/api/auth/me` | GET | Utilisateur courant |
-| `/api/events` | GET | Liste des événements |
-| `/api/events/{id}` | GET | Détail événement |
-| `/api/events/{id}/acknowledge` | POST | Acquitter |
+- `POST /api/auth/login` - Connexion
+- `GET /api/auth/me` - Utilisateur courant
+- `GET /api/events?event_type=FALL` - Liste des alertes
+- `GET /api/events/:id` - Détail alerte
+- `POST /api/events/:id/acknowledge` - Acquitter une alerte
 
-## WebSocket
+## 🎨 Design
 
-L'app se connecte au WebSocket pour recevoir les alertes en temps réel :
-- Event: `new_event` / `new_radar_event`
-- Filtre: `type === 'FALL'`
+- **Thème sombre** pour usage 24/7
+- **Rouge #DC2626** pour les alertes actives
+- **Animations** pour l'état de connexion
+- **Pull-to-refresh** pour actualiser
 
-## Licence
+## 📝 Notes
 
-Propriétaire - OhmGuard
+- L'application nécessite une connexion Internet
+- Les notifications push nécessitent un appareil physique
+- Le WebSocket se reconnecte automatiquement en cas de déconnexion
+- Les alertes sont triées par date (plus récentes en premier)
