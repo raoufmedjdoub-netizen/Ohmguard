@@ -28,10 +28,14 @@ export function HistoryPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [buildings, setBuildings] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   
+  const [selectedClient, setSelectedClient] = useState('all');
+  const [selectedBuilding, setSelectedBuilding] = useState('all');
   const [selectedSite, setSelectedSite] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -41,12 +45,31 @@ export function HistoryPage() {
   const [page, setPage] = useState(0);
   const limit = 20;
 
+  // Charger les clients au démarrage
+  useEffect(() => {
+    api.get('/clients').then(res => setClients(res.data)).catch(() => setClients([]));
+  }, []);
+
+  // Charger les bâtiments quand un client est sélectionné
+  useEffect(() => {
+    if (selectedClient && selectedClient !== 'all') {
+      api.get(`/clients/${selectedClient}/buildings`).then(res => {
+        setBuildings(res.data);
+      }).catch(() => setBuildings([]));
+    } else {
+      setBuildings([]);
+      setSelectedBuilding('all');
+    }
+  }, [selectedClient]);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const params = {
         limit,
         skip: page * limit,
+        ...(selectedClient !== 'all' && { client_id: selectedClient }),
+        ...(selectedBuilding !== 'all' && { building_id: selectedBuilding }),
         ...(selectedSite !== 'all' && { site_id: selectedSite }),
         ...(selectedType !== 'all' && { event_type: selectedType }),
         ...(selectedStatus !== 'all' && { status: selectedStatus }),
@@ -68,7 +91,7 @@ export function HistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, selectedSite, selectedType, selectedStatus, selectedSeverity, t]);
+  }, [page, selectedClient, selectedBuilding, selectedSite, selectedType, selectedStatus, selectedSeverity, t]);
 
   useEffect(() => {
     fetchData();
