@@ -70,7 +70,11 @@ export function ReportsPage() {
       // Top zones
       const zoneCount = {};
       events.forEach(event => {
-        const loc = event.location_path || event.location || 'Unknown';
+        // S'assurer que loc est une string
+        let loc = event.location_path || event.location || 'Unknown';
+        if (typeof loc === 'object') {
+          loc = JSON.stringify(loc);
+        }
         zoneCount[loc] = (zoneCount[loc] || 0) + 1;
       });
       const topZones = Object.entries(zoneCount)
