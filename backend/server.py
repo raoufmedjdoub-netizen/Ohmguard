@@ -1892,6 +1892,7 @@ async def events_stream(tenant_id: str, token: str = Query(...)):
 # ==================== SIMULATOR ====================
 
 @api_router.post("/simulator/event")
+@api_router.post("/simulate/event")
 async def simulate_event(
     sensor_id: str = None,
     device_id: str = None,
