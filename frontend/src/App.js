@@ -86,10 +86,13 @@ function AppRoutes() {
         <Route path="rooms/:roomId" element={<RoomDetailPage />} />
         
         <Route path="rules" element={<RulesPage />} />
+        <Route path="alert-rules" element={<RulesPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="reports" element={<ReportsPage />} />
         <Route path="simulator" element={<SimulatorPage />} />
         <Route path="simulator/presence" element={<PresenceSimulatorPage />} />
+        <Route path="presence-simulator" element={<PresenceSimulatorPage />} />
         <Route path="statistics" element={<StatisticsPage />} />
         <Route path="widgets" element={<WidgetPage />} />
         <Route path="settings" element={<SettingsPage />} />
