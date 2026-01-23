@@ -258,7 +258,7 @@ export function HistoryPage() {
                   <TableHead>{t('status')}</TableHead>
                   <TableHead>
                     <div className="flex items-center gap-1">
-                      <Building className="h-4 w-4" />
+                      <Building2 className="h-4 w-4" />
                       {t('events.location')}
                     </div>
                   </TableHead>
