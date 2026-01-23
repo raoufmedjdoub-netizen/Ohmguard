@@ -42,6 +42,7 @@
       ]
     ],
     "extra": {
+      "apiUrl": "https://live-monitor-2.preview.emergentagent.com/api",
       "eas": {
         "projectId": "ohmguard-alerts"
       },
