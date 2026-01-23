@@ -67,14 +67,30 @@ export function ReportsPage() {
         summary.bySeverity[event.severity] = (summary.bySeverity[event.severity] || 0) + 1;
       });
 
-      // Top zones
+      // Top zones - amélioration de l'affichage des locations
       const zoneCount = {};
       events.forEach(event => {
-        // S'assurer que loc est une string
-        let loc = event.location_path || event.location || 'Unknown';
-        if (typeof loc === 'object') {
-          loc = JSON.stringify(loc);
+        let loc = 'Unknown';
+        
+        // Essayer d'obtenir un chemin lisible
+        if (event.location_path && typeof event.location_path === 'string') {
+          loc = event.location_path;
+        } else if (event.location && typeof event.location === 'string') {
+          loc = event.location;
+        } else if (event.location && typeof event.location === 'object') {
+          // Si c'est un objet, essayer de construire un chemin
+          const parts = [];
+          if (event.location.client_name) parts.push(event.location.client_name);
+          if (event.location.building_name) parts.push(event.location.building_name);
+          if (event.location.floor_name) parts.push(event.location.floor_name);
+          if (event.location.room_name) parts.push(event.location.room_name);
+          loc = parts.length > 0 ? parts.join(' > ') : 'Unknown';
+        } else if (event.radar_name) {
+          loc = event.radar_name;
+        } else if (event.sensor_id) {
+          loc = `Sensor ${event.sensor_id.slice(0, 8)}`;
         }
+        
         zoneCount[loc] = (zoneCount[loc] || 0) + 1;
       });
       const topZones = Object.entries(zoneCount)
