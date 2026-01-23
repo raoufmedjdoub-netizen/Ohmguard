@@ -161,6 +161,7 @@ const DEFAULT_DESCRIPTIONS = {
   '/dashboard': 'Vue d\'ensemble du système',
   '/live': 'Événements en temps réel',
   '/history': 'Historique des alertes',
+  '/reports': 'Génération de rapports d\'événements',
   '/statistics': 'Statistiques et rapports',
   '/radars': 'Gestion des capteurs',
   '/clients': 'Clients et bâtiments',
