@@ -15,8 +15,8 @@ export interface AuthResponse {
 
 export interface Alert {
   id: string;
-  type: 'FALL' | 'PRE_FALL';
-  status: 'NEW' | 'ACKNOWLEDGED' | 'RESOLVED';
+  type: 'FALL' | 'PRE_FALL' | string;
+  status: 'NEW' | 'ACK' | 'ACKNOWLEDGED' | 'RESOLVED' | string;
   timestamp: string;
   sensor_id: string;
   radar_name: string;
