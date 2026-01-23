@@ -427,6 +427,8 @@ const resources = {
         live_desc: 'Événements en temps réel',
         history: 'Historique',
         history_desc: 'Historique des alertes',
+        reports: 'Rapports',
+        reports_desc: 'Génération de rapports d\'événements',
         statistics: 'Statistiques',
         statistics_desc: 'Rapports et analyses',
         radars: 'Radars',
