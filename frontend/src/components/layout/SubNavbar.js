@@ -25,7 +25,8 @@ import {
   AlertTriangle,
   Play,
   Wifi,
-  Grid3X3
+  Grid3X3,
+  FileText
 } from 'lucide-react';
 
 // Configuration des pages avec leurs métadonnées
@@ -52,6 +53,15 @@ const PAGE_CONFIG = {
     breadcrumb: [
       { labelKey: 'nav.dashboard', path: '/dashboard' },
       { labelKey: 'nav.history', path: '/history' }
+    ]
+  },
+  '/reports': {
+    icon: FileText,
+    titleKey: 'nav.reports',
+    descriptionKey: 'nav.reports_desc',
+    breadcrumb: [
+      { labelKey: 'nav.dashboard', path: '/dashboard' },
+      { labelKey: 'nav.reports', path: '/reports' }
     ]
   },
   '/statistics': {
