@@ -1,10 +1,30 @@
 // API Client - Connexion au backend OhmGuard
 import * as SecureStore from 'expo-secure-store';
+import Constants from 'expo-constants';
 
-const API_URL = 'https://app.ohmguard.fr/api';
+// URL de l'API - configurable via app.json extra ou par défaut
+const getApiUrl = () => {
+  // En développement, on peut utiliser l'URL de preview
+  // En production, ce sera l'URL du serveur déployé
+  const configuredUrl = Constants.expoConfig?.extra?.apiUrl;
+  if (configuredUrl) return configuredUrl;
+  
+  // Default pour le développement - à changer pour la production
+  return 'https://live-monitor-2.preview.emergentagent.com/api';
+};
+
+const API_URL = getApiUrl();
+
+// Log pour debug
+console.log('[API] Using URL:', API_URL);
 
 class ApiClient {
   private token: string | null = null;
+  private baseUrl: string;
+
+  constructor() {
+    this.baseUrl = API_URL;
+  }
 
   async setToken(token: string) {
     this.token = token;
@@ -35,26 +55,33 @@ class ApiClient {
       ...options.headers,
     };
 
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    const url = `${this.baseUrl}${endpoint}`;
+    console.log('[API] Request:', options.method || 'GET', url);
+
+    const response = await fetch(url, {
       ...options,
       headers,
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Erreur réseau' }));
+      console.log('[API] Error:', response.status, error);
       throw new Error(error.detail || `Erreur ${response.status}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    return data;
   }
 
   // Auth
   async login(email: string, password: string) {
+    console.log('[API] Login attempt for:', email);
+    
     const formData = new URLSearchParams();
     formData.append('username', email);
     formData.append('password', password);
 
-    const response = await fetch(`${API_URL}/auth/login`, {
+    const response = await fetch(`${this.baseUrl}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: formData.toString(),
@@ -62,15 +89,18 @@ class ApiClient {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Identifiants incorrects' }));
+      console.log('[API] Login error:', error);
       throw new Error(error.detail || 'Erreur de connexion');
     }
 
     const data = await response.json();
+    console.log('[API] Login success, token received');
     await this.setToken(data.access_token);
     return data;
   }
 
   async logout() {
+    console.log('[API] Logout');
     await this.clearToken();
   }
 
@@ -81,11 +111,12 @@ class ApiClient {
   // Alerts (Events de type FALL)
   async getAlerts(status?: string) {
     const params = new URLSearchParams();
-    params.append('type', 'FALL');
+    params.append('event_type', 'FALL'); // Backend uses event_type not type
     if (status) params.append('status', status);
     params.append('limit', '50');
     
-    return this.request<any[]>(`/events?${params.toString()}`);
+    const data = await this.request<any[]>(`/events?${params.toString()}`);
+    return data;
   }
 
   async getAlert(id: string) {
@@ -96,6 +127,25 @@ class ApiClient {
     return this.request(`/events/${id}/acknowledge`, {
       method: 'POST',
     });
+  }
+
+  // Register push token
+  async registerPushToken(pushToken: string) {
+    try {
+      return await this.request('/auth/push-token', {
+        method: 'POST',
+        body: JSON.stringify({ push_token: pushToken }),
+      });
+    } catch (err) {
+      console.log('[API] Push token registration failed (endpoint may not exist):', err);
+      // Silently fail if endpoint doesn't exist
+    }
+  }
+
+  // Get base URL (for WebSocket)
+  getBaseUrl() {
+    // Remove /api suffix for WebSocket URL
+    return this.baseUrl.replace('/api', '');
   }
 }
 
