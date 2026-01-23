@@ -48,20 +48,29 @@ class ApiClient {
 
     const url = `${this.baseUrl}${endpoint}`;
     console.log('[API] Request:', options.method || 'GET', url);
+    console.log('[API] Headers:', JSON.stringify(headers));
 
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Erreur réseau' }));
-      console.log('[API] Error:', response.status, error);
-      throw new Error(error.detail || `Erreur ${response.status}`);
+      console.log('[API] Response status:', response.status);
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: 'Erreur réseau' }));
+        console.log('[API] Error response:', JSON.stringify(error));
+        throw new Error(error.detail || `Erreur ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('[API] Response data length:', Array.isArray(data) ? data.length : 'object');
+      return data;
+    } catch (err: any) {
+      console.log('[API] Fetch error:', err.message);
+      throw err;
     }
-
-    const data = await response.json();
-    return data;
   }
 
   // Auth
