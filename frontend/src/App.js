@@ -25,6 +25,7 @@ import { PresenceSimulatorPage } from '@/pages/PresenceSimulatorPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { StatisticsPage } from '@/pages/StatisticsPage';
 import { WidgetPage } from '@/components/widgets/DashboardWidget';
+import { ReportsPage } from '@/pages/ReportsPage';
 
 // Clients & Buildings Pages
 import { ClientsPage } from '@/pages/ClientsPage';
