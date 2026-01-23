@@ -296,3 +296,16 @@ Client → Buildings → Floors/Zones → Rooms → Spaces
 - 2 clients: "EHPAD Les Jardins du Parc", "Résidence Seniors Les Cèdres"
 - 3 buildings with floors, rooms, and zones
 - 2 radars assigned to Chambre 101 spaces
+
+### Mobile App (January 23, 2026)
+- ✅ **Structure React Native (Expo)** avec Expo Router
+- ✅ **Écran Login** - Connexion avec email/password via API `/api/auth/login`
+- ✅ **Écran Alertes** - Liste des événements FALL avec statut (NEW/ACK/RESOLVED)
+- ✅ **Écran Détail Alerte** - Informations complètes + bouton acquittement
+- ✅ **Client API** - Connexion au backend OhmGuard avec gestion des tokens
+- ✅ **Hook useAuth** - Gestion de l'authentification et redirection
+- ✅ **Hook useAlerts** - Récupération et gestion des alertes
+- ✅ **Hook useWebSocket** - Connexion temps réel pour nouvelles alertes
+- ✅ **Service Notifications** - Configuration Expo Notifications pour push
+- ✅ **Types TypeScript** - Typage complet (Alert, User, etc.)
+- ⚠️ **Notifications Push** - Configuré mais nécessite EAS Build sur appareil physique
