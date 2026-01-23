@@ -39,6 +39,8 @@ const resources = {
         live_desc: 'Real-time events',
         history: 'History',
         history_desc: 'Alert history',
+        reports: 'Reports',
+        reports_desc: 'Event reports generation',
         statistics: 'Statistics',
         statistics_desc: 'Reports and analytics',
         radars: 'Radars',
