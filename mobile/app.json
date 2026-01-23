@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "ohmguard",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -15,41 +15,26 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "fr.ohmguard.alerts",
-      "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
-      }
+      "bundleIdentifier": "fr.ohmguard.alerts"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#DC2626"
       },
-      "package": "fr.ohmguard.alerts",
-      "googleServicesFile": "./google-services.json",
-      "permissions": ["RECEIVE_BOOT_COMPLETED", "VIBRATE"]
+      "package": "fr.ohmguard.alerts"
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store",
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/notification-icon.png",
-          "color": "#DC2626",
-          "sounds": ["./assets/alert.wav"]
-        }
-      ]
+      "expo-secure-store"
     ],
     "extra": {
-      "apiUrl": "https://live-monitor-2.preview.emergentagent.com/api",
       "eas": {
         "projectId": "ohmguard-alerts"
       },
       "router": {
         "origin": false
       }
-    },
-    "owner": "ohmguard"
+    }
   }
 }
