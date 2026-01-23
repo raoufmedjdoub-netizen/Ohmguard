@@ -48,6 +48,16 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 ### Frontend Features
 - ✅ Login page with demo credentials
 - ✅ Dashboard with real-time stats
+- ✅ **Nouvelle structure de navigation (January 22, 2026)**
+  - **Navbar principale** : Logo OhmGuard, indicateur WebSocket (Live/Offline), sélecteur langue (FR/EN), toggle thème, email utilisateur, déconnexion, bouton hamburger (mobile)
+  - **SubNavbar contextuelle** : Fil d'Ariane dynamique, titre page avec icône, description page
+  - **Sidebar responsive** : Navigation latérale collapsible (desktop), overlay avec fermeture auto (mobile)
+- ✅ **Module Rapports (January 23, 2026)** - Page /reports avec:
+  - Filtres : Période (dates), Client/Bâtiment/Étage/Capteur (cascade), Types d'événements, Criticité, Statuts
+  - Génération de rapport avec statistiques : Total, répartition par type/statut, temps moyen d'acquittement, top 5 zones
+  - Aperçu HTML print-friendly avec page de garde, résumé exécutif, détails événements, annexes
+  - Export PDF via window.print() (react-to-print)
+  - Export CSV client-side
 - ✅ **Live Events page** (Enhanced January 14, 2026)
   - Event cards with presence/no presence display
   - Active regions and target count info
