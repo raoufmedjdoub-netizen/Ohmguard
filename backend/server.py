@@ -1654,6 +1654,16 @@ async def health_check():
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
+@api_router.get("/health/redis")
+async def health_redis():
+    """
+    Check Redis connection health.
+    Returns detailed status information about the Redis connection.
+    """
+    from config.redis import check_redis_health
+    return check_redis_health()
+
+
 @api_router.get("/health/debug")
 async def health_debug():
     """
