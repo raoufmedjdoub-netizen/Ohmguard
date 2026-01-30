@@ -11,22 +11,27 @@ from redis.exceptions import ConnectionError, TimeoutError, RedisError
 
 logger = logging.getLogger(__name__)
 
-# Redis configuration from environment variables
-REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
-REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", None)
-REDIS_DB = int(os.environ.get("REDIS_DB", "0"))
-REDIS_SSL = os.environ.get("REDIS_SSL", "false").lower() == "true"
-
-# Connection pool settings
-REDIS_MAX_CONNECTIONS = int(os.environ.get("REDIS_MAX_CONNECTIONS", "10"))
-REDIS_SOCKET_TIMEOUT = int(os.environ.get("REDIS_SOCKET_TIMEOUT", "5"))
-REDIS_SOCKET_CONNECT_TIMEOUT = int(os.environ.get("REDIS_SOCKET_CONNECT_TIMEOUT", "5"))
-
 # Global client instance and availability flag
 _redis_client: Optional[redis.Redis] = None
 _redis_available: bool = True  # Assume available until proven otherwise
 _redis_init_attempted: bool = False
+
+
+def _get_redis_config():
+    """
+    Get Redis configuration from environment variables.
+    Called at runtime to ensure production env vars are loaded.
+    """
+    return {
+        "host": os.environ.get("REDIS_HOST", "localhost"),
+        "port": int(os.environ.get("REDIS_PORT", "6379")),
+        "password": os.environ.get("REDIS_PASSWORD", None),
+        "db": int(os.environ.get("REDIS_DB", "0")),
+        "ssl": os.environ.get("REDIS_SSL", "false").lower() == "true",
+        "max_connections": int(os.environ.get("REDIS_MAX_CONNECTIONS", "10")),
+        "socket_timeout": int(os.environ.get("REDIS_SOCKET_TIMEOUT", "5")),
+        "socket_connect_timeout": int(os.environ.get("REDIS_SOCKET_CONNECT_TIMEOUT", "5")),
+    }
 
 
 def get_redis_client() -> Optional[redis.Redis]:
@@ -38,6 +43,9 @@ def get_redis_client() -> Optional[redis.Redis]:
         redis.Redis: Connected Redis client instance, or None if unavailable
     """
     global _redis_client, _redis_available, _redis_init_attempted
+    
+    # Get config at runtime
+    config = _get_redis_config()
     
     # If we already know Redis is unavailable, return None immediately
     if not _redis_available and _redis_init_attempted:
@@ -53,27 +61,27 @@ def get_redis_client() -> Optional[redis.Redis]:
             _redis_client = None
     
     _redis_init_attempted = True
-    logger.info(f"Initializing Redis connection to {REDIS_HOST}:{REDIS_PORT} (DB: {REDIS_DB}, SSL: {REDIS_SSL})")
+    logger.info(f"Initializing Redis connection to {config['host']}:{config['port']} (DB: {config['db']}, SSL: {config['ssl']})")
     
     try:
         # Create connection pool with appropriate settings
         pool_kwargs = {
-            "host": REDIS_HOST,
-            "port": REDIS_PORT,
-            "db": REDIS_DB,
-            "max_connections": REDIS_MAX_CONNECTIONS,
-            "socket_timeout": REDIS_SOCKET_TIMEOUT,
-            "socket_connect_timeout": REDIS_SOCKET_CONNECT_TIMEOUT,
+            "host": config["host"],
+            "port": config["port"],
+            "db": config["db"],
+            "max_connections": config["max_connections"],
+            "socket_timeout": config["socket_timeout"],
+            "socket_connect_timeout": config["socket_connect_timeout"],
             "decode_responses": True,  # Return strings instead of bytes
             "retry_on_timeout": True,
         }
         
         # Only add password if provided and not empty
-        if REDIS_PASSWORD and REDIS_PASSWORD.strip():
-            pool_kwargs["password"] = REDIS_PASSWORD
+        if config["password"] and config["password"].strip():
+            pool_kwargs["password"] = config["password"]
         
         # Only add SSL if enabled
-        if REDIS_SSL:
+        if config["ssl"]:
             import ssl
             pool_kwargs["ssl"] = True
             pool_kwargs["ssl_cert_reqs"] = ssl.CERT_NONE
@@ -139,6 +147,9 @@ def check_redis_health() -> dict:
     Returns:
         dict: Health check result with status, latency, and connection info
     """
+    # Get config at runtime
+    config = _get_redis_config()
+    
     try:
         client = get_redis_client()
         
@@ -146,10 +157,10 @@ def check_redis_health() -> dict:
             return {
                 "status": "unavailable",
                 "connected": False,
-                "host": REDIS_HOST,
-                "port": REDIS_PORT,
-                "db": REDIS_DB,
-                "ssl": REDIS_SSL,
+                "host": config["host"],
+                "port": config["port"],
+                "db": config["db"],
+                "ssl": config["ssl"],
                 "message": "Redis connection not available - cache disabled"
             }
         
@@ -171,10 +182,10 @@ def check_redis_health() -> dict:
         return {
             "status": "healthy",
             "connected": True,
-            "host": REDIS_HOST,
-            "port": REDIS_PORT,
-            "db": REDIS_DB,
-            "ssl": REDIS_SSL,
+            "host": config["host"],
+            "port": config["port"],
+            "db": config["db"],
+            "ssl": config["ssl"],
             "latency_ms": round(latency_ms, 2),
             "redis_version": redis_version,
             "uptime_seconds": uptime
@@ -184,18 +195,18 @@ def check_redis_health() -> dict:
         return {
             "status": "unhealthy",
             "connected": False,
-            "host": REDIS_HOST,
-            "port": REDIS_PORT,
-            "db": REDIS_DB,
-            "ssl": REDIS_SSL,
+            "host": config["host"],
+            "port": config["port"],
+            "db": config["db"],
+            "ssl": config["ssl"],
             "error": str(e)
         }
     except Exception as e:
         return {
             "status": "error",
             "connected": False,
-            "host": REDIS_HOST,
-            "port": REDIS_PORT,
+            "host": config["host"],
+            "port": config["port"],
             "error": str(e)
         }
 
