@@ -131,6 +131,9 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - `/api/health` - Health check
 - `/api/health/redis` - **NEW: Redis health check (January 30, 2026)**
 - `/api/health/debug` - Debug diagnostics (includes Redis status)
+- `/api/cache/stats` - **NEW: Cache statistics (January 30, 2026)**
+- `/api/cache/invalidate` - **NEW: Manual cache invalidation**
+- `/api/cache/reset-stats` - **NEW: Reset cache counters**
 
 ## Demo Credentials
 - Super Admin: admin@ohmguard.io / admin123
