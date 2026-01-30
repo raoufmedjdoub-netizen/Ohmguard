@@ -1290,6 +1290,12 @@ async def create_radar_event(request: RadarEventRequest):
     # Store in events collection
     await db.events.insert_one(event_doc)
     
+    # Invalidate cache for this tenant
+    if tenant_id:
+        from config.event_cache import get_event_cache_service
+        cache_service = get_event_cache_service()
+        cache_service.invalidate_tenant_cache(tenant_id)
+    
     # Update sensor last_seen if found
     if sensor:
         await db.sensors.update_one(
