@@ -16,6 +16,8 @@ services:
       - MQTT_PUB_TOPIC=${MQTT_PUB_TOPIC}
       - MQTT_ACK_TOPIC=${MQTT_ACK_TOPIC}
       - CORS_ORIGINS=https://app.ohmguard.fr
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
     networks:
       - dokploy-network
     expose:
