@@ -1133,6 +1133,15 @@ async def list_events(
             event["radar_name"] = None
             event["serial_product"] = None
     
+    # Cache the enriched results for future requests
+    if use_cache and events:
+        cache_service.set_cached_events(
+            events=events,
+            tenant_id=cache_tenant_id,
+            client_id=cache_client_id,
+            filters=cache_filters
+        )
+    
     return events
 
 @api_router.get("/events/count")
