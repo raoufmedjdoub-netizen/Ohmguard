@@ -1688,6 +1688,7 @@ async def health_debug():
     
     # Get Socket.IO status
     from socketio_service import get_connected_count
+    from config.redis import check_redis_health
     socketio_clients = get_connected_count()
     
     return {
