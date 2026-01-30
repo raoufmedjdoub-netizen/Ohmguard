@@ -17,6 +17,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# CRITICAL: Remove any .env file that might have been copied
+# Production should ONLY use environment variables from the orchestrator
+RUN rm -f .env .env.* *.env 2>/dev/null || true
+
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
