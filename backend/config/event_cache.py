@@ -1,13 +1,12 @@
 """
 Redis Cache Service for Events
 Provides caching layer for event queries to reduce MongoDB load.
+Designed to fail gracefully - all operations return sensible defaults if Redis is unavailable.
 """
 import json
 import logging
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
-
-from config.redis import get_redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -21,21 +20,25 @@ class EventCacheService:
     """
     Service for caching event data in Redis.
     Implements cache-aside pattern with automatic invalidation.
+    All methods are designed to fail gracefully if Redis is unavailable.
     """
     
     def __init__(self):
         self._stats = {
             "hits": 0,
             "misses": 0,
-            "invalidations": 0
+            "invalidations": 0,
+            "errors": 0
         }
     
     def _get_client(self):
         """Get Redis client, return None if unavailable."""
         try:
+            from config.redis import get_redis_client
             return get_redis_client()
         except Exception as e:
-            logger.warning(f"Redis unavailable, cache disabled: {e}")
+            logger.debug(f"Redis unavailable, cache disabled: {e}")
+            self._stats["errors"] += 1
             return None
     
     def _build_cache_key(self, tenant_id: Optional[str] = None, 
