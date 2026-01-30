@@ -1204,6 +1204,11 @@ async def update_event(event_id: str, update: EventUpdate, current_user: UserInD
         await db.events.update_one({"id": event_id}, {"$set": update_data})
         await log_audit(current_user.id, event['tenant_id'], f"update_{update_data.get('status', 'event')}", "event", event_id, update_data)
         
+        # Invalidate cache for this tenant
+        from config.event_cache import get_event_cache_service
+        cache_service = get_event_cache_service()
+        cache_service.invalidate_tenant_cache(event.get('tenant_id', 'unknown'))
+        
         # Broadcast update
         await manager.broadcast_to_tenant(event['tenant_id'], {
             "type": "event_updated",
