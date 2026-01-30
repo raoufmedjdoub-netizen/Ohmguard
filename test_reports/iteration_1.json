@@ -8,10 +8,10 @@
     "ui_bugs": [
       {
         "component": "Live Events Navigation",
-        "issue": "Live Events navigation link not found during automated testing",
-        "selector": "text=Live Events",
-        "fix_priority": "LOW",
-        "note": "May be due to different text or navigation structure"
+        "issue": "RESOLVED - Navigation link text changed from 'Live Events' to 'Live'",
+        "selector": "[data-testid='nav-live']",
+        "fix_priority": "RESOLVED",
+        "note": "Not a bug - navigation structure was intentionally changed. Link is accessible via data-testid='nav-live'. Verified on January 30, 2026."
       }
     ],
     "integration_issues": [],
