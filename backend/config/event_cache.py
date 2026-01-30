@@ -217,17 +217,22 @@ class EventCacheService:
         Get cache statistics.
         
         Returns:
-            Dictionary with hits, misses, hit_rate, invalidations
+            Dictionary with hits, misses, hit_rate, invalidations, errors
         """
         total = self._stats["hits"] + self._stats["misses"]
         hit_rate = (self._stats["hits"] / total * 100) if total > 0 else 0
+        
+        # Check if Redis is available
+        from config.redis import is_redis_available
         
         return {
             "hits": self._stats["hits"],
             "misses": self._stats["misses"],
             "total_requests": total,
             "hit_rate_percent": round(hit_rate, 2),
-            "invalidations": self._stats["invalidations"]
+            "invalidations": self._stats["invalidations"],
+            "errors": self._stats.get("errors", 0),
+            "redis_available": is_redis_available()
         }
     
     def reset_stats(self):
@@ -235,7 +240,8 @@ class EventCacheService:
         self._stats = {
             "hits": 0,
             "misses": 0,
-            "invalidations": 0
+            "invalidations": 0,
+            "errors": 0
         }
 
 
