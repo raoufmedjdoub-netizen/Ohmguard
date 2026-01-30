@@ -241,6 +241,7 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 ## Key Files Reference
 - `backend/server.py` - Main FastAPI app with all endpoints
 - `backend/config/redis.py` - **NEW: Redis configuration module (January 30, 2026)**
+- `backend/config/event_cache.py` - **NEW: Event cache service (January 30, 2026)**
 - `backend/mqtt_service.py` - MQTT integration with RadarEvent support
 - `backend/radar_event_models.py` - RadarEvent enums and models
 - `backend/vayyar_config_service.py` - Config publish/versioning
