@@ -58,7 +58,7 @@ L'URL de l'API est configurée dans `app.json` :
 {
   "expo": {
     "extra": {
-      "apiUrl": "https://live-monitor-2.preview.emergentagent.com/api"
+      "apiUrl": "https://ohm-caching.preview.emergentagent.com/api"
     }
   }
 }
