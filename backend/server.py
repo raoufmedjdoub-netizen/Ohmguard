@@ -934,17 +934,24 @@ async def list_events(
     end_date: Optional[str] = None,
     limit: int = Query(50, le=500),
     skip: int = 0,
+    no_cache: bool = Query(False, description="Bypass cache and fetch from database"),
     current_user: UserInDB = Depends(get_current_user)
 ):
+    # Import cache service
+    from config.event_cache import get_event_cache_service
+    cache_service = get_event_cache_service()
+    
     query = {}
     
     # RBAC-aware filtering: check if user has a client association via tenant_id
     # tenant_id in user might reference a client_id in the new Clients module
     user_client_id = current_user.tenant_id
+    cache_tenant_id = None
+    cache_client_id = None
     
     if current_user.role == "SUPER_ADMIN":
         # Super admin sees everything - no filter
-        pass
+        cache_tenant_id = "super_admin"
     elif current_user.role in ["TENANT_ADMIN", "SUPERVISOR", "OPERATOR", "VIEWER"]:
         # For RBAC users: filter by sensors assigned to their client
         # First, check if tenant_id is actually a client_id (new model)
@@ -952,6 +959,7 @@ async def list_events(
         
         if client_exists:
             # User's tenant_id is a client_id - filter by sensors assigned to this client
+            cache_client_id = user_client_id
             client_sensors = await db.sensors.find(
                 {"client_id": user_client_id},
                 {"_id": 0, "id": 1}
@@ -965,9 +973,11 @@ async def list_events(
                 return []
         else:
             # Legacy mode: filter by tenant_id directly
+            cache_tenant_id = user_client_id
             query["tenant_id"] = user_client_id
     else:
         # Default: filter by tenant_id
+        cache_tenant_id = user_client_id
         query["tenant_id"] = user_client_id
     
     if site_id:
@@ -982,6 +992,7 @@ async def list_events(
         sensor_query = {}
         if client_id:
             sensor_query["client_id"] = client_id
+            cache_client_id = client_id
         if building_id:
             sensor_query["building_id"] = building_id
         
@@ -1008,6 +1019,36 @@ async def list_events(
         else:
             query["timestamp"] = {"$lte": end_date}
     
+    # Build cache filters (exclude complex query operators for cache key)
+    cache_filters = {
+        "site_id": site_id,
+        "zone_id": zone_id,
+        "sensor_id": sensor_id,
+        "event_type": event_type,
+        "status": status,
+        "severity": severity,
+        "start_date": start_date,
+        "end_date": end_date,
+        "limit": limit,
+        "skip": skip
+    }
+    # Remove None values
+    cache_filters = {k: v for k, v in cache_filters.items() if v is not None}
+    
+    # Try to get from cache (only for default queries without skip and small limits)
+    use_cache = not no_cache and skip == 0 and limit <= 100 and not start_date and not end_date
+    
+    if use_cache:
+        cached_events = cache_service.get_cached_events(
+            tenant_id=cache_tenant_id,
+            client_id=cache_client_id,
+            filters=cache_filters
+        )
+        if cached_events is not None:
+            logger.debug(f"Returning {len(cached_events)} events from cache")
+            return cached_events
+    
+    # Cache miss or cache disabled - fetch from database
     events = await db.events.find(query, {"_id": 0}).sort("timestamp", -1).skip(skip).limit(limit).to_list(limit)
     
     # Optimized batch enrichment to avoid N+1 queries
