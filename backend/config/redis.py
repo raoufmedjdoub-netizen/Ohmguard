@@ -45,18 +45,28 @@ def get_redis_client() -> redis.Redis:
     logger.info(f"Initializing Redis connection to {REDIS_HOST}:{REDIS_PORT} (DB: {REDIS_DB}, SSL: {REDIS_SSL})")
     
     try:
-        # Create connection pool
-        pool = redis.ConnectionPool(
-            host=REDIS_HOST,
-            port=REDIS_PORT,
-            password=REDIS_PASSWORD,
-            db=REDIS_DB,
-            ssl=REDIS_SSL,
-            max_connections=REDIS_MAX_CONNECTIONS,
-            socket_timeout=REDIS_SOCKET_TIMEOUT,
-            socket_connect_timeout=REDIS_SOCKET_CONNECT_TIMEOUT,
-            decode_responses=True  # Return strings instead of bytes
-        )
+        # Create connection pool with appropriate settings
+        pool_kwargs = {
+            "host": REDIS_HOST,
+            "port": REDIS_PORT,
+            "db": REDIS_DB,
+            "max_connections": REDIS_MAX_CONNECTIONS,
+            "socket_timeout": REDIS_SOCKET_TIMEOUT,
+            "socket_connect_timeout": REDIS_SOCKET_CONNECT_TIMEOUT,
+            "decode_responses": True  # Return strings instead of bytes
+        }
+        
+        # Only add password if provided
+        if REDIS_PASSWORD:
+            pool_kwargs["password"] = REDIS_PASSWORD
+        
+        # Only add SSL if enabled (use ssl_context for newer redis versions)
+        if REDIS_SSL:
+            import ssl
+            pool_kwargs["ssl"] = True
+            pool_kwargs["ssl_cert_reqs"] = ssl.CERT_NONE
+        
+        pool = redis.ConnectionPool(**pool_kwargs)
         
         _redis_client = redis.Redis(connection_pool=pool)
         
