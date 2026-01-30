@@ -29,26 +29,29 @@ ROOT_DIR = Path(__file__).parent
 # We should NEVER override them with values from .env file.
 # 
 # Strategy:
-# 1. Check if MONGO_URL is already set in the system environment BEFORE loading .env
-# 2. Only load .env if running locally (MONGO_URL not pre-set and no K8s indicators)
+# 1. Check if production env vars are already set in the system environment BEFORE loading .env
+# 2. Only load .env if running locally (no production indicators detected)
 # =============================================================================
 
 # Capture system env vars BEFORE any .env loading
 _system_mongo_url = os.environ.get('MONGO_URL')
+_system_redis_host = os.environ.get('REDIS_HOST')
 _kubernetes_detected = os.environ.get('KUBERNETES_SERVICE_HOST') is not None
 _is_atlas_url = _system_mongo_url.startswith('mongodb+srv') if _system_mongo_url else False
+_is_production_redis = _system_redis_host is not None and _system_redis_host != 'localhost'
 
 # Debug logging for production troubleshooting
 logger.info(f"[ENV DEBUG] KUBERNETES_SERVICE_HOST detected: {_kubernetes_detected}")
 logger.info(f"[ENV DEBUG] MONGO_URL pre-set in system env: {bool(_system_mongo_url)}")
 logger.info(f"[ENV DEBUG] MONGO_URL is Atlas (mongodb+srv): {_is_atlas_url}")
+logger.info(f"[ENV DEBUG] REDIS_HOST pre-set in system env: {_system_redis_host}")
 
 # Determine if we're in production
-# Production = Kubernetes OR Atlas URL already set OR running in Emergent deployment
-is_production = _kubernetes_detected or _is_atlas_url or _system_mongo_url is not None
+# Production = Kubernetes OR Atlas URL already set OR production Redis OR running in Emergent/Dokploy deployment
+is_production = _kubernetes_detected or _is_atlas_url or _is_production_redis or (_system_mongo_url is not None and 'localhost' not in _system_mongo_url)
 
 if not is_production:
-    # Only load .env in local development when MONGO_URL is NOT set
+    # Only load .env in local development when production vars are NOT set
     env_path = ROOT_DIR / '.env'
     if env_path.exists():
         load_dotenv(env_path, override=False)  # CRITICAL: override=False preserves existing env vars
