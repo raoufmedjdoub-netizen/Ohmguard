@@ -1703,6 +1703,7 @@ async def health_debug():
             "status": db_status,
             "is_atlas": "mongodb+srv" in (os.environ.get('MONGO_URL') or ''),
         },
+        "redis": check_redis_health(),
         "socketio": {
             "connected_clients": socketio_clients,
             "mount_path": "/api/socket.io"
