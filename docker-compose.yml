@@ -7,7 +7,7 @@ services:
     container_name: ohmguard-backend
     restart: unless-stopped
     environment:
-      - MONGO_URL=${MONGO_URL}?authSource=admin
+      - MONGO_URL=${MONGO_URL}
       - DB_NAME=${DB_NAME}
       - JWT_SECRET=${JWT_SECRET}
       - MQTT_ENABLED=${MQTT_ENABLED}
