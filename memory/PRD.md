@@ -309,3 +309,19 @@ Client → Buildings → Floors/Zones → Rooms → Spaces
 - ✅ **Service Notifications** - Configuration Expo Notifications pour push
 - ✅ **Types TypeScript** - Typage complet (Alert, User, etc.)
 - ⚠️ **Notifications Push** - Configuré mais nécessite EAS Build sur appareil physique
+
+### Redis Integration (January 30, 2026)
+- ✅ **Module de configuration centralisé** (`backend/config/redis.py`)
+  - `get_redis_client()` - Client singleton avec pool de connexions
+  - `close_redis_client()` - Fermeture propre des connexions
+  - `check_redis_health()` - Diagnostic complet (statut, latence, version)
+- ✅ **Variables d'environnement Redis**
+  - `REDIS_HOST` (default: localhost)
+  - `REDIS_PORT` (default: 6379)
+  - `REDIS_PASSWORD` (optional)
+  - `REDIS_DB` (default: 0)
+  - `REDIS_SSL` (default: false)
+  - `REDIS_MAX_CONNECTIONS` (default: 10)
+  - `REDIS_SOCKET_TIMEOUT` (default: 5s)
+- ✅ **Endpoint `/api/health/redis`** - Health check dédié Redis
+- ✅ **Intégration dans `/api/health/debug`** - Statut Redis dans le diagnostic système
