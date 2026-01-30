@@ -1699,6 +1699,83 @@ async def get_widget_stats(current_user: UserInDB = Depends(get_current_user)):
         "recent_events": recent
     }
 
+# ==================== CACHE MANAGEMENT ====================
+
+@api_router.get("/cache/stats")
+async def get_cache_stats(current_user: UserInDB = Depends(get_current_user)):
+    """
+    Get cache statistics (hits, misses, hit rate).
+    Requires SUPER_ADMIN or TENANT_ADMIN role.
+    """
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    
+    from config.event_cache import get_event_cache_service
+    cache_service = get_event_cache_service()
+    
+    return {
+        "cache_type": "redis",
+        "stats": cache_service.get_stats(),
+        "config": {
+            "ttl_seconds": 300,
+            "max_cached_events": 100
+        }
+    }
+
+@api_router.post("/cache/invalidate")
+async def invalidate_cache(
+    scope: str = Query("tenant", description="Scope: 'tenant', 'client', or 'all'"),
+    target_id: Optional[str] = Query(None, description="Tenant or Client ID (required for tenant/client scope)"),
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Manually invalidate event cache.
+    - scope='tenant': Invalidate cache for a specific tenant
+    - scope='client': Invalidate cache for a specific client
+    - scope='all': Invalidate ALL event caches (SUPER_ADMIN only)
+    """
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    
+    from config.event_cache import get_event_cache_service
+    cache_service = get_event_cache_service()
+    
+    if scope == "all":
+        if current_user.role != "SUPER_ADMIN":
+            raise HTTPException(status_code=403, detail="Only SUPER_ADMIN can invalidate all caches")
+        invalidated = cache_service.invalidate_all_events_cache()
+        return {"status": "success", "scope": "all", "keys_invalidated": invalidated}
+    
+    elif scope == "tenant":
+        if not target_id:
+            # Default to current user's tenant
+            target_id = current_user.tenant_id
+        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != target_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+        invalidated = cache_service.invalidate_tenant_cache(target_id)
+        return {"status": "success", "scope": "tenant", "tenant_id": target_id, "keys_invalidated": invalidated}
+    
+    elif scope == "client":
+        if not target_id:
+            raise HTTPException(status_code=400, detail="client_id required for client scope")
+        invalidated = cache_service.invalidate_client_cache(target_id)
+        return {"status": "success", "scope": "client", "client_id": target_id, "keys_invalidated": invalidated}
+    
+    else:
+        raise HTTPException(status_code=400, detail="Invalid scope. Use 'tenant', 'client', or 'all'")
+
+@api_router.post("/cache/reset-stats")
+async def reset_cache_stats(current_user: UserInDB = Depends(get_current_user)):
+    """
+    Reset cache statistics counters.
+    Requires SUPER_ADMIN role.
+    """
+    check_permission(current_user, ["SUPER_ADMIN"])
+    
+    from config.event_cache import get_event_cache_service
+    cache_service = get_event_cache_service()
+    cache_service.reset_stats()
+    
+    return {"status": "success", "message": "Cache statistics reset"}
+
 # ==================== HEALTH CHECK ====================
 
 @api_router.get("/health")
