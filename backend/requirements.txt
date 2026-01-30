@@ -97,7 +97,7 @@ python-socketio==5.11.0
 python-socketio==5.11.0
 pytokens==0.3.0
 pytz==2025.2
-redis==5.0.1
+redis==7.1.0
 referencing==0.37.0
 regex==2025.11.3
 requests-oauthlib==2.0.0
