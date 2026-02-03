@@ -244,19 +244,21 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 
 ## Key Files Reference
 - `backend/server.py` - Main FastAPI app with all endpoints
-- `backend/config/redis.py` - **NEW: Redis configuration module (January 30, 2026)**
-- `backend/config/event_cache.py` - **NEW: Event cache service (January 30, 2026)**
+- `backend/config/redis.py` - Redis configuration module
+- `backend/config/event_cache.py` - Event cache service
+- `backend/push_notification_service.py` - **NEW: Expo Push notification service (February 2026)**
 - `backend/mqtt_service.py` - MQTT integration with RadarEvent support
 - `backend/radar_event_models.py` - RadarEvent enums and models
 - `backend/vayyar_config_service.py` - Config publish/versioning
 - `backend/clients_buildings_models.py` - Multi-tenant hierarchy models
-- `backend/clients_buildings_service.py` - Multi-tenant business logic
-- `backend/clients_buildings_routes.py` - Clients & Buildings API
+- `backend/clients_buildings_service.py` - Multi-tenant business logic (includes delete_client cascade)
+- `backend/clients_buildings_routes.py` - Clients & Buildings API (RBAC permissions)
+- `backend/rbac_routes.py` - RBAC user management routes
 - `backend/seed_clients_buildings.py` - Demo data seeder
-- `frontend/src/components/layout/MainLayout.js` - **NEW: Layout with Navbar/SubNavbar/Sidebar**
-- `frontend/src/components/layout/Navbar.js` - **NEW: Main navigation bar**
-- `frontend/src/components/layout/SubNavbar.js` - **NEW: Contextual sub-navigation with breadcrumb**
-- `frontend/src/components/layout/Sidebar.js` - **UPDATED: Responsive sidebar navigation**
+- `frontend/src/components/layout/MainLayout.js` - Layout with Navbar/SubNavbar/Sidebar
+- `frontend/src/components/layout/Navbar.js` - Main navigation bar
+- `frontend/src/components/layout/SubNavbar.js` - Contextual sub-navigation with breadcrumb
+- `frontend/src/components/layout/Sidebar.js` - Responsive sidebar navigation
 - `frontend/src/pages/LivePage.js` - Live event wall with cards
 - `frontend/src/pages/HistoryPage.js` - Event history table
 - `frontend/src/pages/EventDetailPage.js` - Event detail view
@@ -267,7 +269,8 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - `frontend/src/pages/FloorDetailPage.js` - Floor & rooms management
 - `frontend/src/pages/RoomDetailPage.js` - Room & spaces with radar assignment
 - `frontend/src/lib/api.js` - API client with all endpoints
-- `frontend/src/lib/i18n.js` - **UPDATED: Complete FR/EN translations for navigation**
+- `frontend/src/lib/i18n.js` - Complete FR/EN translations for navigation
+- `frontend/nginx.conf` - **UPDATED: WebSocket support for Socket.IO**
 
 ## Clients & Buildings Module (January 14, 2026 - COMPLETE)
 
