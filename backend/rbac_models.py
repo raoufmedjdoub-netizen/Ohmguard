@@ -324,6 +324,7 @@ class RBACActionType(str, Enum):
     SCOPE_REMOVE = "SCOPE_REMOVE"
     USER_ACTIVATE = "USER_ACTIVATE"
     USER_DEACTIVATE = "USER_DEACTIVATE"
+    USER_REMOVE = "USER_REMOVE"
 
 
 class RBACAuditLog(BaseModel):

@@ -281,26 +281,46 @@ def create_rbac_routes(get_current_user, check_permission, db):
         client_user_id: str,
         current_user = Depends(get_current_user)
     ):
-        """Remove a user from a client (does not delete the user account)"""
+        """Retirer un utilisateur d'un client (ne supprime pas le compte utilisateur)"""
         rbac = get_rbac_service()
-        
+
         client_user = await rbac.get_client_user_by_id(client_user_id)
         if not client_user:
-            raise HTTPException(status_code=404, detail="Client user not found")
-        
-        # Check permission
+            raise HTTPException(status_code=404, detail="Utilisateur client non trouvé")
+
+        # Vérifier les permissions
         has_perm = await rbac.has_permission(
             current_user.id, client_user["client_id"], "USER_DELETE"
         )
         if not has_perm and current_user.role != "SUPER_ADMIN":
-            raise HTTPException(status_code=403, detail="Permission denied")
-        
-        # Delete related data
+            raise HTTPException(status_code=403, detail="Permission refusée")
+
+        # Stocker les détails pour le journal d'audit avant suppression
+        deleted_user_id = client_user.get("user_id")
+        deleted_client_id = client_user.get("client_id")
+        deleted_role = client_user.get("role")
+
+        # Supprimer les données associées
         await db.permission_overrides.delete_many({"client_user_id": client_user_id})
         await db.location_scopes.delete_many({"client_user_id": client_user_id})
         await db.client_users.delete_one({"id": client_user_id})
-        
-        return {"status": "success", "message": "User removed from client"}
+
+        # Créer le journal d'audit pour la suppression
+        from rbac_models import RBACAuditLog, RBACActionType
+        log = RBACAuditLog(
+            action=RBACActionType.USER_REMOVE,
+            target_user_id=deleted_user_id,
+            target_client_user_id=client_user_id,
+            performed_by_user_id=current_user.id,
+            client_id=deleted_client_id,
+            details={
+                "removed_role": deleted_role,
+                "action": "utilisateur_retire_du_client"
+            }
+        )
+        await db.rbac_audit_logs.insert_one(log.model_dump())
+
+        return {"status": "success", "message": "Utilisateur retiré du client"}
     
     @router.post("/client-users/{client_user_id}/reset-password")
     async def reset_user_password(

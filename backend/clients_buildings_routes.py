@@ -16,15 +16,33 @@ from clients_buildings_models import (
     RadarAssignRequest, ClientUserCreate, ClientUserUpdate
 )
 from clients_buildings_service import get_clients_buildings_service, ClientsBuildingsService
+from rbac_service import get_rbac_service
 
 
 def create_clients_buildings_router(get_current_user, check_permission, db, get_password_hash=None):
     """Factory function to create router with dependencies"""
-    
+
     router = APIRouter(tags=["Clients & Buildings"])
-    
+
     def get_service() -> ClientsBuildingsService:
         return get_clients_buildings_service()
+
+    async def check_rbac_permission(user, client_id: str, permission_key: str) -> bool:
+        """Vérifier les permissions RBAC d'un utilisateur sur un client. Retourne True si autorisé."""
+        if user.role == "SUPER_ADMIN":
+            return True
+
+        rbac = get_rbac_service()
+        if rbac:
+            has_perm = await rbac.has_permission(user.id, client_id, permission_key)
+            if has_perm:
+                return True
+
+        # Repli sur le rôle système pour TENANT_ADMIN
+        if user.role == "TENANT_ADMIN" and user.tenant_id == client_id:
+            return True
+
+        return False
     
     # ==================== CLIENTS ====================
     
@@ -103,13 +121,38 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
             })
             if not client_user:
                 raise HTTPException(status_code=403, detail="Access denied")
-        
+
         service = get_service()
         result = await service.update_client(client_id, data)
         if not result:
             raise HTTPException(status_code=404, detail="Client not found")
         return result
-    
+
+    @router.delete("/clients/{client_id}")
+    async def delete_client(client_id: str, current_user = Depends(get_current_user)):
+        """
+        Supprimer un client et toutes les données associées (SUPER_ADMIN uniquement).
+        Cette opération destructive supprime en cascade :
+        - Bâtiments, étages, chambres, espaces, zones
+        - Capteurs (désassociés, pas supprimés)
+        - Utilisateurs client et leurs données RBAC
+        - Règles d'alerte et journaux d'audit
+        """
+        # Seul SUPER_ADMIN peut supprimer des clients
+        if current_user.role != "SUPER_ADMIN":
+            raise HTTPException(status_code=403, detail="Seul SUPER_ADMIN peut supprimer des clients")
+
+        service = get_service()
+        client = await service.get_client(client_id, include_stats=False)
+        if not client:
+            raise HTTPException(status_code=404, detail="Client non trouvé")
+
+        summary = await service.delete_client(client_id)
+        return {
+            "message": f"Client '{client.get('name', client_id)}' supprimé avec succès",
+            "summary": summary
+        }
+
     @router.get("/clients/{client_id}/tree")
     async def get_client_tree(client_id: str, current_user = Depends(get_current_user)):
         """Get hierarchical tree view for a client"""
@@ -178,14 +221,13 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         building = await service.get_building(building_id, include_stats=False)
         if not building:
             raise HTTPException(status_code=404, detail="Building not found")
-        
-        if current_user.role != "SUPER_ADMIN":
-            check_permission(current_user, ["TENANT_ADMIN"])
-            if current_user.tenant_id != building["client_id"]:
-                raise HTTPException(status_code=403, detail="Access denied")
-        
+
+        # Vérification des permissions RBAC
+        if not await check_rbac_permission(current_user, building["client_id"], "BUILDING_MANAGE"):
+            raise HTTPException(status_code=403, detail="Accès refusé - Permission BUILDING_MANAGE requise")
+
         await service.delete_building(building_id)
-        return {"message": "Building deleted"}
+        return {"message": "Bâtiment supprimé"}
     
     # ==================== FLOORS ====================
     
@@ -252,14 +294,13 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         floor = await service.get_floor(floor_id, include_stats=False)
         if not floor:
             raise HTTPException(status_code=404, detail="Floor not found")
-        
-        if current_user.role != "SUPER_ADMIN":
-            check_permission(current_user, ["TENANT_ADMIN"])
-            if current_user.tenant_id != floor["client_id"]:
-                raise HTTPException(status_code=403, detail="Access denied")
-        
+
+        # Vérification des permissions RBAC
+        if not await check_rbac_permission(current_user, floor["client_id"], "BUILDING_MANAGE"):
+            raise HTTPException(status_code=403, detail="Accès refusé - Permission BUILDING_MANAGE requise")
+
         await service.delete_floor(floor_id)
-        return {"message": "Floor deleted"}
+        return {"message": "Étage supprimé"}
     
     # ==================== ROOMS ====================
     
@@ -332,14 +373,13 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         room = await service.get_room(room_id, include_spaces=False)
         if not room:
             raise HTTPException(status_code=404, detail="Room not found")
-        
-        if current_user.role != "SUPER_ADMIN":
-            check_permission(current_user, ["TENANT_ADMIN"])
-            if current_user.tenant_id != room["client_id"]:
-                raise HTTPException(status_code=403, detail="Access denied")
-        
+
+        # Vérification des permissions RBAC
+        if not await check_rbac_permission(current_user, room["client_id"], "BUILDING_MANAGE"):
+            raise HTTPException(status_code=403, detail="Accès refusé - Permission BUILDING_MANAGE requise")
+
         await service.delete_room(room_id)
-        return {"message": "Room deleted"}
+        return {"message": "Chambre supprimée"}
     
     # ==================== ROOM SPACES ====================
     
@@ -382,15 +422,14 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         space = await db.room_spaces.find_one({"id": space_id}, {"_id": 0})
         if not space:
             raise HTTPException(status_code=404, detail="Space not found")
-        
-        if current_user.role != "SUPER_ADMIN":
-            check_permission(current_user, ["TENANT_ADMIN"])
-            if current_user.tenant_id != space["client_id"]:
-                raise HTTPException(status_code=403, detail="Access denied")
-        
+
+        # Vérification des permissions RBAC
+        if not await check_rbac_permission(current_user, space["client_id"], "BUILDING_MANAGE"):
+            raise HTTPException(status_code=403, detail="Accès refusé - Permission BUILDING_MANAGE requise")
+
         service = get_service()
         await service.delete_room_space(space_id)
-        return {"message": "Space deleted"}
+        return {"message": "Espace supprimé"}
     
     # ==================== ZONES ====================
     
@@ -461,14 +500,13 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         zone = await service.get_zone(zone_id)
         if not zone:
             raise HTTPException(status_code=404, detail="Zone not found")
-        
-        if current_user.role != "SUPER_ADMIN":
-            check_permission(current_user, ["TENANT_ADMIN"])
-            if current_user.tenant_id != zone["client_id"]:
-                raise HTTPException(status_code=403, detail="Access denied")
-        
+
+        # Vérification des permissions RBAC
+        if not await check_rbac_permission(current_user, zone["client_id"], "BUILDING_MANAGE"):
+            raise HTTPException(status_code=403, detail="Accès refusé - Permission BUILDING_MANAGE requise")
+
         await service.delete_zone(zone_id)
-        return {"message": "Zone deleted"}
+        return {"message": "Zone supprimée"}
     
     # ==================== RADAR ASSIGNMENT ====================
     

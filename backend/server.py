@@ -476,6 +476,48 @@ async def log_audit(user_id: str, tenant_id: Optional[str], action: str, resourc
     doc['timestamp'] = doc['timestamp'].isoformat()
     await db.audit_logs.insert_one(doc)
 
+
+async def check_event_access(event: dict, current_user: UserInDB) -> bool:
+    """
+    Vérifie si l'utilisateur a accès à un événement.
+    Gère les modèles tenant_id (ancien) et client_id (nouveau).
+    Retourne True si l'accès est autorisé, False sinon.
+    """
+    if current_user.role == "SUPER_ADMIN":
+        return True
+
+    event_tenant_id = event.get('tenant_id')
+    user_tenant_id = current_user.tenant_id
+
+    # Correspondance directe tenant_id (ancien modèle)
+    if event_tenant_id and event_tenant_id == user_tenant_id:
+        return True
+
+    # Vérification via client_id du capteur (nouveau modèle)
+    sensor_id = event.get('sensor_id')
+    if sensor_id:
+        sensor = await db.sensors.find_one({"id": sensor_id}, {"_id": 0, "client_id": 1, "tenant_id": 1})
+        if sensor:
+            sensor_client_id = sensor.get("client_id")
+            sensor_tenant_id = sensor.get("tenant_id")
+
+            # Vérifier si le capteur appartient au tenant de l'utilisateur
+            if sensor_tenant_id == user_tenant_id or sensor_client_id == user_tenant_id:
+                return True
+
+            # Vérifier l'accès via client_users
+            if sensor_client_id:
+                client_user = await db.client_users.find_one({
+                    "user_id": current_user.id,
+                    "client_id": sensor_client_id,
+                    "is_active": True
+                })
+                if client_user:
+                    return True
+
+    return False
+
+
 # ==================== AUTH ENDPOINTS ====================
 
 @api_router.post("/auth/register", response_model=User)
@@ -1285,16 +1327,67 @@ async def list_events(
 async def count_events(
     site_id: Optional[str] = None,
     status: Optional[EventStatus] = None,
+    client_id: Optional[str] = None,
+    building_id: Optional[str] = None,
     current_user: UserInDB = Depends(get_current_user)
 ):
     query = {}
-    if current_user.role != "SUPER_ADMIN":
-        query["tenant_id"] = current_user.tenant_id
+
+    # RBAC-aware filtering (same logic as /events endpoint)
+    user_client_id = current_user.tenant_id
+
+    if current_user.role == "SUPER_ADMIN":
+        # Super admin sees everything
+        pass
+    elif current_user.role in ["TENANT_ADMIN", "SUPERVISOR", "OPERATOR", "VIEWER"]:
+        # Check if tenant_id is actually a client_id (new model)
+        client_exists = await db.clients.find_one({"id": user_client_id})
+
+        if client_exists:
+            # User's tenant_id is a client_id - filter by sensors assigned to this client
+            client_sensors = await db.sensors.find(
+                {"client_id": user_client_id},
+                {"_id": 0, "id": 1}
+            ).to_list(10000)
+            client_sensor_ids = [s["id"] for s in client_sensors]
+
+            if client_sensor_ids:
+                query["sensor_id"] = {"$in": client_sensor_ids}
+            else:
+                return {"count": 0}
+        else:
+            # Legacy mode: filter by tenant_id directly
+            query["tenant_id"] = user_client_id
+    else:
+        # Default: filter by tenant_id
+        query["tenant_id"] = user_client_id
+
+    # Filter by client/building: find sensors and filter events by sensor_id
+    if client_id or building_id:
+        sensor_query = {}
+        if client_id:
+            sensor_query["client_id"] = client_id
+        if building_id:
+            sensor_query["building_id"] = building_id
+
+        matching_sensors = await db.sensors.find(sensor_query, {"_id": 0, "id": 1}).to_list(1000)
+        matching_sensor_ids = [s["id"] for s in matching_sensors]
+
+        if matching_sensor_ids:
+            # Merge with existing sensor_id filter if present
+            if "sensor_id" in query:
+                existing_ids = set(query["sensor_id"]["$in"])
+                query["sensor_id"] = {"$in": list(existing_ids & set(matching_sensor_ids))}
+            else:
+                query["sensor_id"] = {"$in": matching_sensor_ids}
+        else:
+            return {"count": 0}
+
     if site_id:
         query["site_id"] = site_id
     if status:
         query["status"] = status
-    
+
     count = await db.events.count_documents(query)
     return {"count": count}
 
@@ -1303,10 +1396,11 @@ async def get_event(event_id: str, current_user: UserInDB = Depends(get_current_
     event = await db.events.find_one({"id": event_id}, {"_id": 0})
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-    
-    if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != event['tenant_id']:
+
+    # Use helper function for tenant/client access check
+    if not await check_event_access(event, current_user):
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     # Enrich with location
     try:
         service = get_clients_buildings_service()
@@ -1322,18 +1416,19 @@ async def get_event(event_id: str, current_user: UserInDB = Depends(get_current_
             }
     except Exception:
         pass
-    
+
     return event
 
 @api_router.patch("/events/{event_id}", response_model=Event)
 async def update_event(event_id: str, update: EventUpdate, current_user: UserInDB = Depends(get_current_user)):
     check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN", "SUPERVISOR", "OPERATOR"])
-    
+
     event = await db.events.find_one({"id": event_id}, {"_id": 0})
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-    
-    if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != event['tenant_id']:
+
+    # Use helper function for tenant/client access check
+    if not await check_event_access(event, current_user):
         raise HTTPException(status_code=403, detail="Access denied")
     
     update_data = {k: v for k, v in update.model_dump().items() if v is not None}
@@ -1497,10 +1592,11 @@ async def get_event_detail(event_id: str, current_user: UserInDB = Depends(get_c
     event = await db.events.find_one({"id": event_id}, {"_id": 0})
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-    
-    if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != event.get('tenant_id'):
+
+    # Use helper function for tenant/client access check
+    if not await check_event_access(event, current_user):
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     # Get sensor info
     sensor = None
     if event.get('sensor_id'):
@@ -2310,8 +2406,32 @@ class ConfigPayload(BaseModel):
     mqttOptions: Optional[dict] = None
 
 @api_router.get("/devices/{device_id}/config/schema")
-async def get_config_schema(current_user: UserInDB = Depends(get_current_user)):
+async def get_config_schema(device_id: str, current_user: UserInDB = Depends(get_current_user)):
     """Get the default Vayyar configuration schema"""
+    # Valider la propriété du tenant sur l'appareil
+    sensor = await db.sensors.find_one({"id": device_id}, {"_id": 0})
+    if not sensor:
+        raise HTTPException(status_code=404, detail="Appareil non trouvé")
+
+    if current_user.role != "SUPER_ADMIN":
+        # Vérifier tenant_id (ancien modèle) et client_id (nouveau modèle)
+        sensor_tenant = sensor.get("tenant_id")
+        sensor_client = sensor.get("client_id")
+        user_tenant = current_user.tenant_id
+
+        if sensor_tenant != user_tenant and sensor_client != user_tenant:
+            # Vérifier aussi l'accès via client_users
+            if sensor_client:
+                client_user = await db.client_users.find_one({
+                    "user_id": current_user.id,
+                    "client_id": sensor_client,
+                    "is_active": True
+                })
+                if not client_user:
+                    raise HTTPException(status_code=403, detail="Accès refusé")
+            else:
+                raise HTTPException(status_code=403, detail="Accès refusé")
+
     return get_default_config_dict()
 
 @api_router.get("/devices/{device_id}/config/latest")
@@ -2321,23 +2441,44 @@ async def get_latest_config(
 ):
     """Get the latest configuration version for a sensor"""
     from vayyar_config_service import vayyar_config_service
-    
+
     if not vayyar_config_service:
         raise HTTPException(status_code=503, detail="Config service not available")
-    
-    # Get sensor info to show device_id
+
+    # Récupérer les infos du capteur
     sensor = await db.sensors.find_one({"id": device_id}, {"_id": 0})
-    
+    if not sensor:
+        raise HTTPException(status_code=404, detail="Appareil non trouvé")
+
+    # Valider la propriété du tenant
+    if current_user.role != "SUPER_ADMIN":
+        sensor_tenant = sensor.get("tenant_id")
+        sensor_client = sensor.get("client_id")
+        user_tenant = current_user.tenant_id
+
+        if sensor_tenant != user_tenant and sensor_client != user_tenant:
+            # Vérifier aussi l'accès via client_users
+            if sensor_client:
+                client_user = await db.client_users.find_one({
+                    "user_id": current_user.id,
+                    "client_id": sensor_client,
+                    "is_active": True
+                })
+                if not client_user:
+                    raise HTTPException(status_code=403, detail="Accès refusé")
+            else:
+                raise HTTPException(status_code=403, detail="Accès refusé")
+
     version = await vayyar_config_service.get_latest_config(device_id)
     if not version:
         return {
-            "config": get_default_config_dict(), 
+            "config": get_default_config_dict(),
             "isDefault": True,
             "sensorId": device_id,
             "deviceId": sensor.get("device_id") if sensor else None,
             "serialProduct": sensor.get("serial_product") if sensor else None
         }
-    
+
     return version
 
 @api_router.post("/devices/{device_id}/config/validate")

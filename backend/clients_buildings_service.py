@@ -73,15 +73,98 @@ class ClientsBuildingsService:
         update_data = {k: v for k, v in data.model_dump().items() if v is not None}
         if not update_data:
             return await self.get_client(client_id)
-        
+
         update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
-        
+
         await self.db.clients.update_one(
             {"id": client_id},
             {"$set": update_data}
         )
         return await self.get_client(client_id)
-    
+
+    async def delete_client(self, client_id: str) -> dict:
+        """
+        Delete a client and cascade delete all related data.
+        Returns a summary of deleted records.
+        """
+        summary = {
+            "client_id": client_id,
+            "deleted": {}
+        }
+
+        # Delete room spaces
+        result = await self.db.room_spaces.delete_many({"client_id": client_id})
+        summary["deleted"]["room_spaces"] = result.deleted_count
+
+        # Delete rooms
+        result = await self.db.rooms.delete_many({"client_id": client_id})
+        summary["deleted"]["rooms"] = result.deleted_count
+
+        # Delete zones
+        result = await self.db.zones_new.delete_many({"client_id": client_id})
+        summary["deleted"]["zones"] = result.deleted_count
+
+        # Delete floors
+        result = await self.db.floors.delete_many({"client_id": client_id})
+        summary["deleted"]["floors"] = result.deleted_count
+
+        # Delete buildings
+        result = await self.db.buildings.delete_many({"client_id": client_id})
+        summary["deleted"]["buildings"] = result.deleted_count
+
+        # Unassign sensors (don't delete, just remove client association)
+        result = await self.db.sensors.update_many(
+            {"client_id": client_id},
+            {"$set": {
+                "client_id": None,
+                "building_id": None,
+                "floor_id": None,
+                "room_id": None,
+                "room_space_id": None,
+                "zone_id": None
+            }}
+        )
+        summary["deleted"]["sensors_unassigned"] = result.modified_count
+
+        # Delete RBAC data: location_scopes
+        result = await self.db.location_scopes.delete_many({"client_id": client_id})
+        summary["deleted"]["location_scopes"] = result.deleted_count
+
+        # Delete RBAC data: permission_overrides for client_users of this client
+        client_user_ids = [cu["id"] for cu in await self.db.client_users.find(
+            {"client_id": client_id}, {"id": 1}
+        ).to_list(10000)]
+
+        if client_user_ids:
+            result = await self.db.permission_overrides.delete_many(
+                {"client_user_id": {"$in": client_user_ids}}
+            )
+            summary["deleted"]["permission_overrides"] = result.deleted_count
+        else:
+            summary["deleted"]["permission_overrides"] = 0
+
+        # Delete client_users
+        result = await self.db.client_users.delete_many({"client_id": client_id})
+        summary["deleted"]["client_users"] = result.deleted_count
+
+        # Delete alert_rules for this client (using tenant_id = client_id)
+        result = await self.db.alert_rules.delete_many({"tenant_id": client_id})
+        summary["deleted"]["alert_rules"] = result.deleted_count
+
+        # Delete audit logs for this client
+        result = await self.db.audit_logs.delete_many({"tenant_id": client_id})
+        summary["deleted"]["audit_logs"] = result.deleted_count
+
+        # Delete RBAC audit logs for this client
+        result = await self.db.rbac_audit_logs.delete_many({"client_id": client_id})
+        summary["deleted"]["rbac_audit_logs"] = result.deleted_count
+
+        # Finally, delete the client itself
+        result = await self.db.clients.delete_one({"id": client_id})
+        summary["deleted"]["client"] = result.deleted_count
+
+        return summary
+
     # ==================== BUILDINGS ====================
     
     async def list_buildings(self, client_id: str, include_stats: bool = True) -> List[dict]:
