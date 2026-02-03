@@ -22,7 +22,8 @@ import {
   Edit,
   Loader2,
   Building,
-  Layers
+  Layers,
+  Trash2
 } from 'lucide-react';
 
 export function ClientsPage() {
