@@ -22,10 +22,10 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 ## What's Been Implemented (January 2026)
 
 ### Backend Features
-- ✅ Complete REST API with 40+ endpoints
+- ✅ Complete REST API with 50+ endpoints
 - ✅ JWT authentication with refresh tokens
 - ✅ Multi-tenant data isolation
-- ✅ WebSocket for real-time events
+- ✅ WebSocket for real-time events (Socket.IO)
 - ✅ Event deduplication logic (10s window)
 - ✅ Alert rules engine with notifications
 - ✅ Audit logging
@@ -36,7 +36,7 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - ✅ **Vayyar Config Service** - MQTT publish/subscribe for device configuration
 - ✅ **Config versioning with rollback support**
 - ✅ **ACK handling with timeout detection**
-- ✅ **NEW: Radar Event Processing** (January 14, 2026)
+- ✅ **Radar Event Processing** (January 14, 2026)
   - POST /api/events/radar endpoint
   - RadarEventType enum (FALL, PRE_FALL, INACTIVITY, PRESENCE, UNKNOWN)
   - Payload normalization (presenceDetected, presenceRegionMap, trackerTargets)
@@ -44,6 +44,18 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
   - Target count tracking
   - Epoch to ISO timestamp conversion
   - Raw payload storage for audit
+- ✅ **Redis Cache** (January 30, 2026)
+  - Event caching with automatic invalidation
+  - Health check endpoints
+  - Fail-graceful design (app works without Redis)
+- ✅ **Push Notifications** (February 2026)
+  - Expo Push API integration
+  - Token management per user
+  - Automatic fall alert notifications
+- ✅ **Security Enhancements** (February 2026)
+  - Multi-tenant access verification
+  - RBAC permission checks on routes
+  - Cascade delete for clients
 
 ### Frontend Features
 - ✅ Login page with demo credentials
