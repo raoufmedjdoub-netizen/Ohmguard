@@ -119,8 +119,8 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - `/api/zones/*` - Zone management
 - `/api/sensors/*` - Sensor CRUD + key rotation
 - `/api/events/*` - Event list/update/count
-- `/api/events/radar` - **NEW: Radar event ingestion**
-- `/api/events/{id}/detail` - **NEW: Event detail with enriched data**
+- `/api/events/radar` - Radar event ingestion
+- `/api/events/{id}/detail` - Event detail with enriched data
 - `/api/rules/*` - Alert rules
 - `/api/users/*` - User management
 - `/api/notifications/*` - Notification log
@@ -129,11 +129,15 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - `/api/stats/*` - Dashboard statistics
 - `/api/mqtt/*` - MQTT service management
 - `/api/health` - Health check
-- `/api/health/redis` - **NEW: Redis health check (January 30, 2026)**
+- `/api/health/redis` - Redis health check
 - `/api/health/debug` - Debug diagnostics (includes Redis status)
-- `/api/cache/stats` - **NEW: Cache statistics (January 30, 2026)**
-- `/api/cache/invalidate` - **NEW: Manual cache invalidation**
-- `/api/cache/reset-stats` - **NEW: Reset cache counters**
+- `/api/cache/stats` - Cache statistics
+- `/api/cache/invalidate` - Manual cache invalidation
+- `/api/cache/reset-stats` - Reset cache counters
+- `/api/push-tokens` - **NEW: Push notification token management (February 2026)**
+- `/api/test-notification` - **NEW: Send test push notification**
+- `/api/create-fall-event` - **NEW: Create test fall event with push notification**
+- `/api/clients/{id}` (DELETE) - **NEW: Delete client with cascade**
 
 ## Demo Credentials
 - Super Admin: admin@ohmguard.io / admin123
