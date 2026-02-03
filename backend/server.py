@@ -629,6 +629,59 @@ async def test_notification(current_user: UserInDB = Depends(get_current_user)):
     
     return {"message": "Test notification sent", "result": result}
 
+@api_router.post("/create-fall-event")
+async def create_fall_event(current_user: UserInDB = Depends(get_current_user)):
+    """
+    Create a simulated fall event and send push notification.
+    Useful for testing the mobile app notifications.
+    """
+    import uuid
+    from datetime import datetime, timezone
+    
+    push_service = get_push_notification_service()
+    
+    # Get a sensor for this tenant
+    sensor = await db.sensors.find_one({"tenant_id": current_user.tenant_id}, {"_id": 0})
+    
+    # Create event
+    event_id = str(uuid.uuid4())
+    event = {
+        "id": event_id,
+        "sensor_id": sensor["id"] if sensor else None,
+        "type": "FALL",
+        "eventType": "FALL",
+        "severity": "HIGH",
+        "status": "NEW",
+        "tenant_id": current_user.tenant_id,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "occurred_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "confidence": 0.95
+    }
+    
+    await db.events.insert_one(event)
+    
+    # Build location string
+    location = "Test - Simulation de chute"
+    if sensor:
+        location = sensor.get("name", "Radar") + " - Simulation"
+    
+    # Send push notification
+    if push_service:
+        await push_service.send_fall_alert(
+            tenant_id=current_user.tenant_id,
+            event_id=event_id,
+            location=location,
+            severity="HIGH"
+        )
+    
+    logger.info(f"[Test] Fall event created: {event_id}")
+    
+    return {
+        "message": "Fall event created and notification sent",
+        "event_id": event_id
+    }
+
 # ==================== SITE ENDPOINTS ====================
 
 @api_router.post("/sites", response_model=Site)
