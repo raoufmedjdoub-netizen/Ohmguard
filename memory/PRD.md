@@ -358,3 +358,43 @@ Client → Buildings → Floors/Zones → Rooms → Spaces
   - `POST /api/cache/invalidate` - Invalidation manuelle (tenant, client, all)
   - `POST /api/cache/reset-stats` - Réinitialisation des compteurs
 - ✅ **Performance mesurée** : ~40% amélioration du temps de réponse sur les requêtes répétées
+
+### Push Notifications Mobile (February 2026)
+- ✅ **Service de notifications push** (`backend/push_notification_service.py`)
+  - Intégration avec Expo Push API
+  - Gestion des tokens push par utilisateur
+  - Envoi d'alertes de chute aux appareils mobiles
+- ✅ **Endpoints push notifications**
+  - `POST /api/push-tokens` - Enregistrer un token push (appelé au login mobile)
+  - `DELETE /api/push-tokens` - Supprimer un token push (appelé au logout)
+  - `POST /api/test-notification` - Envoyer une notification de test
+  - `POST /api/create-fall-event` - Créer un événement de chute test + notification
+- ✅ **Collection MongoDB `push_tokens`**
+  - Stockage des tokens Expo Push par utilisateur
+  - Gestion multi-appareils (un utilisateur peut avoir plusieurs tokens)
+- ✅ **Intégration avec le flux d'événements**
+  - Notification automatique lors d'un événement FALL
+  - Payload inclut: event_id, location, severity
+
+### Sécurité Multi-tenant Renforcée (February 2026)
+- ✅ **Fonction `check_event_access()`** dans server.py
+  - Vérifie l'accès aux événements selon tenant_id ET client_id
+  - Support du modèle ancien (tenant_id) et nouveau (client_id via sensors)
+  - Vérification via `client_users` pour les utilisateurs RBAC
+- ✅ **Vérifications RBAC dans les routes**
+  - `check_rbac_permission()` dans clients_buildings_routes.py
+  - Permissions granulaires: BUILDING_MANAGE, etc.
+  - Repli sur le rôle système pour TENANT_ADMIN
+- ✅ **Suppression de client en cascade**
+  - `DELETE /api/clients/{id}` (SUPER_ADMIN uniquement)
+  - Supprime: bâtiments, étages, chambres, espaces, zones
+  - Désassigne les capteurs (non supprimés)
+  - Supprime: utilisateurs client, données RBAC, règles d'alerte, journaux d'audit
+
+### Configuration Nginx WebSocket (February 2026)
+- ✅ **Support WebSocket pour Socket.IO**
+  - Route `/api/socket.io/` configurée AVANT `/api/`
+  - Headers WebSocket: `Upgrade`, `Connection`
+  - `proxy_buffering off` et `proxy_cache off`
+  - Timeout de 86400s pour connexions longues
+- ✅ **Upgrade automatique** de polling HTTP vers WebSocket
