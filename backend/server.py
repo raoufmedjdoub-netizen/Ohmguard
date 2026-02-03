@@ -15,6 +15,7 @@ import bcrypt
 from jose import JWTError, jwt
 import json
 import asyncio
+import httpx  # Pour les notifications push
 
 # Configure logging early
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -98,6 +99,13 @@ from clients_buildings_routes import create_clients_buildings_router
 from rbac_service import init_rbac_service, get_rbac_service, RBACService
 from rbac_routes import create_rbac_routes
 from rbac_models import ClientRole, PermissionEffect, ScopeType, AccessLevel
+
+# Push Notification Service import
+from push_notification_service import (
+    init_push_notification_service, 
+    get_push_notification_service,
+    PushNotificationService
+)
 
 # MongoDB connection
 mongo_url = os.environ.get('MONGO_URL')
@@ -328,6 +336,12 @@ class EventUpdate(BaseModel):
     assigned_to: Optional[str] = None
     notes: Optional[str] = None
 
+# Push Notification Token Models
+class PushTokenRequest(BaseModel):
+    """Request model for registering a push token"""
+    token: str
+    device_type: Optional[str] = None  # 'ios' or 'android'
+
 class Event(EventBase):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -555,6 +569,65 @@ async def get_tenant(tenant_id: str, current_user: UserInDB = Depends(get_curren
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
     return tenant
+
+# ==================== PUSH NOTIFICATION ENDPOINTS ====================
+
+@api_router.post("/push-tokens", status_code=status.HTTP_201_CREATED)
+async def register_push_token(
+    token_data: PushTokenRequest,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Register or update a push notification token for the current user.
+    Called by the mobile app when a user logs in.
+    """
+    push_service = get_push_notification_service()
+    if not push_service:
+        raise HTTPException(status_code=503, detail="Push notification service not available")
+    
+    result = await push_service.register_token(
+        user_id=current_user.id,
+        tenant_id=current_user.tenant_id,
+        token=token_data.token,
+        device_type=token_data.device_type
+    )
+    return result
+
+@api_router.delete("/push-tokens")
+async def delete_push_token(
+    token: str = Query(..., description="The push token to delete"),
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Delete a push notification token.
+    Called by the mobile app when a user logs out.
+    """
+    push_service = get_push_notification_service()
+    if not push_service:
+        raise HTTPException(status_code=503, detail="Push notification service not available")
+    
+    deleted = await push_service.delete_token(current_user.id, token)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Token not found")
+    
+    return {"message": "Token deleted"}
+
+@api_router.post("/test-notification")
+async def test_notification(current_user: UserInDB = Depends(get_current_user)):
+    """
+    Send a test notification to the current user's devices.
+    Useful for testing push notification configuration.
+    """
+    push_service = get_push_notification_service()
+    if not push_service:
+        raise HTTPException(status_code=503, detail="Push notification service not available")
+    
+    result = await push_service.send_test_notification(current_user.id)
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="No push tokens registered for this user")
+    
+    return {"message": "Test notification sent", "result": result}
 
 # ==================== SITE ENDPOINTS ====================
 
@@ -1325,6 +1398,24 @@ async def create_radar_event(request: RadarEventRequest):
                 "target_count_display": format_target_count_display(normalized.targetCount)
             }
         })
+    
+    # Send push notification for FALL events
+    if tenant_id and normalized.eventType.value == "FALL":
+        push_service = get_push_notification_service()
+        if push_service:
+            # Build location string
+            location_parts = []
+            if sensor:
+                location_parts.append(sensor.get('name', 'Radar'))
+            location = " - ".join(location_parts) if location_parts else "Localisation inconnue"
+            
+            await push_service.send_fall_alert(
+                tenant_id=tenant_id,
+                event_id=normalized.id,
+                location=location,
+                severity=normalized.severity.value
+            )
+            logger.info(f"[Push] Fall alert sent for event {normalized.id}")
     
     logger.info(f"Created radar event {normalized.id} from device {request.deviceId}, type={normalized.eventType.value}")
     
@@ -2497,6 +2588,10 @@ async def startup_event():
     
     # Auto-seed database if empty (for production deployment)
     await auto_seed_if_empty()
+    
+    # Initialize Push Notification service
+    init_push_notification_service(db)
+    logger.info("Push Notification service initialized")
     
     # Initialize Clients & Buildings service
     init_clients_buildings_service(db)
