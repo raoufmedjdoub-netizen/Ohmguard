@@ -98,6 +98,18 @@ export function ClientsPage() {
     client.legal_name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleDeleteClient = async (clientId, clientName) => {
+    if (window.confirm(`Êtes-vous sûr de vouloir supprimer "${clientName}" ?\n\nCette action supprimera définitivement :\n- Tous les bâtiments\n- Tous les étages et chambres\n- Toutes les associations utilisateurs\n\nCette action est irréversible.`)) {
+      try {
+        await api.delete(`/clients/${clientId}`);
+        toast.success('Client supprimé avec succès');
+        fetchClients();
+      } catch (error) {
+        toast.error(error.response?.data?.detail || 'Erreur lors de la suppression du client');
+      }
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch (status) {
       case 'ACTIVE':
