@@ -684,18 +684,6 @@ export function AISensorsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-                    <Label className="text-sm">{type.label}</Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfigDialogOpen(false)}>Annuler</Button>
-            <Button onClick={handleUpdateSensor}>Enregistrer</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
