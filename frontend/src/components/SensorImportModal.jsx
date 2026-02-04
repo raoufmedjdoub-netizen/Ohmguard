@@ -235,7 +235,7 @@ export function SensorImportModal({ open, onOpenChange, onImportComplete }) {
                   <div><code className="bg-muted px-1 rounded">firmware</code> - Firmware</div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  * Champs obligatoires. Les organisations/bâtiments/étages/chambres/espaces seront créés automatiquement s'ils n'existent pas.
+                  * Champs obligatoires. Les organisations/bâtiments/étages/chambres/espaces seront créés automatiquement s&apos;ils n&apos;existent pas.
                 </p>
               </CardContent>
             </Card>
