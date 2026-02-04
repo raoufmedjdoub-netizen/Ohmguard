@@ -134,8 +134,14 @@ export function HistoryPage() {
       const response = await api.delete('/admin/events/clear');
       toast.success(`${response.data.events_deleted} événements supprimés`);
       setClearDialogOpen(false);
+      // Reset state and force refresh
+      setEvents([]);
+      setTotalCount(0);
       setPage(0);
-      fetchData();
+      // Small delay to ensure state is updated, then refresh
+      setTimeout(() => {
+        fetchData();
+      }, 100);
     } catch (error) {
       if (error.response?.status === 403) {
         toast.error('Seul un Super Admin peut effacer l\'historique');
