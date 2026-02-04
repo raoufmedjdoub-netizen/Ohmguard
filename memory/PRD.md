@@ -312,8 +312,9 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - `backend/server.py` - Main FastAPI app with all endpoints
 - `backend/config/redis.py` - Redis configuration module
 - `backend/config/event_cache.py` - Event cache service
-- `backend/push_notification_service.py` - **NEW: Expo Push notification service (February 2026)**
-- `backend/floor_plan_service.py` - **NEW: Floor plan upload, markers management (February 2026)**
+- `backend/push_notification_service.py` - Expo Push notification service (February 2026)
+- `backend/floor_plan_service.py` - Floor plan upload, markers management (February 2026)
+- `backend/sensor_import_service.py` - **NEW: Batch CSV import service for sensors (February 2026)**
 - `backend/mqtt_service.py` - MQTT integration with RadarEvent support
 - `backend/radar_event_models.py` - RadarEvent enums and models
 - `backend/vayyar_config_service.py` - Config publish/versioning
@@ -322,9 +323,10 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - `backend/clients_buildings_routes.py` - Clients & Buildings API (RBAC permissions, floor plan endpoints)
 - `backend/rbac_routes.py` - RBAC user management routes
 - `backend/seed_clients_buildings.py` - Demo data seeder
-- `frontend/src/components/LocationBreadcrumb.jsx` - **NEW: Reusable breadcrumb component (February 2026)**
-- `frontend/src/pages/FloorPlanPage.js` - **NEW: Interactive map with real-time markers (February 2026)**
-- `frontend/src/components/RoomVisualEditor.jsx` - **NEW: Visual radar configurator component (February 2026)**
+- `frontend/src/components/LocationBreadcrumb.jsx` - Reusable breadcrumb component (February 2026)
+- `frontend/src/components/SensorImportModal.jsx` - **NEW: CSV import modal component (February 2026)**
+- `frontend/src/pages/FloorPlanPage.js` - Interactive map with real-time markers (February 2026)
+- `frontend/src/components/RoomVisualEditor.jsx` - Visual radar configurator component (February 2026)
 - `frontend/src/lib/vayyarConfigSchema.js` - Vayyar config validation schema
 - `frontend/src/components/layout/MainLayout.js` - Layout with Navbar/SubNavbar/Sidebar
 - `frontend/src/components/layout/Navbar.js` - Main navigation bar
