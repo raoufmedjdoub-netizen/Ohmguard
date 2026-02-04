@@ -1123,46 +1123,50 @@ export function RoomVisualEditor({ config, onConfigChange }) {
         </TabsList>
         
         <TabsContent value="visual" className="mt-4">
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-4" style={{ minHeight: '650px' }}>
-            {/* Settings Panel */}
-            <Card className="xl:col-span-1 h-fit xl:max-h-[650px] overflow-auto">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
+          <div className="flex gap-6">
+            {/* Settings Panel - Fixed width, no scroll */}
+            <Card className="w-[320px] shrink-0">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
                   <Settings className="h-4 w-4" />
                   Configuration
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-5">
                 {/* Room Dimensions */}
                 <div className="space-y-3">
                   <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Pièce (max {MAX_ROOM_SIZE}m)
+                    Dimensions pièce
                   </Label>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm">Largeur (X)</Label>
-                      <span className="text-sm font-mono font-medium">{roomWidth.toFixed(1)}m</span>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Largeur X</Label>
+                        <span className="text-sm font-mono font-bold text-blue-600">{roomWidth.toFixed(1)}m</span>
+                      </div>
+                      <Slider
+                        value={[roomWidth]}
+                        onValueChange={([v]) => setRoomWidth(v)}
+                        min={2}
+                        max={MAX_ROOM_SIZE}
+                        step={0.1}
+                        className="py-1"
+                      />
                     </div>
-                    <Slider
-                      value={[roomWidth]}
-                      onValueChange={([v]) => setRoomWidth(v)}
-                      min={2}
-                      max={MAX_ROOM_SIZE}
-                      step={0.1}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm">Profondeur (Y)</Label>
-                      <span className="text-sm font-mono font-medium">{roomDepth.toFixed(1)}m</span>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Profondeur Y</Label>
+                        <span className="text-sm font-mono font-bold text-green-600">{roomDepth.toFixed(1)}m</span>
+                      </div>
+                      <Slider
+                        value={[roomDepth]}
+                        onValueChange={([v]) => setRoomDepth(v)}
+                        min={2}
+                        max={MAX_ROOM_SIZE}
+                        step={0.1}
+                        className="py-1"
+                      />
                     </div>
-                    <Slider
-                      value={[roomDepth]}
-                      onValueChange={([v]) => setRoomDepth(v)}
-                      min={2}
-                      max={MAX_ROOM_SIZE}
-                      step={0.1}
-                    />
                   </div>
                 </div>
                 
@@ -1173,74 +1177,77 @@ export function RoomVisualEditor({ config, onConfigChange }) {
                   <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                     Radar
                   </Label>
-                  <div className="space-y-2">
-                    <Label className="text-sm">Montage</Label>
-                    <Select 
-                      value={radarMounting}
-                      onValueChange={(v) => {
-                        onConfigChange?.({
-                          ...config,
-                          walabotConfig: { 
-                            ...config?.walabotConfig, 
-                            sensorMounting: v,
-                            sensorHeight: MOUNTING_CONFIG[v]?.height || 1.5
-                          }
-                        });
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(MOUNTING_CONFIG).map(([key, cfg]) => (
-                          <SelectItem key={key} value={key}>
-                            {cfg.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm">Hauteur</Label>
-                      <span className="text-sm font-mono font-medium">{radarHeight.toFixed(2)}m</span>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Montage</Label>
+                      <Select 
+                        value={radarMounting}
+                        onValueChange={(v) => {
+                          onConfigChange?.({
+                            ...config,
+                            walabotConfig: { 
+                              ...config?.walabotConfig, 
+                              sensorMounting: v,
+                              sensorHeight: MOUNTING_CONFIG[v]?.height || 1.5
+                            }
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(MOUNTING_CONFIG).map(([key, cfg]) => (
+                            <SelectItem key={key} value={key}>
+                              {cfg.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <Slider
-                      value={[radarHeight]}
-                      onValueChange={([v]) => onConfigChange?.({
-                        ...config,
-                        walabotConfig: { ...config?.walabotConfig, sensorHeight: v }
-                      })}
-                      min={radarMounting === 'Wall' ? 1.2 : 2.3}
-                      max={radarMounting === 'Wall' ? 1.8 : 3.0}
-                      step={0.05}
-                    />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Hauteur</Label>
+                        <span className="text-sm font-mono font-bold">{radarHeight.toFixed(2)}m</span>
+                      </div>
+                      <Slider
+                        value={[radarHeight]}
+                        onValueChange={([v]) => onConfigChange?.({
+                          ...config,
+                          walabotConfig: { ...config?.walabotConfig, sensorHeight: v }
+                        })}
+                        min={radarMounting === 'Wall' ? 1.2 : 2.3}
+                        max={radarMounting === 'Wall' ? 1.8 : 3.0}
+                        step={0.05}
+                        className="py-1"
+                      />
+                    </div>
                   </div>
                 </div>
                 
                 <Separator />
                 
-                {/* Display Options */}
+                {/* Display Options - Compact horizontal */}
                 <div className="space-y-2">
                   <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                     Affichage
                   </Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs">Grille</Label>
-                      <Switch checked={showGrid} onCheckedChange={setShowGrid} />
+                  <div className="flex flex-wrap gap-3">
+                    <div className="flex items-center gap-2">
+                      <Switch checked={showGrid} onCheckedChange={setShowGrid} id="grid" />
+                      <Label htmlFor="grid" className="text-sm cursor-pointer">Grille</Label>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs">Zone</Label>
-                      <Switch checked={showDetectionZone} onCheckedChange={setShowDetectionZone} />
+                    <div className="flex items-center gap-2">
+                      <Switch checked={showDetectionZone} onCheckedChange={setShowDetectionZone} id="zone" />
+                      <Label htmlFor="zone" className="text-sm cursor-pointer">Zone</Label>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs">Distance</Label>
-                      <Switch checked={showDistances} onCheckedChange={setShowDistances} />
+                    <div className="flex items-center gap-2">
+                      <Switch checked={showDistances} onCheckedChange={setShowDistances} id="dist" />
+                      <Label htmlFor="dist" className="text-sm cursor-pointer">Distance</Label>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs">Coords</Label>
-                      <Switch checked={showCoordinates} onCheckedChange={setShowCoordinates} />
+                    <div className="flex items-center gap-2">
+                      <Switch checked={showCoordinates} onCheckedChange={setShowCoordinates} id="coords" />
+                      <Label htmlFor="coords" className="text-sm cursor-pointer">Coords</Label>
                     </div>
                   </div>
                 </div>
@@ -1248,29 +1255,32 @@ export function RoomVisualEditor({ config, onConfigChange }) {
                 <Separator />
                 
                 {/* SubRegions */}
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Sous-régions ({subRegions.length})
-                  </Label>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Sous-régions
+                    </Label>
+                    <Badge variant="secondary" className="text-xs">{subRegions.length}</Badge>
+                  </div>
                   
-                  {/* Add buttons */}
-                  <div className="flex gap-1">
+                  {/* Add buttons - Larger */}
+                  <div className="flex gap-2">
                     {Object.entries(SUBREGION_TYPES).map(([key, type]) => (
                       <Button
                         key={key}
                         variant="outline"
                         size="sm"
-                        className="flex-1 h-8 text-xs"
+                        className="flex-1 h-9"
                         onClick={() => addSubRegion(key)}
                       >
-                        <type.icon className="h-3 w-3 mr-1" style={{ color: type.color }} />
+                        <type.icon className="h-4 w-4 mr-1.5" style={{ color: type.color }} />
                         {type.label}
                       </Button>
                     ))}
                   </div>
                   
-                  {/* Region list */}
-                  <div className="space-y-1 max-h-[150px] overflow-auto">
+                  {/* Region list - More visible */}
+                  <div className="space-y-2">
                     {subRegions.map((region) => {
                       const regionType = SUBREGION_TYPES[region.type];
                       const isSelected = selectedRegionId === region.id;
@@ -1278,29 +1288,39 @@ export function RoomVisualEditor({ config, onConfigChange }) {
                         <div 
                           key={region.id}
                           className={cn(
-                            "flex items-center justify-between p-2 rounded border cursor-pointer transition-colors",
-                            isSelected ? "border-2" : "border"
+                            "flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-all",
+                            isSelected ? "shadow-md" : "border-transparent bg-muted/30 hover:bg-muted/50"
                           )}
                           style={{ 
-                            borderColor: isSelected ? regionType.color : undefined,
-                            backgroundColor: isSelected ? `${regionType.color}10` : undefined
+                            borderColor: isSelected ? regionType.color : 'transparent',
+                            backgroundColor: isSelected ? `${regionType.color}15` : undefined
                           }}
                           onClick={() => setSelectedRegionId(region.id)}
                         >
-                          <div className="flex items-center gap-2">
-                            <regionType.icon className="h-3 w-3" style={{ color: regionType.color }} />
-                            <span className="text-xs font-medium">{region.name}</span>
+                          <div className="flex items-center gap-3">
+                            <div 
+                              className="w-8 h-8 rounded-md flex items-center justify-center"
+                              style={{ backgroundColor: `${regionType.color}20` }}
+                            >
+                              <regionType.icon className="h-4 w-4" style={{ color: regionType.color }} />
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium block">{region.name}</span>
+                              <span className="text-xs text-muted-foreground font-mono">
+                                {region.width.toFixed(1)}×{region.length.toFixed(1)}m
+                              </span>
+                            </div>
                           </div>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6"
+                            className="h-8 w-8 hover:bg-destructive/10"
                             onClick={(e) => {
                               e.stopPropagation();
                               deleteSubRegion(region.id);
                             }}
                           >
-                            <Trash2 className="h-3 w-3 text-destructive" />
+                            <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
                       );
@@ -1309,23 +1329,26 @@ export function RoomVisualEditor({ config, onConfigChange }) {
                   
                   {/* Selected region details */}
                   {selectedRegion && (
-                    <div className="p-2 rounded border space-y-2" style={{ borderColor: SUBREGION_TYPES[selectedRegion.type]?.color }}>
+                    <div 
+                      className="p-3 rounded-lg border-2 space-y-3" 
+                      style={{ borderColor: SUBREGION_TYPES[selectedRegion.type]?.color }}
+                    >
                       <Input
                         value={selectedRegion.name}
                         onChange={(e) => setSubRegions(regions => 
                           regions.map(r => r.id === selectedRegion.id ? { ...r, name: e.target.value } : r)
                         )}
-                        className="h-7 text-xs"
-                        placeholder="Nom"
+                        className="h-9 font-medium"
+                        placeholder="Nom de la zone"
                       />
-                      <div className="grid grid-cols-2 gap-2 text-[10px]">
-                        <div>
-                          <span className="text-muted-foreground">Position: </span>
-                          <span className="font-mono">{selectedRegion.roomX.toFixed(2)}, {selectedRegion.roomY.toFixed(2)}</span>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="p-2 bg-muted/50 rounded">
+                          <span className="text-xs text-muted-foreground block">Position</span>
+                          <span className="font-mono font-medium">{selectedRegion.roomX.toFixed(2)}, {selectedRegion.roomY.toFixed(2)}</span>
                         </div>
-                        <div>
-                          <span className="text-muted-foreground">Taille: </span>
-                          <span className="font-mono">{selectedRegion.width.toFixed(2)}×{selectedRegion.length.toFixed(2)}</span>
+                        <div className="p-2 bg-muted/50 rounded">
+                          <span className="text-xs text-muted-foreground block">Taille</span>
+                          <span className="font-mono font-medium">{selectedRegion.width.toFixed(2)} × {selectedRegion.length.toFixed(2)}</span>
                         </div>
                       </div>
                     </div>
@@ -1334,8 +1357,7 @@ export function RoomVisualEditor({ config, onConfigChange }) {
                 
                 <Button
                   variant="outline"
-                  size="sm"
-                  className="w-full"
+                  className="w-full h-10"
                   onClick={() => {
                     const newX = roomWidth / 2;
                     const newY = isCeiling ? roomDepth / 2 : 0;
@@ -1353,51 +1375,50 @@ export function RoomVisualEditor({ config, onConfigChange }) {
                     setSelectedRegionId(null);
                   }}
                 >
-                  <RotateCcw className="h-3 w-3 mr-2" />
-                  Réinitialiser
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Réinitialiser tout
                 </Button>
               </CardContent>
             </Card>
             
-            {/* Visual Canvas */}
-            <div className="xl:col-span-3 h-[650px]">
-              <Card className="h-full flex flex-col">
-                <CardHeader className="pb-2 flex-shrink-0">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-sm">Vue de dessus • Radar = (0,0)</CardTitle>
-                      <CardDescription className="text-xs">
-                        xMin={(-radarPositionX).toFixed(2)} xMax={+(roomWidth - radarPositionX).toFixed(2)} | 
-                        yMin={isCeiling ? (-radarPositionY).toFixed(2) : "-0.30"} yMax={+(isCeiling ? (roomDepth - radarPositionY) : (roomDepth - radarPositionY)).toFixed(2)}
-                      </CardDescription>
-                    </div>
-                    <Badge variant="outline">
-                      {roomWidth.toFixed(1)}m × {roomDepth.toFixed(1)}m
-                    </Badge>
+            {/* Visual Canvas - Flexible width */}
+            <Card className="flex-1">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">Vue de dessus • Radar = (0,0)</CardTitle>
+                    <CardDescription className="text-sm font-mono mt-1">
+                      <span className="text-blue-600">X: [{(-radarPositionX).toFixed(2)}, {+(roomWidth - radarPositionX).toFixed(2)}]</span>
+                      <span className="mx-2">|</span>
+                      <span className="text-green-600">Y: [{isCeiling ? (-radarPositionY).toFixed(2) : "-0.30"}, {+(isCeiling ? (roomDepth - radarPositionY) : (roomDepth - radarPositionY)).toFixed(2)}]</span>
+                    </CardDescription>
                   </div>
-                </CardHeader>
-                <CardContent className="flex-1 flex items-center justify-center overflow-auto pb-4">
-                  <RoomCanvas
-                    roomWidth={roomWidth}
-                    roomDepth={roomDepth}
-                    radarPositionX={radarPositionX}
-                    radarPositionY={isCeiling ? radarPositionY : 0}
-                    radarMounting={radarMounting}
-                    radarHeight={radarHeight}
-                    subRegions={subRegions}
-                    selectedRegionId={selectedRegionId}
-                    onSelectRegion={setSelectedRegionId}
-                    onRegionMove={handleRegionMove}
-                    onRegionResize={handleRegionResize}
-                    onRadarMove={handleRadarMove}
-                    showGrid={showGrid}
-                    showDetectionZone={showDetectionZone}
-                    showDistances={showDistances}
-                    showCoordinates={showCoordinates}
-                  />
-                </CardContent>
-              </Card>
-            </div>
+                  <Badge variant="outline" className="text-base px-3 py-1">
+                    {roomWidth.toFixed(1)}m × {roomDepth.toFixed(1)}m
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="flex items-center justify-center p-6">
+                <RoomCanvas
+                  roomWidth={roomWidth}
+                  roomDepth={roomDepth}
+                  radarPositionX={radarPositionX}
+                  radarPositionY={isCeiling ? radarPositionY : 0}
+                  radarMounting={radarMounting}
+                  radarHeight={radarHeight}
+                  subRegions={subRegions}
+                  selectedRegionId={selectedRegionId}
+                  onSelectRegion={setSelectedRegionId}
+                  onRegionMove={handleRegionMove}
+                  onRegionResize={handleRegionResize}
+                  onRadarMove={handleRadarMove}
+                  showGrid={showGrid}
+                  showDetectionZone={showDetectionZone}
+                  showDistances={showDistances}
+                  showCoordinates={showCoordinates}
+                />
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
         
