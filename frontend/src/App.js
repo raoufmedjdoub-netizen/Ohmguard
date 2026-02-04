@@ -74,13 +74,24 @@ function AppRoutes() {
         <Route path="live" element={<LivePage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="events/:eventId" element={<EventDetailPage />} />
-        <Route path="sensors" element={<Navigate to="/radars" replace />} />
-        <Route path="radars" element={<RadarsPage />} />
+        
+        {/* Capteurs (ex-Radars) */}
+        <Route path="capteurs" element={<RadarsPage />} />
+        <Route path="capteurs/:deviceId/config" element={<RadarConfigPage />} />
+        {/* Redirections pour compatibilité */}
+        <Route path="sensors" element={<Navigate to="/capteurs" replace />} />
+        <Route path="radars" element={<Navigate to="/capteurs" replace />} />
         <Route path="radars/:deviceId/config" element={<RadarConfigPage />} />
         
-        {/* Clients & Buildings */}
-        <Route path="clients" element={<ClientsPage />} />
+        {/* Organisations (ex-Clients) */}
+        <Route path="organisations" element={<ClientsPage />} />
+        <Route path="organisations/:clientId" element={<ClientDetailPage />} />
+        {/* Redirections pour compatibilité */}
+        <Route path="clients" element={<Navigate to="/organisations" replace />} />
         <Route path="clients/:clientId" element={<ClientDetailPage />} />
+        
+        {/* Sites & Bâtiments */}
+        <Route path="sites-batiments" element={<ClientsPage />} />
         <Route path="buildings/:buildingId" element={<BuildingDetailPage />} />
         <Route path="floors/:floorId" element={<FloorDetailPage />} />
         <Route path="rooms/:roomId" element={<RoomDetailPage />} />
