@@ -509,6 +509,8 @@ const resources = {
         clients_desc: 'Gestion des organisations',
         sites_buildings: 'Sites & Bâtiments',
         sites_buildings_desc: 'Gestion des bâtiments et étages',
+        floor_plan: 'Carte Interactive',
+        floor_plan_desc: 'Plans d\'étage et positions des capteurs',
         sites: 'Sites & Zones',
         alert_rules: 'Règles d\'alerte',
         alert_rules_desc: 'Configuration des alertes',
