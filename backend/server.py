@@ -967,6 +967,160 @@ async def execute_sensor_import(request: ImportRequest, current_user: UserInDB =
     
     return result
 
+# ==================== AI SENSOR ENDPOINTS ====================
+
+class AISensorCreate(BaseModel):
+    channel: str
+    channel_name: str
+    name: Optional[str] = None
+    client_id: Optional[str] = None
+    building_id: Optional[str] = None
+    floor_id: Optional[str] = None
+    room_id: Optional[str] = None
+    confidence_threshold: Optional[float] = 0.7
+    enabled_warnings: Optional[List[str]] = []
+
+class AISensorUpdate(BaseModel):
+    name: Optional[str] = None
+    channel_name: Optional[str] = None
+    client_id: Optional[str] = None
+    building_id: Optional[str] = None
+    floor_id: Optional[str] = None
+    room_id: Optional[str] = None
+    confidence_threshold: Optional[float] = None
+    enabled_warnings: Optional[List[str]] = None
+
+@api_router.get("/ai-sensors")
+async def list_ai_sensors(
+    client_id: Optional[str] = None,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """List all AI sensors"""
+    ai_service = get_ai_sensor_service()
+    sensors = await ai_service.get_all_sensors(client_id)
+    return sensors
+
+@api_router.get("/ai-sensors/{sensor_id}")
+async def get_ai_sensor(sensor_id: str, current_user: UserInDB = Depends(get_current_user)):
+    """Get a single AI sensor"""
+    ai_service = get_ai_sensor_service()
+    sensor = await ai_service.get_sensor(sensor_id)
+    if not sensor:
+        raise HTTPException(status_code=404, detail="AI Sensor not found")
+    return sensor
+
+@api_router.post("/ai-sensors")
+async def create_ai_sensor(data: AISensorCreate, current_user: UserInDB = Depends(get_current_user)):
+    """Create a new AI sensor"""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    ai_service = get_ai_sensor_service()
+    
+    # Check if channel already exists
+    existing = await ai_service.get_sensor_by_channel(data.channel)
+    if existing:
+        raise HTTPException(status_code=400, detail="AI Sensor with this channel already exists")
+    
+    sensor = await ai_service.create_sensor(data.model_dump())
+    return sensor
+
+@api_router.patch("/ai-sensors/{sensor_id}")
+async def update_ai_sensor(sensor_id: str, data: AISensorUpdate, current_user: UserInDB = Depends(get_current_user)):
+    """Update an AI sensor"""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    ai_service = get_ai_sensor_service()
+    
+    sensor = await ai_service.update_sensor(sensor_id, data.model_dump(exclude_none=True))
+    if not sensor:
+        raise HTTPException(status_code=404, detail="AI Sensor not found")
+    return sensor
+
+@api_router.delete("/ai-sensors/{sensor_id}")
+async def delete_ai_sensor(sensor_id: str, current_user: UserInDB = Depends(get_current_user)):
+    """Delete an AI sensor"""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    ai_service = get_ai_sensor_service()
+    
+    deleted = await ai_service.delete_sensor(sensor_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="AI Sensor not found")
+    return {"status": "success", "message": "AI Sensor deleted"}
+
+# ==================== AI EVENTS ENDPOINTS ====================
+
+@api_router.get("/ai-events")
+async def list_ai_events(
+    sensor_id: Optional[str] = None,
+    client_id: Optional[str] = None,
+    warning_type: Optional[str] = None,
+    status: Optional[str] = None,
+    min_confidence: Optional[float] = None,
+    limit: int = Query(50, le=500),
+    skip: int = 0,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """List AI events with filters"""
+    ai_service = get_ai_sensor_service()
+    events = await ai_service.get_events(
+        sensor_id=sensor_id,
+        client_id=client_id,
+        warning_type=warning_type,
+        status=status,
+        min_confidence=min_confidence,
+        limit=limit,
+        skip=skip
+    )
+    return events
+
+@api_router.get("/ai-events/count")
+async def count_ai_events(
+    sensor_id: Optional[str] = None,
+    client_id: Optional[str] = None,
+    warning_type: Optional[str] = None,
+    status: Optional[str] = None,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Count AI events"""
+    ai_service = get_ai_sensor_service()
+    count = await ai_service.count_events(
+        sensor_id=sensor_id,
+        client_id=client_id,
+        warning_type=warning_type,
+        status=status
+    )
+    return {"count": count}
+
+@api_router.get("/ai-events/{event_id}")
+async def get_ai_event(event_id: str, current_user: UserInDB = Depends(get_current_user)):
+    """Get a single AI event"""
+    ai_service = get_ai_sensor_service()
+    event = await ai_service.get_event(event_id)
+    if not event:
+        raise HTTPException(status_code=404, detail="AI Event not found")
+    return event
+
+@api_router.patch("/ai-events/{event_id}/status")
+async def update_ai_event_status(
+    event_id: str,
+    status: str = Query(..., description="NEW, ACKNOWLEDGED, RESOLVED, FALSE_ALARM"),
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Update AI event status"""
+    ai_service = get_ai_sensor_service()
+    event = await ai_service.update_event_status(event_id, status, current_user.id)
+    if not event:
+        raise HTTPException(status_code=404, detail="AI Event not found")
+    return event
+
+@api_router.delete("/ai-events/clear")
+async def clear_ai_events(current_user: UserInDB = Depends(get_current_user)):
+    """Clear all AI events (admin only)"""
+    if current_user.role != "SUPER_ADMIN":
+        raise HTTPException(status_code=403, detail="Only SUPER_ADMIN can clear AI events")
+    
+    ai_service = get_ai_sensor_service()
+    deleted = await ai_service.clear_events()
+    return {"status": "success", "events_deleted": deleted}
+
 # ==================== RADAR ASSIGNMENT ENDPOINTS ====================
 
 class RadarAssignment(BaseModel):
