@@ -683,6 +683,63 @@ class MQTTService:
         
         return round(confidence, 2)
     
+    async def _handle_seedoo_event(self, topic: str, payload: Dict):
+        """Handle Seedoo AI camera events from /seedoo/{channel} topic"""
+        # Extract channel from topic: /seedoo/{channel}
+        parts = topic.split('/')
+        channel = parts[2] if len(parts) >= 3 else payload.get("channel", "unknown")
+        
+        logger.info(f"SEEDOO AI event received on {topic}: warning_type={payload.get('warning_type')}, confidence={payload.get('confidence')}")
+        
+        # Import AI sensor service
+        try:
+            from ai_sensor_service import get_ai_sensor_service
+            ai_service = get_ai_sensor_service()
+        except Exception as e:
+            logger.error(f"Failed to get AI sensor service: {e}")
+            return
+        
+        # Get or create the AI sensor
+        channel_name = payload.get("channel_name", "")
+        sensor = await ai_service.get_or_create_sensor(channel, channel_name)
+        
+        # Check confidence threshold
+        confidence = payload.get("confidence", 0)
+        threshold = sensor.get("confidence_threshold", 0.7)
+        
+        if confidence < threshold:
+            logger.debug(f"Ignoring low confidence AI event: {confidence} < {threshold}")
+            return
+        
+        # Check if warning type is enabled
+        warning_type = payload.get("warning_type", "Unknown")
+        enabled_warnings = sensor.get("enabled_warnings", [])
+        if enabled_warnings and warning_type not in enabled_warnings:
+            logger.debug(f"Ignoring disabled warning type: {warning_type}")
+            return
+        
+        # Create the AI event
+        event = await ai_service.create_event(payload)
+        
+        # Broadcast to WebSocket
+        if self.broadcast_callback:
+            # Determine severity
+            high_severity_types = ["Fall_Detected", "Violence", "Fire", "Smoke", "Intrusion"]
+            severity = "HIGH" if warning_type in high_severity_types else "MEDIUM" if warning_type != "Normal_Activity" else "LOW"
+            
+            # Broadcast the AI event
+            await self.broadcast_callback("all", {
+                "type": "new_ai_event",
+                "event": {
+                    **event,
+                    "sensor_name": sensor.get("name", channel_name),
+                    "severity": severity,
+                    "event_source": "ai_camera"
+                }
+            })
+            
+            logger.info(f"Broadcasted AI event: {event['id']} (type: {warning_type}, severity: {severity})")
+    
     async def _process_alert_rules(self, event: Dict, sensor: Dict):
         """Process alert rules for a new event"""
         rules = await self.db.alert_rules.find({
