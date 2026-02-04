@@ -739,6 +739,57 @@ class MQTTService:
             })
             
             logger.info(f"Broadcasted AI event: {event['id']} (type: {warning_type}, severity: {severity})")
+        
+        # Send push notifications for critical AI alerts
+        critical_types = ['Fall_Detected', 'Violence', 'Fire', 'Smoke', 'Intrusion']
+        if warning_type in critical_types:
+            await self._send_ai_push_notification(event, sensor, warning_type)
+    
+    async def _send_ai_push_notification(self, event: Dict, sensor: Dict, warning_type: str):
+        """Send push notification for critical AI events"""
+        try:
+            from push_notification_service import send_expo_push_notification
+            
+            # Get all push tokens
+            tokens_cursor = self.db.push_tokens.find({}, {"_id": 0, "push_token": 1})
+            tokens = [doc['push_token'] async for doc in tokens_cursor]
+            
+            if not tokens:
+                logger.debug("No push tokens found for AI notification")
+                return
+            
+            # Build notification message based on warning type
+            alert_titles = {
+                'Fall_Detected': '🚨 Chute détectée (IA)',
+                'Violence': '⚠️ Violence détectée',
+                'Fire': '🔥 Feu détecté',
+                'Smoke': '💨 Fumée détectée',
+                'Intrusion': '🚷 Intrusion détectée'
+            }
+            
+            title = alert_titles.get(warning_type, '⚠️ Alerte IA')
+            body = f"{sensor.get('name', event.get('channel_name', 'Caméra'))} - Confiance: {int(event.get('confidence', 0) * 100)}%"
+            
+            # Send push notification
+            result = await send_expo_push_notification(
+                tokens=tokens,
+                title=title,
+                body=body,
+                data={
+                    "type": "ai_event",
+                    "event_id": event.get("id"),
+                    "warning_type": warning_type,
+                    "video_url": event.get("video_url"),
+                    "channel": event.get("channel"),
+                    "confidence": event.get("confidence")
+                }
+            )
+            
+            if result:
+                logger.info(f"AI push notification sent for {warning_type}: {len(tokens)} recipients")
+            
+        except Exception as e:
+            logger.error(f"Failed to send AI push notification: {e}")
     
     async def _process_alert_rules(self, event: Dict, sensor: Dict):
         """Process alert rules for a new event"""
