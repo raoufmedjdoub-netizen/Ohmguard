@@ -234,8 +234,8 @@ export function ClientDetailPage() {
   if (!client) {
     return (
       <div className="flex flex-col items-center justify-center h-96 space-y-4">
-        <p className="text-muted-foreground">Client non trouvé</p>
-        <Button onClick={() => navigate('/clients')}>Retour aux clients</Button>
+        <p className="text-muted-foreground">Organisation non trouvée</p>
+        <Button onClick={() => navigate('/organisations')}>Retour aux organisations</Button>
       </div>
     );
   }
@@ -245,7 +245,7 @@ export function ClientDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/clients')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/organisations')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="p-3 rounded-lg bg-primary/10">
@@ -254,15 +254,15 @@ export function ClientDetailPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{client.name}</h1>
             <p className="text-muted-foreground">
-              {client.buildings_count} bâtiment{client.buildings_count > 1 ? 's' : ''} • {client.radars_count} radar{client.radars_count > 1 ? 's' : ''}
+              {client.buildings_count} bâtiment{client.buildings_count > 1 ? 's' : ''} • {client.radars_count} capteur{client.radars_count > 1 ? 's' : ''}
             </p>
           </div>
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => navigate(`/clients/${clientId}/radars`)}>
+          <Button variant="outline" onClick={() => navigate(`/capteurs?org=${clientId}`)}>
             <Radio className="h-4 w-4 mr-2" />
-            Gérer les radars
+            Gérer les capteurs
           </Button>
           <Button onClick={() => setShowBuildingModal(true)}>
             <Plus className="h-4 w-4 mr-2" />
