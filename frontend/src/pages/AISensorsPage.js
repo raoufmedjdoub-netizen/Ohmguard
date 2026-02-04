@@ -154,7 +154,7 @@ export function AISensorsPage() {
       await aiSensorsAPI.create(formData);
       toast.success('Capteur IA créé');
       setCreateDialogOpen(false);
-      setFormData({ channel: '', channel_name: '', name: '', confidence_threshold: 0.7, enabled_warnings: [] });
+      setFormData({ channel: '', channel_name: '', name: '', confidence_threshold: 0.7, enabled_warnings: [], warning_thresholds: {}, push_notifications_enabled: true });
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erreur lors de la création');
@@ -167,7 +167,9 @@ export function AISensorsPage() {
       await aiSensorsAPI.update(selectedSensor.id, {
         name: formData.name,
         confidence_threshold: formData.confidence_threshold,
-        enabled_warnings: formData.enabled_warnings
+        enabled_warnings: formData.enabled_warnings,
+        warning_thresholds: formData.warning_thresholds,
+        push_notifications_enabled: formData.push_notifications_enabled
       });
       toast.success('Configuration mise à jour');
       setConfigDialogOpen(false);
