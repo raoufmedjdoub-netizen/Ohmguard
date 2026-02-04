@@ -207,6 +207,16 @@ export function RoomDetailPage() {
 
   return (
     <div data-testid="room-detail-page" className="space-y-6">
+      {/* Breadcrumb */}
+      <LocationBreadcrumb 
+        items={[
+          { type: 'organisation', label: room.client_name || 'Organisation', href: `/organisations/${room.client_id}` },
+          { type: 'building', label: room.building_name || 'Bâtiment', href: `/buildings/${room.building_id}` },
+          { type: 'floor', label: room.floor_name || 'Étage', href: `/floors/${room.floor_id}` },
+          { type: 'room', label: `Chambre ${room.room_number}`, href: null }
+        ]} 
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
