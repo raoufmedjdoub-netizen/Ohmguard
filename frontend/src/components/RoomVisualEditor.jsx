@@ -1871,8 +1871,38 @@ export function RoomVisualEditor({ config, onConfigChange }) {
                     <Save className="h-4 w-4 mr-2" />
                     Sauvegarder configuration actuelle
                   </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="flex items-center gap-2 text-muted-foreground">
+                    <Copy className="h-4 w-4" />
+                    Import / Export
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem 
+                    onClick={() => fileInputRef.current?.click()} 
+                    className="cursor-pointer"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Importer des templates (JSON)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={exportTemplates} 
+                    className="cursor-pointer"
+                    disabled={customTemplates.length === 0}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Exporter mes templates ({customTemplates.length})
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              
+              {/* Hidden file input for import */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={importTemplates}
+                accept=".json"
+                className="hidden"
+              />
               
               {/* Fullscreen button */}
               <Button 
