@@ -98,6 +98,10 @@ function AppRoutes() {
         <Route path="floors/:floorId" element={<FloorDetailPage />} />
         <Route path="rooms/:roomId" element={<RoomDetailPage />} />
         
+        {/* Carte Interactive */}
+        <Route path="floor-plan" element={<FloorPlanPage />} />
+        <Route path="carte" element={<FloorPlanPage />} />
+        
         <Route path="rules" element={<RulesPage />} />
         <Route path="alert-rules" element={<RulesPage />} />
         <Route path="users" element={<UsersPage />} />
