@@ -30,7 +30,8 @@ import {
   X,
   FileText,
   Layers,
-  Map
+  Map,
+  Camera
 } from 'lucide-react';
 
 const navItems = [
@@ -40,6 +41,7 @@ const navItems = [
   { path: '/reports', icon: FileText, labelKey: 'nav.reports' },
   { path: '/statistics', icon: BarChart3, labelKey: 'nav.statistics' },
   { path: '/capteurs', icon: Radar, labelKey: 'nav.sensors' },
+  { path: '/capteurs-ia', icon: Camera, labelKey: 'nav.ai_sensors' },
   { path: '/organisations', icon: Building2, labelKey: 'nav.organisations' },
   { path: '/sites-batiments', icon: Layers, labelKey: 'nav.sites_buildings' },
   { path: '/carte', icon: Map, labelKey: 'nav.floor_plan' },
