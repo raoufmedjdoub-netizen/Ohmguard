@@ -263,41 +263,20 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
     - Légende des statuts et bannière d'alerte
     - Toast notifications pour les chutes détectées
     - Statistiques temps réel (Total, En ligne, Hors ligne, Alertes)
-- [x] **Configurateur Visuel de Radar (February 4, 2026)** - Multi-régions avec coordonnées relatives
+- [x] **Configurateur Visuel de Radar (February 4, 2026)** - Multi-régions, Templates, Plein écran
   - Composant `RoomVisualEditor.jsx` intégré dans `RadarConfigPage.js`
-  - Vue de dessus 2D interactive avec canvas SVG (hauteur égale au panneau config: 650px)
+  - Vue de dessus 2D interactive avec canvas SVG (Scale 100px/m)
   - **Système de coordonnées Vayyar (Radar = origine 0,0) :**
     - Pour une pièce 5m×5m avec radar centré : xMin=-2.5, xMax=+2.5, yMin=-2.5, yMax=+2.5
-    - X (largeur) : horizontal (-gauche, +droite)
-    - Y (profondeur) : vertical (-derrière radar, +devant)
-    - **xMin et yMin toujours négatifs, xMax et yMax toujours positifs**
-    - Coordonnées affichées dynamiquement sur le canvas lors du déplacement du radar
-  - **Multi sous-régions (lit, porte, zone) :**
-    - Boutons d'ajout rapide : Lit, Porte, Zone
-    - Liste des sous-régions avec sélection et suppression
-    - Chaque type a ses propres paramètres (isFallingDetection, isDoor, etc.)
-    - Coordonnées relatives au radar calculées automatiquement
-    - Badges colorés par type de région
-  - **Éléments visuels:**
-    - Radar (cercle rouge) avec label "RADAR (0,0)"
-    - Ondes de détection (directionnelles mural, circulaires plafond)
-    - Sous-régions colorées par type (bleu=lit, orange=porte, violet=zone)
-    - Coordonnées xMin/xMax/yMin/yMax affichées sur les bords du canvas
-    - Coordonnées de région sélectionnée affichées au survol
-    - Ligne de distance radar-région sélectionnée
-    - Grille 50cm, zone de détection, légende
-  - **Contrôles de configuration:**
-    - Dimensions pièce (2-5m max)
-    - Montage (Mural/Plafond) avec hauteur adaptative
-    - **Toggle "Coords" pour afficher/masquer les coordonnées**
-    - Sélection et édition de nom des sous-régions
-  - **Interactions drag-and-drop:**
-    - Mural: radar horizontal uniquement
-    - Plafond: radar libre (centré par défaut)
-    - Sous-régions : déplacement + redimensionnement
-  - **Onglets séparés : "Éditeur Visuel" et "Paramètres"**
-    - Paramètres colorés (bleu=X, vert=Y)
-    - Sous-régions avec tous les détails (coordonnées, durées, badges)
+    - Coordonnées affichées dynamiquement sur le canvas
+  - **Multi sous-régions (lit, porte, zone)** avec icônes et couleurs distinctes
+  - **Système de Templates :**
+    - 6 templates prédéfinis : Chambre Standard, Chambre Double, Grande Chambre, Plafond Carré, Plafond Grande Pièce, Couloir
+    - Sauvegarde de templates personnalisés en localStorage
+    - Menu dropdown avec catégories (Prédéfinis / Mes templates)
+    - Suppression des templates personnalisés
+  - **Mode Plein Écran** : Overlay z-50, panneau 380px, canvas maximisé, touche Escape pour quitter
+  - **Interface optimisée** : Layout horizontal sans scroll, éléments agrandis, coordonnées colorées
 - [ ] Email integration (currently mocked)
 - [ ] Webhook delivery with HMAC signature
 - [ ] Escalation automation
