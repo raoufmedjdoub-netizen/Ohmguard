@@ -443,9 +443,9 @@ export function RadarsPage() {
                 </TableRow>
               ) : filteredRadars.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     <Radio className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground">Aucun radar trouvé</p>
+                    <p className="text-muted-foreground">Aucun capteur trouvé</p>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -468,6 +468,9 @@ export function RadarsPage() {
                           </p>
                         </div>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {getSensorTypeBadge(radar.type)}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
