@@ -489,6 +489,7 @@ export function LivePage() {
 
       {/* Grille compacte de radars - TEMPS RÉEL UNIQUEMENT */}
       {(activeView === 'all' || activeView === 'radars') && (
+      <Card>
         <CardHeader className="border-b border-border py-2 px-4">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
             <Radio className="h-4 w-4 text-primary" />
@@ -557,6 +558,106 @@ export function LivePage() {
           )}
         </CardContent>
       </Card>
+      )}
+
+      {/* Section événements IA - Caméras Seedoo */}
+      {(activeView === 'all' || activeView === 'ai') && (
+      <Card>
+        <CardHeader className="border-b border-border py-2 px-4">
+          <CardTitle className="flex items-center gap-2 text-sm font-medium">
+            <Camera className="h-4 w-4 text-purple-500" />
+            Événements IA ({aiEvents.length})
+            {stats.aiCritical > 0 && (
+              <Badge className="bg-red-500 ml-2">{stats.aiCritical} critique{stats.aiCritical > 1 ? 's' : ''}</Badge>
+            )}
+            {connected && (
+              <span className="ml-2 flex items-center gap-1 text-xs text-green-600 font-normal">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+                </span>
+                temps réel
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        
+        <CardContent className="p-3">
+          {aiEvents.length === 0 ? (
+            <div className="py-12 text-center">
+              <div className="relative mx-auto w-12 h-12 mb-3">
+                <Camera className="h-12 w-12 text-muted-foreground/20" />
+                {connected && (
+                  <span className="absolute top-0 right-0 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
+                  </span>
+                )}
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">
+                {connected ? 'En attente d\'événements IA...' : 'Connexion en cours...'}
+              </p>
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                Les alertes des caméras Seedoo apparaîtront ici
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {aiEvents.slice(0, 20).map((event) => (
+                <Card 
+                  key={event.id} 
+                  className={cn(
+                    "overflow-hidden transition-all duration-300",
+                    newEventIds.has(event.id) && "ring-2 ring-purple-500 shadow-lg",
+                    ['Fall_Detected', 'Violence', 'Fire', 'Smoke', 'Intrusion'].includes(event.warning_type) && "border-red-500/50"
+                  )}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        {getAIWarningIcon(event.warning_type)}
+                        <div>
+                          <p className="font-medium text-sm truncate max-w-[150px]">
+                            {event.channel_name || 'Caméra IA'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(event.timestamp).toLocaleTimeString('fr-FR')}
+                          </p>
+                        </div>
+                      </div>
+                      {getAISeverityBadge(event.warning_type)}
+                    </div>
+                    
+                    <div className="mt-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {event.warning_type?.replace('_', ' ')}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {Math.round(event.confidence * 100)}%
+                        </span>
+                      </div>
+                      
+                      {event.video_url && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="h-7 px-2"
+                          onClick={() => window.open(event.video_url, '_blank')}
+                        >
+                          <Video className="h-3 w-3 mr-1" />
+                          Vidéo
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      )}
     </div>
   );
 }
