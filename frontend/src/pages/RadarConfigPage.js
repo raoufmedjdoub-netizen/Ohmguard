@@ -6,7 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import Editor from '@monaco-editor/react';
 import {
   Settings, Send, RotateCcw, History, Save, AlertTriangle,
-  Check, X, Clock, ChevronLeft, Copy, Plus, Trash2, RefreshCw
+  Check, X, Clock, ChevronLeft, Copy, Plus, Trash2, RefreshCw,
+  Square, Bed
 } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +27,7 @@ import { toast } from 'sonner';
 import api from '@/lib/api';
 import { useTheme } from '@/contexts/ThemeContext';
 import { vayyarConfigSchema, ENUM_VALUES, DEFAULT_CONFIG, mqttOptionsSchema } from '@/lib/vayyarConfigSchema';
+import { RoomVisualEditor } from '@/components/RoomVisualEditor';
 
 // Field component with tooltip
 const ConfigField = ({ label, description, children, flexible }) => (
