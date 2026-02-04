@@ -108,6 +108,24 @@ export const eventsAPI = {
   createRadarEvent: (data) => api.post('/events/radar', data)
 };
 
+// AI Sensors API
+export const aiSensorsAPI = {
+  list: (params) => api.get('/ai-sensors', { params }),
+  get: (id) => api.get(`/ai-sensors/${id}`),
+  create: (data) => api.post('/ai-sensors', data),
+  update: (id, data) => api.patch(`/ai-sensors/${id}`, data),
+  delete: (id) => api.delete(`/ai-sensors/${id}`)
+};
+
+// AI Events API
+export const aiEventsAPI = {
+  list: (params) => api.get('/ai-events', { params }),
+  get: (id) => api.get(`/ai-events/${id}`),
+  count: (params) => api.get('/ai-events/count', { params }),
+  updateStatus: (id, status) => api.patch(`/ai-events/${id}/status`, null, { params: { status } }),
+  clear: () => api.delete('/ai-events/clear')
+};
+
 // Alert Rules API
 export const rulesAPI = {
   list: () => api.get('/rules'),
