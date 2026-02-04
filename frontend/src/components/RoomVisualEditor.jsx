@@ -40,8 +40,8 @@ import {
 } from 'lucide-react';
 
 // Constants based on Vayyar Guidelines
-const SCALE = 80; // pixels per meter
-const ROOM_PADDING = 80;
+const SCALE = 100; // pixels per meter (increased for better visibility)
+const ROOM_PADDING = 60;
 const MAX_ROOM_SIZE = 5; // 5m × 5m max
 
 // Mounting configurations from Vayyar specs
