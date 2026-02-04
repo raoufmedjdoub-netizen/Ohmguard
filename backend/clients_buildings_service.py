@@ -276,6 +276,14 @@ class ClientsBuildingsService:
             floor["rooms_count"] = await self.db.rooms.count_documents({"floor_id": floor_id})
             floor["zones_count"] = await self.db.zones_new.count_documents({"floor_id": floor_id})
             floor["radars_count"] = await self.db.sensors.count_documents({"floor_id": floor_id})
+            
+            # Add parent names for breadcrumb
+            building = await self.db.buildings.find_one({"id": floor.get("building_id")}, {"_id": 0, "name": 1})
+            if building:
+                floor["building_name"] = building.get("name")
+            client = await self.db.clients.find_one({"id": floor.get("client_id")}, {"_id": 0, "name": 1})
+            if client:
+                floor["client_name"] = client.get("name")
         
         return floor
     
