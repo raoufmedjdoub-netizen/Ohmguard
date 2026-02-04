@@ -534,10 +534,10 @@ const resources = {
         dark: 'Mode sombre'
       },
       
-      // Radars page
+      // Radars page (now Sensors/Capteurs)
       radars: {
-        title: 'Radars Vayyar',
-        subtitle: 'Gérez et surveillez vos capteurs radar Vayyar',
+        title: 'Capteurs',
+        subtitle: 'Gérez et surveillez vos capteurs de détection de chute',
         mqttConnection: 'Connexion MQTT',
         connected: 'Connecté',
         disconnected: 'Déconnecté',
@@ -545,7 +545,7 @@ const resources = {
         disabled: 'Désactivé',
         running: 'En cours',
         stopped: 'Arrêté',
-        totalRadars: 'Total Radars',
+        totalRadars: 'Total Capteurs',
         autoDetected: 'auto-détectés',
         onlineStatus: 'Statut en ligne',
         online: 'En ligne',
