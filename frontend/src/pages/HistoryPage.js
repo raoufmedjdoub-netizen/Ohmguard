@@ -128,6 +128,25 @@ export function HistoryPage() {
     toast.success('Export completed');
   };
 
+  const handleClearHistory = async () => {
+    setClearing(true);
+    try {
+      const response = await api.delete('/admin/events/clear');
+      toast.success(`${response.data.events_deleted} événements supprimés`);
+      setClearDialogOpen(false);
+      setPage(0);
+      fetchData();
+    } catch (error) {
+      if (error.response?.status === 403) {
+        toast.error('Seul un Super Admin peut effacer l\'historique');
+      } else {
+        toast.error('Erreur lors de la suppression');
+      }
+    } finally {
+      setClearing(false);
+    }
+  };
+
   const handleViewDetails = (eventId) => {
     navigate(`/events/${eventId}`);
   };
