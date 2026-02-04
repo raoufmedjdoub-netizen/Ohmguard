@@ -42,11 +42,11 @@ async def send_expo_push_notification(
             continue
         message = {
             "to": token,
-            "sound": "default",
+            "sound": "notification_alert.wav",
             "title": title,
             "body": body,
             "priority": "high",
-            "channelId": "alerts",
+            "channelId": "fall-alerts",
         }
         if data:
             message["data"] = data
