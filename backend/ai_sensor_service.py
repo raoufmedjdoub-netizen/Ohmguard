@@ -57,6 +57,19 @@ class AISensorService:
             "status": "OFFLINE",
             "confidence_threshold": data.get("confidence_threshold", 0.7),
             "enabled_warnings": data.get("enabled_warnings", []),
+            # Seuils de confiance par type d'alerte
+            "warning_thresholds": data.get("warning_thresholds", {
+                "Fall_Detected": 0.6,
+                "Violence": 0.7,
+                "Fire": 0.5,
+                "Smoke": 0.5,
+                "Intrusion": 0.7,
+                "Person_Detected": 0.8,
+                "Normal_Activity": 0.9,
+                "Loitering": 0.75,
+                "No_Activity": 0.9
+            }),
+            "push_notifications_enabled": data.get("push_notifications_enabled", True),
             "client_id": data.get("client_id"),
             "building_id": data.get("building_id"),
             "floor_id": data.get("floor_id"),
