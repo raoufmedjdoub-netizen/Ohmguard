@@ -160,11 +160,61 @@ export function HistoryPage() {
           {totalCount} {t('events.title').toLowerCase()}
         </span>
         
-        <Button variant="outline" onClick={handleExport} data-testid="export-btn">
-          <Download className="h-4 w-4 mr-2" />
-          {t('export')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setClearDialogOpen(true)} 
+            data-testid="clear-history-btn"
+            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            disabled={totalCount === 0}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Effacer l'historique
+          </Button>
+          <Button variant="outline" onClick={handleExport} data-testid="export-btn">
+            <Download className="h-4 w-4 mr-2" />
+            {t('export')}
+          </Button>
+        </div>
       </div>
+
+      {/* Dialog de confirmation pour effacer l'historique */}
+      <Dialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Effacer l'historique
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              <p className="mb-4">
+                Êtes-vous sûr de vouloir supprimer <strong>tous les {totalCount} événements</strong> de l'historique ?
+              </p>
+              <p className="text-red-600 font-medium">
+                Cette action est irréversible. Toutes les données d'événements seront définitivement supprimées.
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setClearDialogOpen(false)} disabled={clearing}>
+              Annuler
+            </Button>
+            <Button variant="destructive" onClick={handleClearHistory} disabled={clearing}>
+              {clearing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Confirmer la suppression
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardContent className="p-4">
