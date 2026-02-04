@@ -134,7 +134,7 @@ export function RadarConfigPage() {
   const [sending, setSending] = useState(false);
   const [radar, setRadar] = useState(null);
   const [versions, setVersions] = useState([]);
-  const [activeTab, setActiveTab] = useState('app');
+  const [activeTab, setActiveTab] = useState('visual');
   const [jsonMode, setJsonMode] = useState(false);
   const [jsonValue, setJsonValue] = useState('');
   const [jsonError, setJsonError] = useState(null);
