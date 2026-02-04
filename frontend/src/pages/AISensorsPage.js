@@ -96,7 +96,9 @@ export function AISensorsPage() {
     channel_name: '',
     name: '',
     confidence_threshold: 0.7,
-    enabled_warnings: []
+    enabled_warnings: [],
+    warning_thresholds: {},
+    push_notifications_enabled: true
   });
   
   // Stats
