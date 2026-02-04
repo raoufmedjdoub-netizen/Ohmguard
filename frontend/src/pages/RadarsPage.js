@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Wifi, WifiOff, Radio, RefreshCw, Activity, 
   Clock, Plus, Copy, Key, 
-  Trash2, Search, MapPin, Sliders, Building2, AlertCircle, Link2
+  Trash2, Search, MapPin, Sliders, Building2, AlertCircle, Link2, Upload
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from 'sonner';
 import api, { sensorsAPI } from '@/lib/api';
 import { useWebSocket } from '@/contexts/WebSocketContext';
+import SensorImportModal from '@/components/SensorImportModal';
 
 export function RadarsPage() {
   const { t } = useTranslation();
