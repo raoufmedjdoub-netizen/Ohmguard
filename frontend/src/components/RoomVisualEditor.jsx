@@ -36,7 +36,10 @@ import {
   Layers,
   Plus,
   Trash2,
-  Square
+  Square,
+  Maximize2,
+  Minimize2,
+  X
 } from 'lucide-react';
 
 // Constants based on Vayyar Guidelines
