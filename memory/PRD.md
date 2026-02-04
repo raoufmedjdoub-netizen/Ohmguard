@@ -288,15 +288,17 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - `backend/config/redis.py` - Redis configuration module
 - `backend/config/event_cache.py` - Event cache service
 - `backend/push_notification_service.py` - **NEW: Expo Push notification service (February 2026)**
+- `backend/floor_plan_service.py` - **NEW: Floor plan upload, markers management (February 2026)**
 - `backend/mqtt_service.py` - MQTT integration with RadarEvent support
 - `backend/radar_event_models.py` - RadarEvent enums and models
 - `backend/vayyar_config_service.py` - Config publish/versioning
 - `backend/clients_buildings_models.py` - Multi-tenant hierarchy models
 - `backend/clients_buildings_service.py` - Multi-tenant business logic (includes delete_client cascade, breadcrumb data)
-- `backend/clients_buildings_routes.py` - Clients & Buildings API (RBAC permissions)
+- `backend/clients_buildings_routes.py` - Clients & Buildings API (RBAC permissions, floor plan endpoints)
 - `backend/rbac_routes.py` - RBAC user management routes
 - `backend/seed_clients_buildings.py` - Demo data seeder
 - `frontend/src/components/LocationBreadcrumb.jsx` - **NEW: Reusable breadcrumb component (February 2026)**
+- `frontend/src/pages/FloorPlanPage.js` - **NEW: Interactive map with real-time markers (February 2026)**
 - `frontend/src/components/layout/MainLayout.js` - Layout with Navbar/SubNavbar/Sidebar
 - `frontend/src/components/layout/Navbar.js` - Main navigation bar
 - `frontend/src/components/layout/SubNavbar.js` - Contextual sub-navigation with breadcrumb
