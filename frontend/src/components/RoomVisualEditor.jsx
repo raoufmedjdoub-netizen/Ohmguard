@@ -377,17 +377,27 @@ function RoomCanvas({
   const mountConfig = MOUNTING_CONFIG[radarMounting] || MOUNTING_CONFIG.Wall;
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center">
+    <div 
+      className="relative w-full h-full flex items-center justify-center select-none"
+      style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+    >
       <svg
         ref={svgRef}
         width={canvasWidth}
         height={canvasHeight}
         viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
         className="bg-slate-50 dark:bg-slate-900 rounded-xl border-2 border-slate-200 dark:border-slate-700 shadow-inner"
+        style={{ 
+          userSelect: 'none', 
+          WebkitUserSelect: 'none',
+          touchAction: 'none',
+          cursor: dragging ? 'grabbing' : 'default'
+        }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onClick={handleCanvasClick}
+        onDragStart={(e) => e.preventDefault()}
         preserveAspectRatio="xMidYMid meet"
       >
         <defs>
