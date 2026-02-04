@@ -432,39 +432,63 @@ export function LivePage() {
       </div>
 
       {/* Filtres compacts */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <Filter className="h-4 w-4 text-muted-foreground" />
-        
-        <Select value={selectedClient} onValueChange={(v) => { setSelectedClient(v); setSelectedBuilding('all'); }}>
-          <SelectTrigger className="w-44 h-8 text-xs" data-testid="client-filter">
-            <Building2 className="h-3 w-3 mr-1.5 text-muted-foreground" />
-            <SelectValue placeholder="Client" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tous les clients</SelectItem>
-            {clients.map(client => (
-              <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        
-        {selectedClient !== 'all' && buildings.length > 0 && (
-          <Select value={selectedBuilding} onValueChange={setSelectedBuilding}>
-            <SelectTrigger className="w-40 h-8 text-xs" data-testid="building-filter">
-              <SelectValue placeholder="Bâtiment" />
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          
+          <Select value={selectedClient} onValueChange={(v) => { setSelectedClient(v); setSelectedBuilding('all'); }}>
+            <SelectTrigger className="w-44 h-8 text-xs" data-testid="client-filter">
+              <Building2 className="h-3 w-3 mr-1.5 text-muted-foreground" />
+              <SelectValue placeholder="Client" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous</SelectItem>
-              {buildings.map(building => (
-                <SelectItem key={building.id} value={building.id}>{building.name}</SelectItem>
+              <SelectItem value="all">Tous les clients</SelectItem>
+              {clients.map(client => (
+                <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-        )}
+          
+          {selectedClient !== 'all' && buildings.length > 0 && (
+            <Select value={selectedBuilding} onValueChange={setSelectedBuilding}>
+              <SelectTrigger className="w-40 h-8 text-xs" data-testid="building-filter">
+                <SelectValue placeholder="Bâtiment" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous</SelectItem>
+                {buildings.map(building => (
+                  <SelectItem key={building.id} value={building.id}>{building.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        {/* Tabs pour filtrer par type de capteur */}
+        <Tabs value={activeView} onValueChange={setActiveView}>
+          <TabsList className="h-8">
+            <TabsTrigger value="all" className="text-xs h-7 px-3">
+              Tous ({radarCards.length + aiEvents.length})
+            </TabsTrigger>
+            <TabsTrigger value="radars" className="text-xs h-7 px-3">
+              <Radio className="h-3 w-3 mr-1" />
+              Radars ({radarCards.length})
+            </TabsTrigger>
+            <TabsTrigger value="ai" className="text-xs h-7 px-3">
+              <Camera className="h-3 w-3 mr-1" />
+              IA ({aiEvents.length})
+              {stats.aiCritical > 0 && (
+                <span className="ml-1 bg-red-500 text-white text-xs rounded-full px-1.5">
+                  {stats.aiCritical}
+                </span>
+              )}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* Grille compacte de radars - TEMPS RÉEL UNIQUEMENT */}
-      <Card>
+      {(activeView === 'all' || activeView === 'radars') && (
         <CardHeader className="border-b border-border py-2 px-4">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
             <Radio className="h-4 w-4 text-primary" />
