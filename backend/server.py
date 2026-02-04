@@ -2606,13 +2606,24 @@ SEEDOO_MQTT_ENABLED = os.environ.get('SEEDOO_MQTT_ENABLED', 'true').lower() == '
 async def get_mqtt_status(current_user: UserInDB = Depends(get_current_user)):
     """Get MQTT service status"""
     from mqtt_service import mqtt_service
+    from seedoo_mqtt_service import get_seedoo_mqtt_service
+    
+    seedoo_service = get_seedoo_mqtt_service()
     
     return {
         "enabled": MQTT_ENABLED,
         "broker_host": MQTT_BROKER_HOST,
         "broker_port": MQTT_BROKER_PORT,
         "running": mqtt_service.running if mqtt_service else False,
-        "connected": mqtt_service._client is not None if mqtt_service else False
+        "connected": mqtt_service._client is not None if mqtt_service else False,
+        "seedoo": {
+            "enabled": SEEDOO_MQTT_ENABLED,
+            "broker_host": SEEDOO_MQTT_HOST,
+            "broker_port": SEEDOO_MQTT_PORT,
+            "running": seedoo_service.running if seedoo_service else False,
+            "connected": seedoo_service._client is not None if seedoo_service else False,
+            "message_count": seedoo_service._message_count if seedoo_service else 0
+        }
     }
 
 @api_router.post("/mqtt/register-device")
