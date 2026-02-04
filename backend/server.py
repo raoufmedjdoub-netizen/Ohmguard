@@ -2595,6 +2595,11 @@ MQTT_BROKER_HOST = os.environ.get('MQTT_BROKER_HOST', '38.242.254.49')
 MQTT_BROKER_PORT = int(os.environ.get('MQTT_BROKER_PORT', '1883'))
 MQTT_ENABLED = os.environ.get('MQTT_ENABLED', 'true').lower() == 'true'
 
+# Seedoo AI Camera MQTT Configuration
+SEEDOO_MQTT_HOST = os.environ.get('SEEDOO_MQTT_HOST', '51.91.9.198')
+SEEDOO_MQTT_PORT = int(os.environ.get('SEEDOO_MQTT_PORT', '1883'))
+SEEDOO_MQTT_ENABLED = os.environ.get('SEEDOO_MQTT_ENABLED', 'true').lower() == 'true'
+
 # ==================== MQTT ENDPOINTS ====================
 
 @api_router.get("/mqtt/status")
