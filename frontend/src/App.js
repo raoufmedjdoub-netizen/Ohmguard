@@ -17,6 +17,7 @@ import { HistoryPage } from '@/pages/HistoryPage';
 import { EventDetailPage } from '@/pages/EventDetailPage';
 import { RadarsPage } from '@/pages/RadarsPage';
 import { RadarConfigPage } from '@/pages/RadarConfigPage';
+import { AISensorsPage } from '@/pages/AISensorsPage';
 import { RulesPage } from '@/pages/RulesPage';
 import UsersPage from '@/pages/UsersPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
