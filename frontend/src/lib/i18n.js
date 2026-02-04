@@ -514,6 +514,8 @@ const resources = {
         floor_plan: 'Carte Interactive',
         floor_plan_desc: 'Plans d\'étage et positions des capteurs',
         sites: 'Sites & Zones',
+        ai_sensors: 'Capteurs IA',
+        ai_sensors_desc: 'Gestion des caméras Seedoo',
         alert_rules: 'Règles d\'alerte',
         alert_rules_desc: 'Configuration des alertes',
         rules: 'Règles d\'alerte',
