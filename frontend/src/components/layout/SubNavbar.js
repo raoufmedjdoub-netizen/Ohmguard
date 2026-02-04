@@ -193,6 +193,7 @@ const DEFAULT_DESCRIPTIONS = {
   '/reports': 'Génération de rapports d\'événements',
   '/statistics': 'Statistiques et rapports',
   '/capteurs': 'Gestion des capteurs',
+  '/capteurs-ia': 'Gestion des caméras Seedoo',
   '/organisations': 'Gestion des organisations',
   '/sites-batiments': 'Gestion des bâtiments et étages',
   '/carte': 'Plans d\'étage et positions des capteurs',
