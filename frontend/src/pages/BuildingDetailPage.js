@@ -169,10 +169,18 @@ export function BuildingDetailPage() {
 
   return (
     <div data-testid="building-detail-page" className="space-y-6">
+      {/* Breadcrumb */}
+      <LocationBreadcrumb 
+        items={[
+          { type: 'organisation', label: building.client_name || 'Organisation', href: `/organisations/${building.client_id}` },
+          { type: 'building', label: building.name, href: null }
+        ]} 
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(`/clients/${building.client_id}`)}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(`/organisations/${building.client_id}`)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="p-3 rounded-lg bg-blue-500/10">
@@ -181,7 +189,7 @@ export function BuildingDetailPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{building.name}</h1>
             <p className="text-muted-foreground">
-              {building.floors_count} étages • {building.rooms_count} chambres • {building.radars_count} radars
+              {building.floors_count} étages • {building.rooms_count} chambres • {building.radars_count || 0} capteurs
             </p>
           </div>
         </div>
