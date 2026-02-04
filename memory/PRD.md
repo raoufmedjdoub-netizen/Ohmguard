@@ -243,6 +243,26 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
   - Liens cliquables navigant vers les pages parentes
   - Noms réels des entités (pas de labels génériques)
   - API backend enrichie avec `client_name`, `building_name`, `floor_name`
+- [x] **Carte Interactive des Bâtiments (February 4, 2026)**
+  - **Phase 1 - Import et affichage des plans:**
+    - Upload d'images (PNG, JPG, WEBP) et PDF (conversion automatique)
+    - Stockage local des fichiers + métadonnées MongoDB
+    - Visualisation avec zoom/pan (molette + drag)
+    - Sélecteurs cascade Organisation → Bâtiment → Étage
+  - **Phase 2 - Placement des marqueurs:**
+    - Mode édition avec sidebar listant les capteurs
+    - Drag-and-drop des capteurs sur le plan
+    - Sauvegarde des positions (coordonnées %)
+    - Déplacement et suppression des marqueurs
+  - **Phase 3 - Affichage temps réel:**
+    - Connexion WebSocket pour mises à jour live
+    - Marqueurs colorés selon statut (vert=online, gris=offline, rouge=alerte)
+    - Animations pulsantes et ripple pour les alertes
+    - Flash visuel lors de nouveaux événements
+    - Tooltip au survol avec détails capteur
+    - Légende des statuts et bannière d'alerte
+    - Toast notifications pour les chutes détectées
+    - Statistiques temps réel (Total, En ligne, Hors ligne, Alertes)
 - [ ] Email integration (currently mocked)
 - [ ] Webhook delivery with HMAC signature
 - [ ] Escalation automation
