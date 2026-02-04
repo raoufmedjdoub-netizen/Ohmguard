@@ -46,6 +46,8 @@ export function HistoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   
   const [page, setPage] = useState(0);
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const limit = 20;
 
   // Charger les clients au démarrage
