@@ -169,7 +169,7 @@ export function HistoryPage() {
             disabled={totalCount === 0}
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            Effacer l'historique
+            Effacer l&apos;historique
           </Button>
           <Button variant="outline" onClick={handleExport} data-testid="export-btn">
             <Download className="h-4 w-4 mr-2" />
@@ -184,14 +184,14 @@ export function HistoryPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="h-5 w-5" />
-              Effacer l'historique
+              Effacer l&apos;historique
             </DialogTitle>
             <DialogDescription className="pt-2">
               <p className="mb-4">
-                Êtes-vous sûr de vouloir supprimer <strong>tous les {totalCount} événements</strong> de l'historique ?
+                Êtes-vous sûr de vouloir supprimer <strong>tous les {totalCount} événements</strong> de l&apos;historique ?
               </p>
               <p className="text-red-600 font-medium">
-                Cette action est irréversible. Toutes les données d'événements seront définitivement supprimées.
+                Cette action est irréversible. Toutes les données d&apos;événements seront définitivement supprimées.
               </p>
             </DialogDescription>
           </DialogHeader>
