@@ -335,14 +335,38 @@ export function LivePage() {
     });
   }, [events, selectedClient, selectedBuilding, clients, buildings]);
 
-  // Stats
+  // Stats incluant les événements IA
   const stats = {
     total: radarCards.length,
     online: radarCards.filter(e => {
       const status = radarStatuses[e.sensor_id];
       return status?.deviceOnline !== false;
     }).length,
-    falls: radarCards.filter(e => e.type === 'FALL').length
+    falls: radarCards.filter(e => e.type === 'FALL').length,
+    aiEvents: aiEvents.length,
+    aiCritical: aiEvents.filter(e => ['Fall_Detected', 'Violence', 'Fire', 'Smoke', 'Intrusion'].includes(e.warning_type)).length
+  };
+
+  // Helper pour obtenir l'icône d'alerte IA
+  const getAIWarningIcon = (warningType) => {
+    switch (warningType) {
+      case 'Fall_Detected': return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      case 'Violence': return <AlertTriangle className="h-4 w-4 text-red-600" />;
+      case 'Fire': return <Flame className="h-4 w-4 text-orange-500" />;
+      case 'Smoke': return <Flame className="h-4 w-4 text-gray-500" />;
+      case 'Intrusion': return <Eye className="h-4 w-4 text-orange-600" />;
+      case 'Person_Detected': return <User className="h-4 w-4 text-blue-500" />;
+      default: return <Camera className="h-4 w-4 text-green-500" />;
+    }
+  };
+
+  // Helper pour le badge de sévérité
+  const getAISeverityBadge = (warningType) => {
+    const critical = ['Fall_Detected', 'Violence', 'Fire', 'Smoke', 'Intrusion'];
+    const medium = ['Loitering', 'Person_Detected'];
+    if (critical.includes(warningType)) return <Badge className="bg-red-500 text-xs">Critique</Badge>;
+    if (medium.includes(warningType)) return <Badge className="bg-yellow-500 text-xs">Moyen</Badge>;
+    return <Badge className="bg-green-500 text-xs">Normal</Badge>;
   };
 
   if (loading) {
