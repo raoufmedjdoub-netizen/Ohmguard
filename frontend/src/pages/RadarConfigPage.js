@@ -348,13 +348,38 @@ export function RadarConfigPage() {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid grid-cols-5 mb-4">
+              <TabsList className="grid grid-cols-6 mb-4">
+                <TabsTrigger value="visual" className="flex items-center gap-1">
+                  <Square className="h-3 w-3" />
+                  Visuel
+                </TabsTrigger>
                 <TabsTrigger value="app">App</TabsTrigger>
                 <TabsTrigger value="walabot">Walabot</TabsTrigger>
                 <TabsTrigger value="rf">RF</TabsTrigger>
                 <TabsTrigger value="system">System</TabsTrigger>
                 <TabsTrigger value="regions">Regions</TabsTrigger>
               </TabsList>
+
+              {/* Visual Room Editor Tab */}
+              <TabsContent value="visual" className="mt-0">
+                <RoomVisualEditor 
+                  config={watch()}
+                  onConfigChange={(newConfig) => {
+                    // Update form with new config from visual editor
+                    if (newConfig.walabotConfig) {
+                      setValue('walabotConfig.xMin', newConfig.walabotConfig.xMin);
+                      setValue('walabotConfig.xMax', newConfig.walabotConfig.xMax);
+                      setValue('walabotConfig.yMin', newConfig.walabotConfig.yMin);
+                      setValue('walabotConfig.yMax', newConfig.walabotConfig.yMax);
+                      setValue('walabotConfig.sensorHeight', newConfig.walabotConfig.sensorHeight);
+                      setValue('walabotConfig.sensorMounting', newConfig.walabotConfig.sensorMounting);
+                      if (newConfig.walabotConfig.trackerSubRegions) {
+                        setValue('walabotConfig.trackerSubRegions', newConfig.walabotConfig.trackerSubRegions);
+                      }
+                    }
+                  }}
+                />
+              </TabsContent>
 
               <ScrollArea className="h-[500px] pr-4">
                 {/* App Config Tab */}
