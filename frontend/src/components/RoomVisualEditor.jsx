@@ -108,6 +108,117 @@ const SUBREGION_TYPES = {
   }
 };
 
+// Predefined room templates
+const PREDEFINED_TEMPLATES = [
+  {
+    id: 'standard-single',
+    name: 'Chambre Standard',
+    description: 'Chambre simple avec 1 lit',
+    icon: '🛏️',
+    category: 'standard',
+    config: {
+      roomWidth: 3.5,
+      roomDepth: 4.0,
+      mounting: 'Wall',
+      radarHeight: 1.5,
+      subRegions: [
+        { type: 'bed', name: 'Lit', roomX: 0.3, roomY: 1.2, width: 0.9, length: 2.0 },
+        { type: 'door', name: 'Porte', roomX: 2.8, roomY: 3.6, width: 0.9, length: 0.3 }
+      ]
+    }
+  },
+  {
+    id: 'standard-double',
+    name: 'Chambre Double',
+    description: '2 lits côte à côte',
+    icon: '🛏️🛏️',
+    category: 'standard',
+    config: {
+      roomWidth: 4.5,
+      roomDepth: 4.0,
+      mounting: 'Wall',
+      radarHeight: 1.5,
+      subRegions: [
+        { type: 'bed', name: 'Lit 1', roomX: 0.3, roomY: 1.2, width: 0.9, length: 2.0 },
+        { type: 'bed', name: 'Lit 2', roomX: 2.3, roomY: 1.2, width: 0.9, length: 2.0 },
+        { type: 'door', name: 'Porte', roomX: 3.8, roomY: 3.6, width: 0.9, length: 0.3 }
+      ]
+    }
+  },
+  {
+    id: 'large-single',
+    name: 'Grande Chambre',
+    description: 'Chambre spacieuse avec lit double',
+    icon: '🏠',
+    category: 'standard',
+    config: {
+      roomWidth: 4.5,
+      roomDepth: 5.0,
+      mounting: 'Wall',
+      radarHeight: 1.5,
+      subRegions: [
+        { type: 'bed', name: 'Lit Double', roomX: 0.5, roomY: 1.5, width: 1.4, length: 2.0 },
+        { type: 'door', name: 'Porte', roomX: 3.8, roomY: 4.6, width: 0.9, length: 0.3 }
+      ]
+    }
+  },
+  {
+    id: 'ceiling-square',
+    name: 'Plafond Carré',
+    description: 'Radar au plafond, pièce carrée',
+    icon: '⬜',
+    category: 'ceiling',
+    config: {
+      roomWidth: 4.0,
+      roomDepth: 4.0,
+      mounting: 'Ceiling',
+      radarHeight: 2.7,
+      subRegions: [
+        { type: 'bed', name: 'Lit', roomX: 0.5, roomY: 0.5, width: 0.9, length: 2.0 },
+        { type: 'door', name: 'Porte', roomX: 3.3, roomY: 1.5, width: 0.3, length: 0.9 }
+      ]
+    }
+  },
+  {
+    id: 'ceiling-large',
+    name: 'Plafond Grande Pièce',
+    description: 'Radar plafond, 5m×5m',
+    icon: '🔲',
+    category: 'ceiling',
+    config: {
+      roomWidth: 5.0,
+      roomDepth: 5.0,
+      mounting: 'Ceiling',
+      radarHeight: 2.7,
+      subRegions: [
+        { type: 'bed', name: 'Lit 1', roomX: 0.3, roomY: 0.3, width: 0.9, length: 2.0 },
+        { type: 'bed', name: 'Lit 2', roomX: 3.0, roomY: 0.3, width: 0.9, length: 2.0 },
+        { type: 'door', name: 'Porte', roomX: 4.6, roomY: 2.0, width: 0.3, length: 0.9 }
+      ]
+    }
+  },
+  {
+    id: 'corridor',
+    name: 'Couloir',
+    description: 'Espace long et étroit',
+    icon: '📏',
+    category: 'special',
+    config: {
+      roomWidth: 2.0,
+      roomDepth: 5.0,
+      mounting: 'Wall',
+      radarHeight: 1.5,
+      subRegions: [
+        { type: 'door', name: 'Porte Entrée', roomX: 0.5, roomY: 4.6, width: 0.9, length: 0.3 },
+        { type: 'door', name: 'Porte Sortie', roomX: 0.5, roomY: 0.1, width: 0.9, length: 0.3 }
+      ]
+    }
+  }
+];
+
+// LocalStorage key for custom templates
+const CUSTOM_TEMPLATES_KEY = 'vayyar-room-templates';
+
 /**
  * SVG Room Canvas Component - Vue de dessus
  * Radar au centre = origine (0,0)
