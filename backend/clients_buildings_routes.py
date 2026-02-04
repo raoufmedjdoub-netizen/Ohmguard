@@ -631,4 +631,268 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         
         return {"full_path": "Capteur inconnu"}
     
+    # ==================== ORGANISATIONS (ALIAS) ====================
+    # Ces routes sont des alias vers les routes clients pour le renommage UI
+    
+    @router.get("/organisations")
+    async def list_organisations(current_user = Depends(get_current_user)):
+        """List all organisations (alias for clients)"""
+        service = get_service()
+        
+        if current_user.role == "SUPER_ADMIN":
+            return await service.list_clients()
+        else:
+            client_users = await db.client_users.find(
+                {"user_id": current_user.id, "is_active": True},
+                {"_id": 0, "client_id": 1}
+            ).to_list(100)
+            
+            if client_users:
+                client_ids = [cu["client_id"] for cu in client_users]
+                return await service.list_clients(client_ids=client_ids)
+            
+            if current_user.tenant_id:
+                return await service.list_clients(client_ids=[current_user.tenant_id])
+            
+            return []
+    
+    @router.get("/organisations/{org_id}")
+    async def get_organisation(org_id: str, current_user = Depends(get_current_user)):
+        """Get organisation details (alias for client)"""
+        service = get_service()
+        client = await service.get_client(org_id)
+        if not client:
+            raise HTTPException(status_code=404, detail="Organisation not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, org_id, "VIEW")
+            if not has_access and current_user.tenant_id != org_id:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        return client
+    
+    @router.get("/organisations/{org_id}/buildings")
+    async def list_organisation_buildings(org_id: str, current_user = Depends(get_current_user)):
+        """List buildings for an organisation (alias)"""
+        service = get_service()
+        
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, org_id, "VIEW")
+            if not has_access and current_user.tenant_id != org_id:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        return await service.list_buildings(org_id)
+    
+    @router.get("/organisations/{org_id}/sensors")
+    async def list_organisation_sensors(org_id: str, current_user = Depends(get_current_user)):
+        """List all sensors (capteurs) for an organisation"""
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, org_id, "VIEW")
+            if not has_access and current_user.tenant_id != org_id:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        sensors = await db.sensors.find(
+            {"client_id": org_id},
+            {"_id": 0}
+        ).to_list(1000)
+        
+        # Enrichir avec le type de capteur pour l'UI
+        for sensor in sensors:
+            sensor["sensor_type_label"] = _get_sensor_type_label(sensor.get("type"))
+        
+        return sensors
+    
+    # ==================== SENSORS BY LOCATION ====================
+    
+    @router.get("/buildings/{building_id}/sensors")
+    async def list_building_sensors(building_id: str, current_user = Depends(get_current_user)):
+        """List all sensors (capteurs) in a building"""
+        # Vérifier que le bâtiment existe
+        building = await db.buildings.find_one({"id": building_id}, {"_id": 0})
+        if not building:
+            raise HTTPException(status_code=404, detail="Building not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, building["client_id"], "VIEW")
+            if not has_access and current_user.tenant_id != building["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        sensors = await db.sensors.find(
+            {"building_id": building_id},
+            {"_id": 0}
+        ).to_list(1000)
+        
+        for sensor in sensors:
+            sensor["sensor_type_label"] = _get_sensor_type_label(sensor.get("type"))
+        
+        return sensors
+    
+    @router.get("/floors/{floor_id}/sensors")
+    async def list_floor_sensors(floor_id: str, current_user = Depends(get_current_user)):
+        """List all sensors (capteurs) on a floor"""
+        floor = await db.floors.find_one({"id": floor_id}, {"_id": 0})
+        if not floor:
+            raise HTTPException(status_code=404, detail="Floor not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, floor["client_id"], "VIEW")
+            if not has_access and current_user.tenant_id != floor["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        sensors = await db.sensors.find(
+            {"floor_id": floor_id},
+            {"_id": 0}
+        ).to_list(1000)
+        
+        for sensor in sensors:
+            sensor["sensor_type_label"] = _get_sensor_type_label(sensor.get("type"))
+        
+        return sensors
+    
+    @router.get("/floors/{floor_id}/zones")
+    async def list_floor_zones(floor_id: str, current_user = Depends(get_current_user)):
+        """List all zones on a floor"""
+        floor = await db.floors.find_one({"id": floor_id}, {"_id": 0})
+        if not floor:
+            raise HTTPException(status_code=404, detail="Floor not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, floor["client_id"], "VIEW")
+            if not has_access and current_user.tenant_id != floor["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Zones avec floor_id correspondant OU zones sans floor_id du même building
+        zones = await db.zones_new.find(
+            {"$or": [
+                {"floor_id": floor_id},
+                {"floor_id": None, "building_id": floor["building_id"]}
+            ]},
+            {"_id": 0}
+        ).to_list(100)
+        
+        # Enrichir avec compteurs
+        for zone in zones:
+            # Compter les chambres dans cette zone (si zone_id existe dans rooms)
+            rooms_count = await db.rooms.count_documents({"zone_id": zone["id"]}) if zone.get("id") else 0
+            zone["rooms_count"] = rooms_count
+            
+            # Compter les capteurs via les chambres de la zone
+            if rooms_count > 0:
+                rooms = await db.rooms.find({"zone_id": zone["id"]}, {"_id": 0, "id": 1}).to_list(1000)
+                room_ids = [r["id"] for r in rooms]
+                sensors_count = await db.sensors.count_documents({"room_id": {"$in": room_ids}})
+                zone["sensors_count"] = sensors_count
+            else:
+                zone["sensors_count"] = 0
+        
+        return zones
+    
+    @router.get("/rooms/{room_id}/sensors")
+    async def list_room_sensors(room_id: str, current_user = Depends(get_current_user)):
+        """List all sensors (capteurs) in a room"""
+        room = await db.rooms.find_one({"id": room_id}, {"_id": 0})
+        if not room:
+            raise HTTPException(status_code=404, detail="Room not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, room["client_id"], "VIEW")
+            if not has_access and current_user.tenant_id != room["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        sensors = await db.sensors.find(
+            {"room_id": room_id},
+            {"_id": 0}
+        ).to_list(100)
+        
+        for sensor in sensors:
+            sensor["sensor_type_label"] = _get_sensor_type_label(sensor.get("type"))
+        
+        return sensors
+    
+    @router.get("/room-spaces/{space_id}/sensors")
+    async def list_space_sensors(space_id: str, current_user = Depends(get_current_user)):
+        """List all sensors (capteurs) in a room space"""
+        space = await db.room_spaces.find_one({"id": space_id}, {"_id": 0})
+        if not space:
+            raise HTTPException(status_code=404, detail="Space not found")
+        
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, space["client_id"], "VIEW")
+            if not has_access and current_user.tenant_id != space["client_id"]:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        sensors = await db.sensors.find(
+            {"room_space_id": space_id},
+            {"_id": 0}
+        ).to_list(100)
+        
+        for sensor in sensors:
+            sensor["sensor_type_label"] = _get_sensor_type_label(sensor.get("type"))
+        
+        return sensors
+    
+    # ==================== HIERARCHY TREE ====================
+    
+    @router.get("/organisations/{org_id}/tree")
+    async def get_organisation_tree(org_id: str, current_user = Depends(get_current_user)):
+        """Get full hierarchy tree for an organisation (alias)"""
+        service = get_service()
+        
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, org_id, "VIEW")
+            if not has_access and current_user.tenant_id != org_id:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        return await service.get_client_tree(org_id)
+    
+    # ==================== STATS CAPTEURS ====================
+    
+    @router.get("/organisations/{org_id}/stats")
+    async def get_organisation_stats(org_id: str, current_user = Depends(get_current_user)):
+        """Get statistics for an organisation"""
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, org_id, "VIEW")
+            if not has_access and current_user.tenant_id != org_id:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Compteurs dynamiques
+        buildings_count = await db.buildings.count_documents({"client_id": org_id})
+        floors_count = await db.floors.count_documents({"client_id": org_id})
+        rooms_count = await db.rooms.count_documents({"client_id": org_id})
+        zones_count = await db.zones_new.count_documents({"client_id": org_id})
+        sensors_count = await db.sensors.count_documents({"client_id": org_id})
+        sensors_online = await db.sensors.count_documents({"client_id": org_id, "status": "ONLINE"})
+        
+        return {
+            "organisation_id": org_id,
+            "buildings_count": buildings_count,
+            "floors_count": floors_count,
+            "rooms_count": rooms_count,
+            "zones_count": zones_count,
+            "sensors_count": sensors_count,
+            "sensors_online": sensors_online,
+            "sensors_offline": sensors_count - sensors_online
+        }
+    
     return router
+
+
+def _get_sensor_type_label(sensor_type: str, lang: str = "fr") -> str:
+    """Get human-readable label for sensor type"""
+    labels = {
+        "fr": {
+            "RADAR": "Radar de détection de chute",
+            "CAMERA": "Caméra",
+            "MOTION": "Détecteur de mouvement",
+            "DOOR": "Capteur de porte",
+            "OTHER": "Autre"
+        },
+        "en": {
+            "RADAR": "Fall detection radar",
+            "CAMERA": "Camera",
+            "MOTION": "Motion detector",
+            "DOOR": "Door sensor",
+            "OTHER": "Other"
+        }
+    }
+    return labels.get(lang, labels["fr"]).get(sensor_type, sensor_type or "Inconnu")
