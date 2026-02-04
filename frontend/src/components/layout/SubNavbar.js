@@ -94,7 +94,7 @@ const PAGE_CONFIG = {
     ]
   },
   '/sites-batiments': {
-    icon: Building2,
+    icon: Layers,
     titleKey: 'nav.sites_buildings',
     descriptionKey: 'nav.sites_buildings_desc',
     breadcrumb: [
@@ -103,7 +103,7 @@ const PAGE_CONFIG = {
     ]
   },
   '/carte': {
-    icon: Grid3X3,
+    icon: Map,
     titleKey: 'nav.floor_plan',
     descriptionKey: 'nav.floor_plan_desc',
     breadcrumb: [
