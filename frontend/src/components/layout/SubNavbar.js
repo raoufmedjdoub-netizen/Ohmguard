@@ -26,7 +26,9 @@ import {
   Play,
   Wifi,
   Grid3X3,
-  FileText
+  FileText,
+  Layers,
+  Map
 } from 'lucide-react';
 
 // Configuration des pages avec leurs métadonnées
