@@ -269,6 +269,13 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
   - Mise à jour de `SubNavbar.js` pour utiliser les chemins corrects (`/capteurs`, `/organisations`, `/sites-batiments`, `/carte`)
   - Ajout des configurations manquantes pour Sites & Bâtiments et Carte Interactive
   - Fil d'Ariane cohérent sur toutes les pages de l'application
+- [x] **Import Batch de Capteurs via CSV (February 4, 2026)**
+  - Backend: Service `sensor_import_service.py` avec endpoints `/api/sensors/import/template`, `/preview`, `/execute`
+  - Frontend: Composant `SensorImportModal.jsx` intégré dans RadarsPage
+  - Téléchargement du template CSV
+  - Prévisualisation avant import (nouveaux, mises à jour, erreurs)
+  - Création automatique des emplacements manquants (Organisations, Bâtiments, Étages, Chambres, Espaces)
+  - Identification des capteurs par numéro de série
   - Vue de dessus 2D interactive avec canvas SVG (Scale 100px/m)
   - **Système de coordonnées Vayyar (Radar = origine 0,0) :**
     - Pour une pièce 5m×5m avec radar centré : xMin=-2.5, xMax=+2.5, yMin=-2.5, yMax=+2.5
