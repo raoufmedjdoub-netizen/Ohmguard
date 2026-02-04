@@ -135,13 +135,13 @@ export function HistoryPage() {
       const response = await api.delete('/admin/events/clear');
       toast.success(`${response.data.events_deleted} événements supprimés`);
       setClearDialogOpen(false);
-      // Reset state and force refresh
+      // Reset state and force refresh without cache
       setEvents([]);
       setTotalCount(0);
       setPage(0);
-      // Small delay to ensure state is updated, then refresh
+      // Force refresh bypassing cache
       setTimeout(() => {
-        fetchData();
+        fetchData(true); // noCache = true
       }, 100);
     } catch (error) {
       if (error.response?.status === 403) {
