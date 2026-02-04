@@ -265,6 +265,10 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
     - Statistiques temps réel (Total, En ligne, Hors ligne, Alertes)
 - [x] **Configurateur Visuel de Radar (February 4, 2026)** - Multi-régions, Templates, Plein écran
   - Composant `RoomVisualEditor.jsx` intégré dans `RadarConfigPage.js`
+- [x] **Correction des noms de pages dans la navigation (February 4, 2026)**
+  - Mise à jour de `SubNavbar.js` pour utiliser les chemins corrects (`/capteurs`, `/organisations`, `/sites-batiments`, `/carte`)
+  - Ajout des configurations manquantes pour Sites & Bâtiments et Carte Interactive
+  - Fil d'Ariane cohérent sur toutes les pages de l'application
   - Vue de dessus 2D interactive avec canvas SVG (Scale 100px/m)
   - **Système de coordonnées Vayyar (Radar = origine 0,0) :**
     - Pour une pièce 5m×5m avec radar centré : xMin=-2.5, xMax=+2.5, yMin=-2.5, yMax=+2.5
