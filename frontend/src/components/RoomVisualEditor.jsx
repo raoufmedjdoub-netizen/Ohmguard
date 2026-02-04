@@ -41,7 +41,14 @@ import {
   Square,
   Maximize2,
   Minimize2,
-  X
+  X,
+  Save,
+  FolderOpen,
+  FileText,
+  Download,
+  Upload,
+  Star,
+  Copy
 } from 'lucide-react';
 
 // Constants based on Vayyar Guidelines
