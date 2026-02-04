@@ -501,7 +501,7 @@ export function SensorImportModal({ open, onOpenChange, onImportComplete }) {
                 onClick={handleExecuteImport} 
                 disabled={preview?.errors === preview?.total_lines}
               >
-                Confirmer l'import
+                Confirmer l&apos;import
               </Button>
             </>
           )}
