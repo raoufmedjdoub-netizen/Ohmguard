@@ -1703,7 +1703,11 @@ export function RoomVisualEditor({ config, onConfigChange }) {
         </Card>
         
         {/* Canvas - Takes remaining space */}
-        <div className="flex-1 bg-muted/20 rounded-xl border-2 flex items-center justify-center p-4">
+        <div 
+          className="flex-1 bg-muted/20 rounded-xl border-2 flex items-center justify-center p-4 select-none"
+          style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+          onDragStart={(e) => e.preventDefault()}
+        >
           <RoomCanvas
             roomWidth={roomWidth}
             roomDepth={roomDepth}
