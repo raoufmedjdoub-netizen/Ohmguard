@@ -236,6 +236,13 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
   - Sidebar responsive : collapsible sur desktop, overlay sur mobile avec fermeture automatique
   - Bouton hamburger pour menu mobile
   - Traductions FR/EN complètes pour toute la navigation
+- [x] **Fil d'Ariane (Breadcrumb) complet (February 4, 2026)**
+  - Composant réutilisable `LocationBreadcrumb.jsx` avec icônes et couleurs par niveau
+  - Intégration sur toutes les pages de détail : Organisation, Bâtiment, Étage, Chambre
+  - Affichage hiérarchique : Accueil → Organisation → Bâtiment → Étage → Chambre
+  - Liens cliquables navigant vers les pages parentes
+  - Noms réels des entités (pas de labels génériques)
+  - API backend enrichie avec `client_name`, `building_name`, `floor_name`
 - [ ] Email integration (currently mocked)
 - [ ] Webhook delivery with HMAC signature
 - [ ] Escalation automation
