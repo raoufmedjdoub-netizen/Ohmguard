@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn, formatDate, getEventTypeColor, getSeverityColor, getStatusColor } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
@@ -21,7 +22,9 @@ import {
   User,
   Target,
   Building2,
-  Home
+  Home,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 
 export function HistoryPage() {
