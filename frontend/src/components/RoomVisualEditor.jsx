@@ -1333,6 +1333,73 @@ export function RoomVisualEditor({ config, onConfigChange }) {
     }
   };
   
+  // Export templates to JSON file
+  const exportTemplates = () => {
+    const exportData = {
+      version: '1.0',
+      exportDate: new Date().toISOString(),
+      templates: customTemplates
+    };
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `vayyar-templates-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+  
+  // Import templates from JSON file
+  const importTemplates = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const importData = JSON.parse(e.target?.result);
+        
+        // Validate import data
+        if (!importData.templates || !Array.isArray(importData.templates)) {
+          alert('Format de fichier invalide. Le fichier doit contenir un tableau "templates".');
+          return;
+        }
+        
+        // Add imported templates with new IDs to avoid conflicts
+        const importedTemplates = importData.templates.map((t, idx) => ({
+          ...t,
+          id: `imported-${Date.now()}-${idx}`,
+          icon: t.icon || '📥',
+          category: 'custom'
+        }));
+        
+        const mergedTemplates = [...customTemplates, ...importedTemplates];
+        setCustomTemplates(mergedTemplates);
+        
+        try {
+          localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(mergedTemplates));
+        } catch (err) {
+          console.error('Error saving imported templates:', err);
+        }
+        
+        alert(`${importedTemplates.length} template(s) importé(s) avec succès !`);
+      } catch (err) {
+        console.error('Error parsing import file:', err);
+        alert('Erreur lors de la lecture du fichier. Vérifiez que c\'est un fichier JSON valide.');
+      }
+    };
+    reader.readAsText(file);
+    
+    // Reset input
+    event.target.value = '';
+  };
+  
+  // Reference for file input
+  const fileInputRef = useRef(null);
+  
   const isRoomTooLarge = roomWidth > MAX_ROOM_SIZE || roomDepth > MAX_ROOM_SIZE;
   const selectedRegion = subRegions.find(r => r.id === selectedRegionId);
   const allTemplates = [...PREDEFINED_TEMPLATES, ...customTemplates];
