@@ -22,7 +22,8 @@ import {
   Move,
   Maximize2,
   RotateCcw,
-  Info
+  Info,
+  Settings
 } from 'lucide-react';
 
 // Constants
