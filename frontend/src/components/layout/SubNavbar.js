@@ -111,6 +111,15 @@ const PAGE_CONFIG = {
       { labelKey: 'nav.floor_plan', path: '/carte' }
     ]
   },
+  '/capteurs-ia': {
+    icon: Radio,
+    titleKey: 'nav.ai_sensors',
+    descriptionKey: 'nav.ai_sensors_desc',
+    breadcrumb: [
+      { labelKey: 'nav.dashboard', path: '/dashboard' },
+      { labelKey: 'nav.ai_sensors', path: '/capteurs-ia' }
+    ]
+  },
   '/alert-rules': {
     icon: AlertTriangle,
     titleKey: 'nav.alert_rules',
