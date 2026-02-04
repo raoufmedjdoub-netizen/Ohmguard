@@ -2895,6 +2895,9 @@ async def startup_event():
         
         if msg_type == 'new_radar_event' or msg_type == 'new_event':
             await broadcast_new_event(tenant_id, message.get('event', message))
+        elif msg_type == 'new_ai_event':
+            # Broadcast AI camera events to all clients
+            await broadcast_new_event(tenant_id, message.get('event', message))
         elif msg_type == 'presence_update':
             await broadcast_presence_update(tenant_id, message)
         elif msg_type == 'sensor_status':
