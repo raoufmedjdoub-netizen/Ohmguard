@@ -252,10 +252,12 @@ export function FloorPlanPage() {
         const res = await api.get(`/floors/${selectedFloor}/plan`);
         setPlanData(res.data);
         
-        // Build image URL with auth token
-        const token = localStorage.getItem('token');
-        const backendUrl = process.env.REACT_APP_BACKEND_URL;
-        setPlanImageUrl(`${backendUrl}/api/floors/${selectedFloor}/plan/image?token=${token}`);
+        // Load image as blob and create object URL
+        const imageRes = await api.get(`/floors/${selectedFloor}/plan/image`, {
+          responseType: 'blob'
+        });
+        const imageUrl = URL.createObjectURL(imageRes.data);
+        setPlanImageUrl(imageUrl);
       } catch (error) {
         if (error.response?.status === 404) {
           setPlanData(null);
@@ -271,6 +273,13 @@ export function FloorPlanPage() {
     
     // Update URL params
     setSearchParams({ org: selectedOrg, building: selectedBuilding, floor: selectedFloor });
+    
+    // Cleanup blob URL on unmount or floor change
+    return () => {
+      if (planImageUrl && planImageUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(planImageUrl);
+      }
+    };
   }, [selectedFloor]);
 
   // Handle file selection
