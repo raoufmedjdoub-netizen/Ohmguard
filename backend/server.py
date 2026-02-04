@@ -2875,6 +2875,10 @@ async def startup_event():
     init_sensor_import_service(db)
     logger.info("Sensor Import service initialized")
     
+    # Initialize AI Sensor service
+    init_ai_sensor_service(db)
+    logger.info("AI Sensor service initialized")
+    
     # Initialize Clients & Buildings service
     init_clients_buildings_service(db)
     logger.info("Clients & Buildings service initialized")
