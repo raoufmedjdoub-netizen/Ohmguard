@@ -115,6 +115,13 @@ from sensor_import_service import (
     SensorImportService
 )
 
+# AI Sensor Service import
+from ai_sensor_service import (
+    init_ai_sensor_service,
+    get_ai_sensor_service,
+    AISensorService
+)
+
 # MongoDB connection
 mongo_url = os.environ.get('MONGO_URL')
 if not mongo_url:
