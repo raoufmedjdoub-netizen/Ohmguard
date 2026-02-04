@@ -334,55 +334,59 @@ export function RadarConfigPage() {
         </CardContent>
       </Card>
 
-      {/* Main Content - 2 columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Form */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>{t('config.basicConfig', 'Basic Configuration')}</CardTitle>
+      {/* Main Content - Full Width */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>{t('config.basicConfig', 'Configuration')}</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowJsonEditor(true)}>
+                <Copy className="h-4 w-4 mr-2" />
+                Voir JSON
+              </Button>
               <Button variant="outline" size="sm" onClick={() => setJsonMode(!jsonMode)}>
                 {jsonMode ? t('config.formMode', 'Form Mode') : t('config.jsonMode', 'JSON Mode')}
               </Button>
             </div>
-          </CardHeader>
-          <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid grid-cols-6 mb-4">
-                <TabsTrigger value="visual" className="flex items-center gap-1">
-                  <Square className="h-3 w-3" />
-                  Visuel
-                </TabsTrigger>
-                <TabsTrigger value="app">App</TabsTrigger>
-                <TabsTrigger value="walabot">Walabot</TabsTrigger>
-                <TabsTrigger value="rf">RF</TabsTrigger>
-                <TabsTrigger value="system">System</TabsTrigger>
-                <TabsTrigger value="regions">Regions</TabsTrigger>
-              </TabsList>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid grid-cols-6 mb-4">
+              <TabsTrigger value="visual" className="flex items-center gap-1">
+                <Square className="h-3 w-3" />
+                Visuel
+              </TabsTrigger>
+              <TabsTrigger value="app">App</TabsTrigger>
+              <TabsTrigger value="walabot">Walabot</TabsTrigger>
+              <TabsTrigger value="rf">RF</TabsTrigger>
+              <TabsTrigger value="system">System</TabsTrigger>
+              <TabsTrigger value="regions">Regions</TabsTrigger>
+            </TabsList>
 
-              {/* Visual Room Editor Tab */}
-              <TabsContent value="visual" className="mt-0">
-                <RoomVisualEditor 
-                  config={watch()}
-                  onConfigChange={(newConfig) => {
-                    // Update form with new config from visual editor
-                    if (newConfig.walabotConfig) {
-                      setValue('walabotConfig.xMin', newConfig.walabotConfig.xMin);
-                      setValue('walabotConfig.xMax', newConfig.walabotConfig.xMax);
-                      setValue('walabotConfig.yMin', newConfig.walabotConfig.yMin);
-                      setValue('walabotConfig.yMax', newConfig.walabotConfig.yMax);
-                      setValue('walabotConfig.sensorHeight', newConfig.walabotConfig.sensorHeight);
-                      setValue('walabotConfig.sensorMounting', newConfig.walabotConfig.sensorMounting);
-                      if (newConfig.walabotConfig.trackerSubRegions) {
-                        setValue('walabotConfig.trackerSubRegions', newConfig.walabotConfig.trackerSubRegions);
-                      }
+            {/* Visual Room Editor Tab */}
+            <TabsContent value="visual" className="mt-0">
+              <RoomVisualEditor 
+                config={watch()}
+                onConfigChange={(newConfig) => {
+                  // Update form with new config from visual editor
+                  if (newConfig.walabotConfig) {
+                    setValue('walabotConfig.xMin', newConfig.walabotConfig.xMin);
+                    setValue('walabotConfig.xMax', newConfig.walabotConfig.xMax);
+                    setValue('walabotConfig.yMin', newConfig.walabotConfig.yMin);
+                    setValue('walabotConfig.yMax', newConfig.walabotConfig.yMax);
+                    setValue('walabotConfig.sensorHeight', newConfig.walabotConfig.sensorHeight);
+                    setValue('walabotConfig.sensorMounting', newConfig.walabotConfig.sensorMounting);
+                    if (newConfig.walabotConfig.trackerSubRegions) {
+                      setValue('walabotConfig.trackerSubRegions', newConfig.walabotConfig.trackerSubRegions);
                     }
-                  }}
-                />
-              </TabsContent>
+                  }
+                }}
+              />
+            </TabsContent>
 
-              <ScrollArea className="h-[500px] pr-4">
-                {/* App Config Tab */}
+            <ScrollArea className="h-[500px] pr-4">
+              {/* App Config Tab */}
                 <TabsContent value="app" className="space-y-4 mt-0">
                   <div className="grid grid-cols-2 gap-4">
                     <SwitchField control={control} name="appConfig.silentMode" label="Silent Mode" />
