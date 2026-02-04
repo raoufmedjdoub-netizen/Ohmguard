@@ -73,22 +73,40 @@ const PAGE_CONFIG = {
       { labelKey: 'nav.statistics', path: '/statistics' }
     ]
   },
-  '/radars': {
+  '/capteurs': {
     icon: Radio,
-    titleKey: 'nav.radars',
-    descriptionKey: 'nav.radars_desc',
+    titleKey: 'nav.sensors',
+    descriptionKey: 'nav.sensors_desc',
     breadcrumb: [
       { labelKey: 'nav.dashboard', path: '/dashboard' },
-      { labelKey: 'nav.radars', path: '/radars' }
+      { labelKey: 'nav.sensors', path: '/capteurs' }
     ]
   },
-  '/clients': {
+  '/organisations': {
     icon: Building2,
-    titleKey: 'nav.clients',
-    descriptionKey: 'nav.clients_desc',
+    titleKey: 'nav.organisations',
+    descriptionKey: 'nav.organisations_desc',
     breadcrumb: [
       { labelKey: 'nav.dashboard', path: '/dashboard' },
-      { labelKey: 'nav.clients', path: '/clients' }
+      { labelKey: 'nav.organisations', path: '/organisations' }
+    ]
+  },
+  '/sites-batiments': {
+    icon: Building2,
+    titleKey: 'nav.sites_buildings',
+    descriptionKey: 'nav.sites_buildings_desc',
+    breadcrumb: [
+      { labelKey: 'nav.dashboard', path: '/dashboard' },
+      { labelKey: 'nav.sites_buildings', path: '/sites-batiments' }
+    ]
+  },
+  '/carte': {
+    icon: Grid3X3,
+    titleKey: 'nav.floor_plan',
+    descriptionKey: 'nav.floor_plan_desc',
+    breadcrumb: [
+      { labelKey: 'nav.dashboard', path: '/dashboard' },
+      { labelKey: 'nav.floor_plan', path: '/carte' }
     ]
   },
   '/alert-rules': {
