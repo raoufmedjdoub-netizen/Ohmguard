@@ -34,6 +34,7 @@ export function RadarsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedRadar, setSelectedRadar] = useState(null);
+  const [selectedType, setSelectedType] = useState('all');
   
   // Assignment form
   const [assignmentData, setAssignmentData] = useState({
