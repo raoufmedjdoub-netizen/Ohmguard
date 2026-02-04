@@ -40,12 +40,14 @@ export function LivePage() {
   
   // États
   const [events, setEvents] = useState([]);
+  const [aiEvents, setAiEvents] = useState([]);
   const [clients, setClients] = useState([]);
   const [buildings, setBuildings] = useState([]);
   const [radarStatuses, setRadarStatuses] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedClient, setSelectedClient] = useState('all');
   const [selectedBuilding, setSelectedBuilding] = useState('all');
+  const [activeView, setActiveView] = useState('all'); // 'all', 'radars', 'ai'
   const [newEventIds, setNewEventIds] = useState(new Set());
   
   const isFetchingRef = useRef(false);
