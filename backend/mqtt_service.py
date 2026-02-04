@@ -155,6 +155,11 @@ class MQTTService:
             logger.warning(f"Invalid JSON payload on topic {topic}")
             return
         
+        # Check if this is a Seedoo AI camera message
+        if topic.startswith("/seedoo/"):
+            await self._handle_seedoo_event(topic, payload)
+            return
+        
         # Extract deviceId from topic: /devices/{deviceId}/state or /devices/{deviceId}/events
         parts = topic.split('/')
         if len(parts) < 4:
