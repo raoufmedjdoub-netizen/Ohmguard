@@ -1102,8 +1102,329 @@ export function RoomVisualEditor({ config, onConfigChange }) {
   const isRoomTooLarge = roomWidth > MAX_ROOM_SIZE || roomDepth > MAX_ROOM_SIZE;
   const selectedRegion = subRegions.find(r => r.id === selectedRegionId);
   
+  // Fullscreen Editor Component
+  const FullscreenEditor = () => (
+    <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b bg-background">
+        <div className="flex items-center gap-4">
+          <h2 className="text-xl font-bold">Éditeur Visuel • Radar = (0,0)</h2>
+          <Badge variant="outline" className="text-sm px-3 py-1">
+            {roomWidth.toFixed(1)}m × {roomDepth.toFixed(1)}m
+          </Badge>
+          <div className="text-sm font-mono">
+            <span className="text-blue-600">X: [{(-radarPositionX).toFixed(2)}, {+(roomWidth - radarPositionX).toFixed(2)}]</span>
+            <span className="mx-3 text-muted-foreground">|</span>
+            <span className="text-green-600">Y: [{isCeiling ? (-radarPositionY).toFixed(2) : "-0.30"}, {+(isCeiling ? (roomDepth - radarPositionY) : (roomDepth - radarPositionY)).toFixed(2)}]</span>
+          </div>
+        </div>
+        <Button 
+          variant="outline" 
+          size="lg"
+          onClick={() => setIsFullscreen(false)}
+          className="gap-2"
+        >
+          <Minimize2 className="h-5 w-5" />
+          Quitter plein écran
+        </Button>
+      </div>
+      
+      {/* Content */}
+      <div className="flex-1 flex gap-6 p-6 overflow-hidden">
+        {/* Settings Panel - Wider in fullscreen */}
+        <Card className="w-[380px] shrink-0 overflow-auto">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Configuration
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Room Dimensions */}
+            <div className="space-y-4">
+              <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Dimensions pièce
+              </Label>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-medium">Largeur X</Label>
+                    <span className="text-lg font-mono font-bold text-blue-600">{roomWidth.toFixed(1)}m</span>
+                  </div>
+                  <Slider
+                    value={[roomWidth]}
+                    onValueChange={([v]) => setRoomWidth(v)}
+                    min={2}
+                    max={MAX_ROOM_SIZE}
+                    step={0.1}
+                    className="py-2"
+                  />
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-medium">Profondeur Y</Label>
+                    <span className="text-lg font-mono font-bold text-green-600">{roomDepth.toFixed(1)}m</span>
+                  </div>
+                  <Slider
+                    value={[roomDepth]}
+                    onValueChange={([v]) => setRoomDepth(v)}
+                    min={2}
+                    max={MAX_ROOM_SIZE}
+                    step={0.1}
+                    className="py-2"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <Separator />
+            
+            {/* Radar Settings */}
+            <div className="space-y-4">
+              <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Radar
+              </Label>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-base font-medium">Montage</Label>
+                  <Select 
+                    value={radarMounting}
+                    onValueChange={(v) => {
+                      onConfigChange?.({
+                        ...config,
+                        walabotConfig: { 
+                          ...config?.walabotConfig, 
+                          sensorMounting: v,
+                          sensorHeight: MOUNTING_CONFIG[v]?.height || 1.5
+                        }
+                      });
+                    }}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(MOUNTING_CONFIG).map(([key, cfg]) => (
+                        <SelectItem key={key} value={key}>
+                          {cfg.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-medium">Hauteur</Label>
+                    <span className="text-lg font-mono font-bold">{radarHeight.toFixed(2)}m</span>
+                  </div>
+                  <Slider
+                    value={[radarHeight]}
+                    onValueChange={([v]) => onConfigChange?.({
+                      ...config,
+                      walabotConfig: { ...config?.walabotConfig, sensorHeight: v }
+                    })}
+                    min={radarMounting === 'Wall' ? 1.2 : 2.3}
+                    max={radarMounting === 'Wall' ? 1.8 : 3.0}
+                    step={0.05}
+                    className="py-2"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <Separator />
+            
+            {/* Display Options */}
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Affichage
+              </Label>
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-2">
+                  <Switch checked={showGrid} onCheckedChange={setShowGrid} id="fs-grid" />
+                  <Label htmlFor="fs-grid" className="text-base cursor-pointer">Grille</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={showDetectionZone} onCheckedChange={setShowDetectionZone} id="fs-zone" />
+                  <Label htmlFor="fs-zone" className="text-base cursor-pointer">Zone</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={showDistances} onCheckedChange={setShowDistances} id="fs-dist" />
+                  <Label htmlFor="fs-dist" className="text-base cursor-pointer">Distance</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={showCoordinates} onCheckedChange={setShowCoordinates} id="fs-coords" />
+                  <Label htmlFor="fs-coords" className="text-base cursor-pointer">Coords</Label>
+                </div>
+              </div>
+            </div>
+            
+            <Separator />
+            
+            {/* SubRegions */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Sous-régions
+                </Label>
+                <Badge variant="secondary" className="text-sm">{subRegions.length}</Badge>
+              </div>
+              
+              <div className="flex gap-2">
+                {Object.entries(SUBREGION_TYPES).map(([key, type]) => (
+                  <Button
+                    key={key}
+                    variant="outline"
+                    className="flex-1 h-11"
+                    onClick={() => addSubRegion(key)}
+                  >
+                    <type.icon className="h-5 w-5 mr-2" style={{ color: type.color }} />
+                    {type.label}
+                  </Button>
+                ))}
+              </div>
+              
+              <div className="space-y-2">
+                {subRegions.map((region) => {
+                  const regionType = SUBREGION_TYPES[region.type];
+                  const isSelected = selectedRegionId === region.id;
+                  return (
+                    <div 
+                      key={region.id}
+                      className={cn(
+                        "flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all",
+                        isSelected ? "shadow-md" : "border-transparent bg-muted/30 hover:bg-muted/50"
+                      )}
+                      style={{ 
+                        borderColor: isSelected ? regionType.color : 'transparent',
+                        backgroundColor: isSelected ? `${regionType.color}15` : undefined
+                      }}
+                      onClick={() => setSelectedRegionId(region.id)}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div 
+                          className="w-10 h-10 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: `${regionType.color}20` }}
+                        >
+                          <regionType.icon className="h-5 w-5" style={{ color: regionType.color }} />
+                        </div>
+                        <div>
+                          <span className="text-base font-medium block">{region.name}</span>
+                          <span className="text-sm text-muted-foreground font-mono">
+                            {region.width.toFixed(1)} × {region.length.toFixed(1)}m
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 hover:bg-destructive/10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteSubRegion(region.id);
+                        }}
+                      >
+                        <Trash2 className="h-5 w-5 text-destructive" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {selectedRegion && (
+                <div 
+                  className="p-4 rounded-lg border-2 space-y-4" 
+                  style={{ borderColor: SUBREGION_TYPES[selectedRegion.type]?.color }}
+                >
+                  <Input
+                    value={selectedRegion.name}
+                    onChange={(e) => setSubRegions(regions => 
+                      regions.map(r => r.id === selectedRegion.id ? { ...r, name: e.target.value } : r)
+                    )}
+                    className="h-11 text-base font-medium"
+                    placeholder="Nom de la zone"
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 bg-muted/50 rounded-lg">
+                      <span className="text-sm text-muted-foreground block mb-1">Position</span>
+                      <span className="font-mono font-medium text-base">{selectedRegion.roomX.toFixed(2)}, {selectedRegion.roomY.toFixed(2)}</span>
+                    </div>
+                    <div className="p-3 bg-muted/50 rounded-lg">
+                      <span className="text-sm text-muted-foreground block mb-1">Taille</span>
+                      <span className="font-mono font-medium text-base">{selectedRegion.width.toFixed(2)} × {selectedRegion.length.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <Button
+              variant="outline"
+              className="w-full h-11"
+              onClick={() => {
+                const newX = roomWidth / 2;
+                const newY = isCeiling ? roomDepth / 2 : 0;
+                setRadarPositionX(newX);
+                setRadarPositionY(newY);
+                setSubRegions([{
+                  id: 'bed-1',
+                  type: 'bed',
+                  name: 'Lit',
+                  roomX: 0.5,
+                  roomY: isCeiling ? 0.5 : 1.0,
+                  width: 0.9,
+                  length: 2.0
+                }]);
+                setSelectedRegionId(null);
+              }}
+            >
+              <RotateCcw className="h-5 w-5 mr-2" />
+              Réinitialiser tout
+            </Button>
+          </CardContent>
+        </Card>
+        
+        {/* Canvas - Takes remaining space */}
+        <div className="flex-1 bg-muted/20 rounded-xl border-2 flex items-center justify-center p-4">
+          <RoomCanvas
+            roomWidth={roomWidth}
+            roomDepth={roomDepth}
+            radarPositionX={radarPositionX}
+            radarPositionY={isCeiling ? radarPositionY : 0}
+            radarMounting={radarMounting}
+            radarHeight={radarHeight}
+            subRegions={subRegions}
+            selectedRegionId={selectedRegionId}
+            onSelectRegion={setSelectedRegionId}
+            onRegionMove={handleRegionMove}
+            onRegionResize={handleRegionResize}
+            onRadarMove={handleRadarMove}
+            showGrid={showGrid}
+            showDetectionZone={showDetectionZone}
+            showDistances={showDistances}
+            showCoordinates={showCoordinates}
+          />
+        </div>
+      </div>
+    </div>
+  );
+  
+  // Handle Escape key to exit fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen]);
+  
   return (
     <div className="space-y-4">
+      {/* Fullscreen overlay */}
+      {isFullscreen && <FullscreenEditor />}
+      
       {isRoomTooLarge && (
         <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-lg flex items-start gap-2">
           <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
@@ -1117,16 +1438,29 @@ export function RoomVisualEditor({ config, onConfigChange }) {
       )}
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-2 w-[300px]">
-          <TabsTrigger value="visual" className="flex items-center gap-1">
-            <Eye className="h-3 w-3" />
-            Éditeur Visuel
-          </TabsTrigger>
-          <TabsTrigger value="params" className="flex items-center gap-1">
-            <Layers className="h-3 w-3" />
-            Paramètres
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between">
+          <TabsList className="grid grid-cols-2 w-[300px]">
+            <TabsTrigger value="visual" className="flex items-center gap-1">
+              <Eye className="h-3 w-3" />
+              Éditeur Visuel
+            </TabsTrigger>
+            <TabsTrigger value="params" className="flex items-center gap-1">
+              <Layers className="h-3 w-3" />
+              Paramètres
+            </TabsTrigger>
+          </TabsList>
+          
+          {activeTab === 'visual' && (
+            <Button 
+              variant="outline" 
+              onClick={() => setIsFullscreen(true)}
+              className="gap-2"
+            >
+              <Maximize2 className="h-4 w-4" />
+              Plein écran
+            </Button>
+          )}
+        </div>
         
         <TabsContent value="visual" className="mt-4">
           <div className="flex gap-6">
