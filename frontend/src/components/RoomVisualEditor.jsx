@@ -1057,6 +1057,12 @@ export function RoomVisualEditor({ config, onConfigChange }) {
   const [showDistances, setShowDistances] = useState(true);
   const [showCoordinates, setShowCoordinates] = useState(true);
   
+  // Templates
+  const [customTemplates, setCustomTemplates] = useState([]);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState('');
+  const [newTemplateDescription, setNewTemplateDescription] = useState('');
+  
   // Fullscreen mode
   const [isFullscreen, setIsFullscreen] = useState(false);
   
