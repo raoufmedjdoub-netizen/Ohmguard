@@ -3,7 +3,8 @@ Clients & Buildings API Routes
 Multi-tenant hierarchical structure management endpoints
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi.responses import FileResponse
 from typing import Optional, List
 
 from clients_buildings_models import (
