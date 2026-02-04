@@ -937,6 +937,9 @@ export function RoomVisualEditor({ config, onConfigChange }) {
   const [showDistances, setShowDistances] = useState(true);
   const [showCoordinates, setShowCoordinates] = useState(true);
   
+  // Fullscreen mode
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  
   // Active tab
   const [activeTab, setActiveTab] = useState('visual');
   
