@@ -272,10 +272,11 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - `backend/radar_event_models.py` - RadarEvent enums and models
 - `backend/vayyar_config_service.py` - Config publish/versioning
 - `backend/clients_buildings_models.py` - Multi-tenant hierarchy models
-- `backend/clients_buildings_service.py` - Multi-tenant business logic (includes delete_client cascade)
+- `backend/clients_buildings_service.py` - Multi-tenant business logic (includes delete_client cascade, breadcrumb data)
 - `backend/clients_buildings_routes.py` - Clients & Buildings API (RBAC permissions)
 - `backend/rbac_routes.py` - RBAC user management routes
 - `backend/seed_clients_buildings.py` - Demo data seeder
+- `frontend/src/components/LocationBreadcrumb.jsx` - **NEW: Reusable breadcrumb component (February 2026)**
 - `frontend/src/components/layout/MainLayout.js` - Layout with Navbar/SubNavbar/Sidebar
 - `frontend/src/components/layout/Navbar.js` - Main navigation bar
 - `frontend/src/components/layout/SubNavbar.js` - Contextual sub-navigation with breadcrumb
@@ -286,8 +287,9 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - `frontend/src/pages/PresenceSimulatorPage.js` - Presence simulator
 - `frontend/src/pages/ClientsPage.js` - Clients list & management
 - `frontend/src/pages/ClientDetailPage.js` - Client detail with tree view
-- `frontend/src/pages/BuildingDetailPage.js` - Building management
-- `frontend/src/pages/FloorDetailPage.js` - Floor & rooms management
+- `frontend/src/pages/BuildingDetailPage.js` - Building management (with breadcrumb)
+- `frontend/src/pages/FloorDetailPage.js` - Floor & rooms management (with breadcrumb)
+- `frontend/src/pages/RoomDetailPage.js` - Room & spaces management (with breadcrumb)
 - `frontend/src/pages/RoomDetailPage.js` - Room & spaces with radar assignment
 - `frontend/src/lib/api.js` - API client with all endpoints
 - `frontend/src/lib/i18n.js` - Complete FR/EN translations for navigation
