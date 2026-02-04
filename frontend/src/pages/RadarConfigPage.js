@@ -563,11 +563,12 @@ export function RadarConfigPage() {
           </CardContent>
         </Card>
 
-        {/* Right: JSON Editor */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>{t('config.jsonEditor', 'JSON Editor')}</CardTitle>
+      {/* JSON Editor Dialog */}
+      <Dialog open={showJsonEditor} onOpenChange={setShowJsonEditor}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <div className="flex items-center justify-between pr-8">
+              <DialogTitle>{t('config.jsonEditor', 'Éditeur JSON')}</DialogTitle>
               <div className="flex gap-2">
                 {jsonError && (
                   <Badge variant="destructive" className="flex items-center gap-1">
@@ -575,35 +576,36 @@ export function RadarConfigPage() {
                   </Badge>
                 )}
                 <Button variant="outline" size="sm" onClick={applyJsonToForm} disabled={!!jsonError}>
-                  <Check className="h-4 w-4 mr-1" /> Apply
+                  <Check className="h-4 w-4 mr-1" /> Appliquer
                 </Button>
               </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="border rounded-md overflow-hidden">
-              <Editor
-                height="540px"
-                language="json"
-                theme={theme === 'dark' ? 'vs-dark' : 'light'}
-                value={jsonValue}
-                onChange={handleJsonChange}
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 13,
-                  lineNumbers: 'on',
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                  tabSize: 2
-                }}
-              />
-            </div>
-            {jsonError && (
-              <p className="text-sm text-destructive mt-2">{jsonError}</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            <DialogDescription>
+              Modifiez directement la configuration JSON. Cliquez sur "Appliquer" pour valider les changements.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="border rounded-md overflow-hidden">
+            <Editor
+              height="500px"
+              language="json"
+              theme={theme === 'dark' ? 'vs-dark' : 'light'}
+              value={jsonValue}
+              onChange={handleJsonChange}
+              options={{
+                minimap: { enabled: false },
+                fontSize: 13,
+                lineNumbers: 'on',
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                tabSize: 2
+              }}
+            />
+          </div>
+          {jsonError && (
+            <p className="text-sm text-destructive mt-2">{jsonError}</p>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* History Dialog */}
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
