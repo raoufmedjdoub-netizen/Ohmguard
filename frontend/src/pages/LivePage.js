@@ -210,6 +210,43 @@ export function LivePage() {
           });
         }
       }
+      // Nouvel événement IA (caméra Seedoo)
+      else if (message.type === 'new_ai_event' || message.event_source === 'ai_camera') {
+        const aiEvent = message.event || message;
+        if (!aiEvent) return;
+        
+        // Ajouter à la liste des événements IA
+        setAiEvents(prev => [aiEvent, ...prev.slice(0, 49)]);
+        
+        setNewEventIds(prev => new Set([...prev, aiEvent.id]));
+        setTimeout(() => {
+          setNewEventIds(prev => {
+            const next = new Set(prev);
+            next.delete(aiEvent.id);
+            return next;
+          });
+        }, 3000);
+        
+        // Alertes critiques IA
+        const criticalTypes = ['Fall_Detected', 'Violence', 'Fire', 'Smoke', 'Intrusion'];
+        if (criticalTypes.includes(aiEvent.warning_type)) {
+          const alertMessages = {
+            'Fall_Detected': '🚨 Chute détectée (IA)!',
+            'Violence': '⚠️ Violence détectée!',
+            'Fire': '🔥 Feu détecté!',
+            'Smoke': '💨 Fumée détectée!',
+            'Intrusion': '🚷 Intrusion détectée!'
+          };
+          toast.error(alertMessages[aiEvent.warning_type] || '⚠️ Alerte IA!', {
+            description: aiEvent.channel_name || aiEvent.location_path || 'Caméra IA',
+            duration: 15000,
+            action: aiEvent.video_url ? {
+              label: 'Voir vidéo',
+              onClick: () => window.open(aiEvent.video_url, '_blank')
+            } : undefined
+          });
+        }
+      }
       else if (message.type === 'event_updated') {
         setEvents(prev => prev.map(e => 
           e.id === message.event_id ? { ...e, ...message.update } : e
