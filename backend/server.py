@@ -107,6 +107,13 @@ from push_notification_service import (
     PushNotificationService
 )
 
+# Sensor Import Service import
+from sensor_import_service import (
+    init_sensor_import_service,
+    get_sensor_import_service,
+    SensorImportService
+)
+
 # MongoDB connection
 mongo_url = os.environ.get('MONGO_URL')
 if not mongo_url:
