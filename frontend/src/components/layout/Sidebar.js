@@ -28,7 +28,8 @@ import {
   AlertTriangle,
   Wifi,
   X,
-  FileText
+  FileText,
+  Layers
 } from 'lucide-react';
 
 const navItems = [
