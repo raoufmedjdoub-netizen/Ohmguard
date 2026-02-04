@@ -80,10 +80,10 @@ const resources = {
         dark: 'Dark mode'
       },
       
-      // Radars page
+      // Radars page (now Sensors/Capteurs)
       radars: {
-        title: 'Vayyar Radars',
-        subtitle: 'Manage and monitor your Vayyar radar sensors',
+        title: 'Sensors',
+        subtitle: 'Manage and monitor your fall detection sensors',
         mqttConnection: 'MQTT Connection',
         connected: 'Connected',
         disconnected: 'Disconnected',
@@ -91,7 +91,7 @@ const resources = {
         disabled: 'Disabled',
         running: 'Running',
         stopped: 'Stopped',
-        totalRadars: 'Total Radars',
+        totalRadars: 'Total Sensors',
         autoDetected: 'auto-detected',
         onlineStatus: 'Online Status',
         online: 'Online',
@@ -101,9 +101,9 @@ const resources = {
         justNow: 'Just now',
         linkDevice: 'Link Device',
         linkDeviceTitle: 'Link MQTT Device',
-        linkDeviceDesc: 'Manually link an MQTT device ID to an existing radar',
+        linkDeviceDesc: 'Manually link an MQTT device ID to an existing sensor',
         deviceId: 'MQTT Device ID',
-        targetRadar: 'Target Radar',
+        targetRadar: 'Target Sensor',
         selectRadar: 'Select a radar',
         link: 'Link',
         addRadar: 'Add Radar',
