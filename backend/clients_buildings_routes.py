@@ -875,6 +875,110 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
             "sensors_offline": sensors_count - sensors_online
         }
     
+    # ==================== FLOOR PLANS ====================
+    
+    @router.post("/floors/{floor_id}/plan")
+    async def upload_floor_plan(
+        floor_id: str, 
+        file: UploadFile = File(...),
+        current_user = Depends(get_current_user)
+    ):
+        """Upload a floor plan image or PDF"""
+        from floor_plan_service import get_floor_plan_service
+        
+        floor = await db.floors.find_one({"id": floor_id}, {"_id": 0})
+        if not floor:
+            raise HTTPException(status_code=404, detail="Étage non trouvé")
+        
+        # Check permissions
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, floor["client_id"], "BUILDING_MANAGE")
+            if not has_access:
+                raise HTTPException(status_code=403, detail="Permission BUILDING_MANAGE requise")
+        
+        service = get_floor_plan_service(db)
+        return await service.upload_floor_plan(floor_id, file, current_user.id)
+    
+    @router.get("/floors/{floor_id}/plan")
+    async def get_floor_plan(floor_id: str, current_user = Depends(get_current_user)):
+        """Get floor plan metadata"""
+        from floor_plan_service import get_floor_plan_service
+        
+        floor = await db.floors.find_one({"id": floor_id}, {"_id": 0})
+        if not floor:
+            raise HTTPException(status_code=404, detail="Étage non trouvé")
+        
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, floor["client_id"], "VIEW")
+            if not has_access and current_user.tenant_id != floor["client_id"]:
+                raise HTTPException(status_code=403, detail="Accès refusé")
+        
+        service = get_floor_plan_service(db)
+        plan = await service.get_floor_plan(floor_id)
+        if not plan:
+            raise HTTPException(status_code=404, detail="Aucun plan pour cet étage")
+        
+        return plan
+    
+    @router.get("/floors/{floor_id}/plan/image")
+    async def get_floor_plan_image(floor_id: str, current_user = Depends(get_current_user)):
+        """Get floor plan image file"""
+        from floor_plan_service import get_floor_plan_service
+        
+        floor = await db.floors.find_one({"id": floor_id}, {"_id": 0})
+        if not floor:
+            raise HTTPException(status_code=404, detail="Étage non trouvé")
+        
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, floor["client_id"], "VIEW")
+            if not has_access and current_user.tenant_id != floor["client_id"]:
+                raise HTTPException(status_code=403, detail="Accès refusé")
+        
+        service = get_floor_plan_service(db)
+        file_path = await service.get_floor_plan_image_path(floor_id)
+        if not file_path:
+            raise HTTPException(status_code=404, detail="Image du plan non trouvée")
+        
+        return FileResponse(file_path, media_type="image/png")
+    
+    @router.delete("/floors/{floor_id}/plan")
+    async def delete_floor_plan(floor_id: str, current_user = Depends(get_current_user)):
+        """Delete a floor plan"""
+        from floor_plan_service import get_floor_plan_service
+        
+        floor = await db.floors.find_one({"id": floor_id}, {"_id": 0})
+        if not floor:
+            raise HTTPException(status_code=404, detail="Étage non trouvé")
+        
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, floor["client_id"], "BUILDING_MANAGE")
+            if not has_access:
+                raise HTTPException(status_code=403, detail="Permission BUILDING_MANAGE requise")
+        
+        service = get_floor_plan_service(db)
+        deleted = await service.delete_floor_plan(floor_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Aucun plan à supprimer")
+        
+        return {"message": "Plan supprimé avec succès"}
+    
+    @router.get("/buildings/{building_id}/plans")
+    async def list_building_plans(building_id: str, current_user = Depends(get_current_user)):
+        """List all floor plans for a building"""
+        from floor_plan_service import get_floor_plan_service
+        
+        building = await db.buildings.find_one({"id": building_id}, {"_id": 0})
+        if not building:
+            raise HTTPException(status_code=404, detail="Bâtiment non trouvé")
+        
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, building["client_id"], "VIEW")
+            if not has_access and current_user.tenant_id != building["client_id"]:
+                raise HTTPException(status_code=403, detail="Accès refusé")
+        
+        service = get_floor_plan_service(db)
+        return await service.list_floor_plans(building_id)
+    
     return router
 
 
