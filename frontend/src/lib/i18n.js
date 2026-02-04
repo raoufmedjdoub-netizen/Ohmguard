@@ -56,6 +56,8 @@ const resources = {
         floor_plan: 'Interactive Map',
         floor_plan_desc: 'Floor plans and sensor locations',
         sites: 'Sites & Zones',
+        ai_sensors: 'AI Sensors',
+        ai_sensors_desc: 'Seedoo AI camera management',
         alert_rules: 'Alert Rules',
         alert_rules_desc: 'Alert configuration',
         rules: 'Alert Rules',
