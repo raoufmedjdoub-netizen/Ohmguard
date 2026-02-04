@@ -374,11 +374,27 @@ function RoomCanvas({
         );
       }
     }
-  };
+  }, [dragging, dragOffset, roomRect, pixelsToM, roomWidth, roomDepth, isCeiling, onRadarMove, subRegions, onRegionMove, onRegionResize]);
   
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     setDragging(null);
-  };
+  }, []);
+  
+  // Add document-level event listeners for drag operations
+  useEffect(() => {
+    if (dragging) {
+      const handleDocMouseMove = (e) => handleMouseMove(e);
+      const handleDocMouseUp = () => handleMouseUp();
+      
+      document.addEventListener('mousemove', handleDocMouseMove);
+      document.addEventListener('mouseup', handleDocMouseUp);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleDocMouseMove);
+        document.removeEventListener('mouseup', handleDocMouseUp);
+      };
+    }
+  }, [dragging, handleMouseMove, handleMouseUp]);
   
   const handleCanvasClick = () => {
     onSelectRegion?.(null);
