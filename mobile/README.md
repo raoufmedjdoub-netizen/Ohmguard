@@ -58,7 +58,7 @@ L'URL de l'API est configurée dans `app.json` :
 {
   "expo": {
     "extra": {
-      "apiUrl": "https://sensor-config.preview.emergentagent.com/api"
+      "apiUrl": "https://radar-mapper-2.preview.emergentagent.com/api"
     }
   }
 }
