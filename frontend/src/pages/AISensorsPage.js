@@ -548,56 +548,142 @@ export function AISensorsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Config Dialog */}
+      {/* Config Dialog - Configuration avancée */}
       <Dialog open={configDialogOpen} onOpenChange={setConfigDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Configurer le Capteur IA</DialogTitle>
             <DialogDescription>
               {selectedSensor?.channel_name}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Nom personnalisé</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Seuil de confiance: {Math.round(formData.confidence_threshold * 100)}%</Label>
-              <Slider
-                value={[formData.confidence_threshold]}
-                onValueChange={([v]) => setFormData({ ...formData, confidence_threshold: v })}
-                min={0.1}
-                max={1}
-                step={0.05}
-              />
-              <p className="text-xs text-muted-foreground">
-                Les événements avec un niveau de confiance inférieur seront ignorés
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label>Types d&apos;alertes activés</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {WARNING_TYPES.map(type => (
-                  <div key={type.value} className="flex items-center space-x-2">
-                    <Switch
-                      checked={formData.enabled_warnings.length === 0 || formData.enabled_warnings.includes(type.value)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          if (formData.enabled_warnings.length > 0) {
-                            setFormData({ ...formData, enabled_warnings: [...formData.enabled_warnings, type.value] });
+          <Tabs defaultValue="general" className="w-full">
+            <TabsList className="w-full">
+              <TabsTrigger value="general" className="flex-1">Général</TabsTrigger>
+              <TabsTrigger value="thresholds" className="flex-1">Seuils par type</TabsTrigger>
+              <TabsTrigger value="notifications" className="flex-1">Notifications</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="general" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Nom personnalisé</Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Seuil global par défaut: {Math.round(formData.confidence_threshold * 100)}%</Label>
+                <Slider
+                  value={[formData.confidence_threshold]}
+                  onValueChange={([v]) => setFormData({ ...formData, confidence_threshold: v })}
+                  min={0.1}
+                  max={1}
+                  step={0.05}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Utilisé quand aucun seuil spécifique n&apos;est défini pour un type d&apos;alerte
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Types d&apos;alertes activés</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {WARNING_TYPES.map(type => (
+                    <div key={type.value} className="flex items-center space-x-2">
+                      <Switch
+                        checked={formData.enabled_warnings.length === 0 || formData.enabled_warnings.includes(type.value)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            if (formData.enabled_warnings.length > 0) {
+                              setFormData({ ...formData, enabled_warnings: [...formData.enabled_warnings, type.value] });
+                            }
+                          } else {
+                            const newWarnings = formData.enabled_warnings.length === 0 
+                              ? WARNING_TYPES.filter(w => w.value !== type.value).map(w => w.value)
+                              : formData.enabled_warnings.filter(w => w !== type.value);
+                            setFormData({ ...formData, enabled_warnings: newWarnings });
                           }
-                        } else {
-                          const newWarnings = formData.enabled_warnings.length === 0 
-                            ? WARNING_TYPES.filter(w => w.value !== type.value).map(w => w.value)
-                            : formData.enabled_warnings.filter(w => w !== type.value);
-                          setFormData({ ...formData, enabled_warnings: newWarnings });
-                        }
-                      }}
-                    />
+                        }}
+                      />
+                      <Label className="text-sm">{type.label}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="thresholds" className="space-y-4 mt-4">
+              <p className="text-sm text-muted-foreground mb-4">
+                Définissez un seuil de confiance spécifique pour chaque type d&apos;alerte. 
+                Les alertes en dessous du seuil seront ignorées.
+              </p>
+              <div className="space-y-4">
+                {WARNING_TYPES.map(type => {
+                  const threshold = formData.warning_thresholds?.[type.value] ?? formData.confidence_threshold;
+                  const isCritical = ['Fall_Detected', 'Violence', 'Fire', 'Smoke', 'Intrusion'].includes(type.value);
+                  return (
+                    <div key={type.value} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge className={type.color + " text-xs"}>{type.label}</Badge>
+                          {isCritical && <Badge variant="outline" className="text-xs text-red-500">Critique</Badge>}
+                        </div>
+                        <span className="text-sm font-mono">{Math.round(threshold * 100)}%</span>
+                      </div>
+                      <Slider
+                        value={[threshold]}
+                        onValueChange={([v]) => setFormData({ 
+                          ...formData, 
+                          warning_thresholds: { 
+                            ...formData.warning_thresholds, 
+                            [type.value]: v 
+                          }
+                        })}
+                        min={0.1}
+                        max={1}
+                        step={0.05}
+                        className={isCritical ? "[&_[role=slider]]:bg-red-500" : ""}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="notifications" className="space-y-4 mt-4">
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div>
+                  <Label className="text-base">Notifications Push</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Recevoir des alertes push sur mobile pour les événements critiques
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.push_notifications_enabled !== false}
+                  onCheckedChange={(checked) => setFormData({ ...formData, push_notifications_enabled: checked })}
+                />
+              </div>
+              <Card className="border-amber-500/30">
+                <CardContent className="pt-4">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5" />
+                    <div>
+                      <p className="font-medium">Types critiques (notifications automatiques)</p>
+                      <p className="text-sm text-muted-foreground">
+                        Chute, Violence, Feu, Fumée, Intrusion
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setConfigDialogOpen(false)}>Annuler</Button>
+            <Button onClick={handleUpdateSensor}>Enregistrer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
                     <Label className="text-sm">{type.label}</Label>
                   </div>
                 ))}
