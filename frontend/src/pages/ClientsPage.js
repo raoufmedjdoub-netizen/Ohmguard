@@ -136,16 +136,16 @@ export function ClientsPage() {
         <div className="flex items-center gap-3">
           <Building2 className="h-6 w-6 text-primary" />
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Clients & Sites</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Organisations</h1>
             <p className="text-muted-foreground">
-              {clients.length} client{clients.length > 1 ? 's' : ''} enregistré{clients.length > 1 ? 's' : ''}
+              {clients.length} organisation{clients.length > 1 ? 's' : ''} enregistrée{clients.length > 1 ? 's' : ''}
             </p>
           </div>
         </div>
         
         <Button onClick={() => setShowCreateModal(true)} data-testid="create-client-btn">
           <Plus className="h-4 w-4 mr-2" />
-          Nouveau Client
+          Nouvelle Organisation
         </Button>
       </div>
 
@@ -155,7 +155,7 @@ export function ClientsPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Rechercher un client..."
+              placeholder="Rechercher une organisation..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
