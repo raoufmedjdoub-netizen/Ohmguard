@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import api from '@/lib/api';
+import { LocationBreadcrumb } from '@/components/LocationBreadcrumb';
 import {
   DoorOpen,
   Plus,
