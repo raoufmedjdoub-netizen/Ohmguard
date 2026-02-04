@@ -263,6 +263,39 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
     - Légende des statuts et bannière d'alerte
     - Toast notifications pour les chutes détectées
     - Statistiques temps réel (Total, En ligne, Hors ligne, Alertes)
+- [x] **Configurateur Visuel de Radar (February 4, 2026)** - Validé à 100%
+  - Composant `RoomVisualEditor.jsx` intégré dans `RadarConfigPage.js`
+  - Vue de dessus 2D interactive avec canvas SVG
+  - **Système de coordonnées Vayyar:**
+    - X (largeur) : horizontal perpendiculaire au radar (- gauche, + droite)
+    - Y (profondeur) : vers l'avant du radar (toujours positif)
+    - Z (hauteur) : vertical
+  - **Éléments visuels:**
+    - Radar (cercle rouge) sur le mur du haut avec ondes de détection
+    - Lit (rectangle bleu) avec oreiller, label et dimensions
+    - Zone de détection (vert hachuré)
+    - Ligne de distance radar-lit
+    - Grille 50cm optionnelle
+    - Indicateurs d'axes X et Y
+  - **Contrôles de configuration:**
+    - Sliders dimensions pièce (Largeur X, Profondeur Y: 2-6m)
+    - Sélection montage (Mural: max 4×4m, Plafond: max 4×5m)
+    - Slider hauteur radar (Mural: 1.2-1.8m, Plafond: 2.3-3.0m)
+    - Slider position X du radar
+    - Toggles affichage (Grille, Zone détection, Distances)
+  - **Interactions drag-and-drop:**
+    - Déplacement horizontal du radar
+    - Déplacement du lit dans la zone de détection
+    - Redimensionnement du lit (poignée coin inférieur droit)
+  - **Génération automatique walabotConfig:**
+    - xMin, xMax, yMin, yMax calculés dynamiquement
+    - trackerSubRegion[0] pour la zone du lit
+    - Flags Chute/Présence activés
+  - **Fonctionnalités additionnelles:**
+    - Avertissement dimensions dépassées
+    - Bouton Réinitialiser
+    - Affichage des paramètres calculés
+    - Intégration avec éditeur JSON Monaco
 - [ ] Email integration (currently mocked)
 - [ ] Webhook delivery with HMAC signature
 - [ ] Escalation automation
