@@ -33,6 +33,7 @@ import { ClientDetailPage } from '@/pages/ClientDetailPage';
 import { BuildingDetailPage } from '@/pages/BuildingDetailPage';
 import { FloorDetailPage } from '@/pages/FloorDetailPage';
 import { RoomDetailPage } from '@/pages/RoomDetailPage';
+import { SitesBatimentsPage } from '@/pages/SitesBatimentsPage';
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
