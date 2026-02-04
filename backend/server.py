@@ -2186,13 +2186,24 @@ async def clear_all_events(current_user: UserInDB = Depends(get_current_user)):
     # Delete all events
     result = await db.events.delete_many({})
     
+    # Invalidate Redis cache
+    cache_invalidated = 0
+    try:
+        from config.event_cache import get_event_cache_service
+        cache_service = get_event_cache_service()
+        cache_invalidated = cache_service.invalidate_all_events_cache()
+        logger.info(f"ADMIN: Invalidated {cache_invalidated} cache keys")
+    except Exception as e:
+        logger.warning(f"Failed to invalidate cache: {e}")
+    
     logger.info(f"ADMIN: Cleared {result.deleted_count} events from database by {current_user.email}")
     
     return {
         "status": "success",
         "message": f"Cleared {result.deleted_count} events",
         "events_deleted": result.deleted_count,
-        "previous_count": event_count
+        "previous_count": event_count,
+        "cache_invalidated": cache_invalidated
     }
 
 @api_router.get("/admin/stats")
