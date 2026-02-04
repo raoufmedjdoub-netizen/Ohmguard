@@ -1183,6 +1183,18 @@ export function RoomVisualEditor({ config, onConfigChange }) {
     return () => clearTimeout(timer);
   }, [radarPositionX, radarPositionY, subRegions, roomWidth, roomDepth]);
   
+  // Load custom templates from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(CUSTOM_TEMPLATES_KEY);
+      if (saved) {
+        setCustomTemplates(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error('Error loading templates:', e);
+    }
+  }, []);
+  
   // Handlers
   const handleRadarMove = (newX, newY) => {
     setRadarPositionX(newX);
@@ -1225,8 +1237,105 @@ export function RoomVisualEditor({ config, onConfigChange }) {
     }
   };
   
+  // Template functions
+  const applyTemplate = (template) => {
+    const cfg = template.config;
+    
+    // Apply room dimensions
+    setRoomWidth(cfg.roomWidth);
+    setRoomDepth(cfg.roomDepth);
+    
+    // Apply mounting type
+    if (cfg.mounting) {
+      onConfigChange?.({
+        ...config,
+        walabotConfig: {
+          ...config?.walabotConfig,
+          sensorMounting: cfg.mounting,
+          sensorHeight: cfg.radarHeight || MOUNTING_CONFIG[cfg.mounting]?.height || 1.5
+        }
+      });
+    }
+    
+    // Set radar position based on mounting
+    if (cfg.mounting === 'Ceiling') {
+      setRadarPositionX(cfg.roomWidth / 2);
+      setRadarPositionY(cfg.roomDepth / 2);
+    } else {
+      setRadarPositionX(cfg.roomWidth / 2);
+      setRadarPositionY(0);
+    }
+    
+    // Apply subregions
+    if (cfg.subRegions && cfg.subRegions.length > 0) {
+      const newRegions = cfg.subRegions.map((sr, idx) => ({
+        id: `${sr.type}-${Date.now()}-${idx}`,
+        type: sr.type,
+        name: sr.name,
+        roomX: sr.roomX,
+        roomY: sr.roomY,
+        width: sr.width,
+        length: sr.length
+      }));
+      setSubRegions(newRegions);
+    }
+    
+    setSelectedRegionId(null);
+  };
+  
+  const saveAsTemplate = () => {
+    if (!newTemplateName.trim()) return;
+    
+    const newTemplate = {
+      id: `custom-${Date.now()}`,
+      name: newTemplateName.trim(),
+      description: newTemplateDescription.trim() || `${roomWidth}m × ${roomDepth}m`,
+      icon: '⭐',
+      category: 'custom',
+      config: {
+        roomWidth,
+        roomDepth,
+        mounting: radarMounting,
+        radarHeight,
+        subRegions: subRegions.map(sr => ({
+          type: sr.type,
+          name: sr.name,
+          roomX: sr.roomX,
+          roomY: sr.roomY,
+          width: sr.width,
+          length: sr.length
+        }))
+      }
+    };
+    
+    const updatedTemplates = [...customTemplates, newTemplate];
+    setCustomTemplates(updatedTemplates);
+    
+    try {
+      localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(updatedTemplates));
+    } catch (e) {
+      console.error('Error saving template:', e);
+    }
+    
+    setShowSaveDialog(false);
+    setNewTemplateName('');
+    setNewTemplateDescription('');
+  };
+  
+  const deleteTemplate = (templateId) => {
+    const updatedTemplates = customTemplates.filter(t => t.id !== templateId);
+    setCustomTemplates(updatedTemplates);
+    
+    try {
+      localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(updatedTemplates));
+    } catch (e) {
+      console.error('Error deleting template:', e);
+    }
+  };
+  
   const isRoomTooLarge = roomWidth > MAX_ROOM_SIZE || roomDepth > MAX_ROOM_SIZE;
   const selectedRegion = subRegions.find(r => r.id === selectedRegionId);
+  const allTemplates = [...PREDEFINED_TEMPLATES, ...customTemplates];
   
   // Fullscreen Editor Component
   const FullscreenEditor = () => (
