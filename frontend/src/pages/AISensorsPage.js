@@ -199,7 +199,9 @@ export function AISensorsPage() {
       channel_name: sensor.channel_name,
       name: sensor.name || '',
       confidence_threshold: sensor.confidence_threshold || 0.7,
-      enabled_warnings: sensor.enabled_warnings || []
+      enabled_warnings: sensor.enabled_warnings || [],
+      warning_thresholds: sensor.warning_thresholds || {},
+      push_notifications_enabled: sensor.push_notifications_enabled !== false
     });
     setConfigDialogOpen(true);
   };
