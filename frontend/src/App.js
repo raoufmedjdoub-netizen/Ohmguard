@@ -81,6 +81,7 @@ function AppRoutes() {
         {/* Capteurs (ex-Radars) */}
         <Route path="capteurs" element={<RadarsPage />} />
         <Route path="capteurs/:deviceId/config" element={<RadarConfigPage />} />
+        <Route path="capteurs-ia" element={<AISensorsPage />} />
         {/* Redirections pour compatibilité */}
         <Route path="sensors" element={<Navigate to="/capteurs" replace />} />
         <Route path="radars" element={<Navigate to="/capteurs" replace />} />
