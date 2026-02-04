@@ -208,6 +208,24 @@ export function RadarsPage() {
     return <Badge variant="outline" className="border-amber-500 text-amber-500">En attente</Badge>;
   };
 
+  // Badge type capteur
+  const getSensorTypeBadge = (type) => {
+    const types = {
+      'RADAR': { label: 'Radar détection chute', className: 'bg-purple-500 text-white', icon: '📡' },
+      'CAMERA': { label: 'Caméra', className: 'bg-blue-500 text-white', icon: '📷' },
+      'MOTION': { label: 'Détecteur mouvement', className: 'bg-amber-500 text-white', icon: '🔄' },
+      'DOOR': { label: 'Capteur porte', className: 'bg-cyan-500 text-white', icon: '🚪' },
+      'OTHER': { label: 'Autre', className: 'bg-gray-500 text-white', icon: '📦' }
+    };
+    const config = types[type] || types.OTHER;
+    return (
+      <Badge className={config.className}>
+        <span className="mr-1">{config.icon}</span>
+        {config.label}
+      </Badge>
+    );
+  };
+
   const getLocationDisplay = (radar) => {
     if (!radar.client_id) {
       return <span className="text-amber-500 italic">Non affecté</span>;
