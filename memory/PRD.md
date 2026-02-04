@@ -332,6 +332,8 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - `backend/seed_clients_buildings.py` - Demo data seeder
 - `frontend/src/components/LocationBreadcrumb.jsx` - **NEW: Reusable breadcrumb component (February 2026)**
 - `frontend/src/pages/FloorPlanPage.js` - **NEW: Interactive map with real-time markers (February 2026)**
+- `frontend/src/components/RoomVisualEditor.jsx` - **NEW: Visual radar configurator component (February 2026)**
+- `frontend/src/lib/vayyarConfigSchema.js` - Vayyar config validation schema
 - `frontend/src/components/layout/MainLayout.js` - Layout with Navbar/SubNavbar/Sidebar
 - `frontend/src/components/layout/Navbar.js` - Main navigation bar
 - `frontend/src/components/layout/SubNavbar.js` - Contextual sub-navigation with breadcrumb
