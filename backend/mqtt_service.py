@@ -124,6 +124,10 @@ class MQTTService:
                     await client.subscribe("/devices/+/events")
                     logger.info("Subscribed to /devices/+/state and /devices/+/events")
                     
+                    # Subscribe to Seedoo AI camera topics
+                    await client.subscribe("/seedoo/#")
+                    logger.info("Subscribed to /seedoo/# (AI cameras)")
+                    
                     # Process messages
                     async for message in client.messages:
                         try:
