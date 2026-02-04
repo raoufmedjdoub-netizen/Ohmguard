@@ -53,6 +53,8 @@ const resources = {
         clients_desc: 'Organisation management',
         sites_buildings: 'Sites & Buildings',
         sites_buildings_desc: 'Building and floor management',
+        floor_plan: 'Interactive Map',
+        floor_plan_desc: 'Floor plans and sensor locations',
         sites: 'Sites & Zones',
         alert_rules: 'Alert Rules',
         alert_rules_desc: 'Alert configuration',
