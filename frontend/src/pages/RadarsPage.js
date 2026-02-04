@@ -385,6 +385,18 @@ export function RadarsPage() {
             className="pl-10"
           />
         </div>
+        <Select value={selectedType} onValueChange={setSelectedType}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Type capteur" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous types</SelectItem>
+            <SelectItem value="RADAR">Radar détection</SelectItem>
+            <SelectItem value="CAMERA">Caméra</SelectItem>
+            <SelectItem value="MOTION">Mouvement</SelectItem>
+            <SelectItem value="DOOR">Porte</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={selectedStatus} onValueChange={setSelectedStatus}>
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Statut" />
@@ -413,7 +425,8 @@ export function RadarsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Radar</TableHead>
+                <TableHead>Capteur</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Localisation</TableHead>
                 <TableHead>Affectation</TableHead>
                 <TableHead>Statut</TableHead>
