@@ -2794,6 +2794,10 @@ async def startup_event():
     init_push_notification_service(db)
     logger.info("Push Notification service initialized")
     
+    # Initialize Sensor Import service
+    init_sensor_import_service(db)
+    logger.info("Sensor Import service initialized")
+    
     # Initialize Clients & Buildings service
     init_clients_buildings_service(db)
     logger.info("Clients & Buildings service initialized")
