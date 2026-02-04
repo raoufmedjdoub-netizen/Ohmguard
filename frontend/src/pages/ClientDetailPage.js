@@ -243,6 +243,13 @@ export function ClientDetailPage() {
 
   return (
     <div data-testid="client-detail-page" className="space-y-6">
+      {/* Breadcrumb */}
+      <LocationBreadcrumb 
+        items={[
+          { type: 'organisation', label: client.name, href: null }
+        ]} 
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
