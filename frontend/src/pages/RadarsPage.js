@@ -696,6 +696,13 @@ export function RadarsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Import Modal */}
+      <SensorImportModal 
+        open={importDialogOpen} 
+        onOpenChange={setImportDialogOpen}
+        onImportComplete={fetchData}
+      />
     </div>
   );
 }
