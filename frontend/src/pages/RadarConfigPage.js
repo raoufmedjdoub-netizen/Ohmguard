@@ -139,6 +139,7 @@ export function RadarConfigPage() {
   const [jsonValue, setJsonValue] = useState('');
   const [jsonError, setJsonError] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [showJsonEditor, setShowJsonEditor] = useState(false);
   const [mqttOptions, setMqttOptions] = useState({ qos: 1, retain: false });
 
   const form = useForm({
