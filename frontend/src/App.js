@@ -92,7 +92,7 @@ function AppRoutes() {
         <Route path="clients/:clientId" element={<ClientDetailPage />} />
         
         {/* Sites & Bâtiments */}
-        <Route path="sites-batiments" element={<ClientsPage />} />
+        <Route path="sites-batiments" element={<SitesBatimentsPage />} />
         <Route path="buildings/:buildingId" element={<BuildingDetailPage />} />
         <Route path="floors/:floorId" element={<FloorDetailPage />} />
         <Route path="rooms/:roomId" element={<RoomDetailPage />} />
