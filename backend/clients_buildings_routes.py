@@ -979,6 +979,94 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         service = get_floor_plan_service(db)
         return await service.list_floor_plans(building_id)
     
+    # ==================== FLOOR PLAN MARKERS ====================
+    
+    @router.get("/floors/{floor_id}/sensors-markers")
+    async def get_floor_sensors_with_markers(floor_id: str, current_user = Depends(get_current_user)):
+        """Get all sensors for a floor with their marker positions"""
+        from floor_plan_service import get_floor_plan_service
+        
+        floor = await db.floors.find_one({"id": floor_id}, {"_id": 0})
+        if not floor:
+            raise HTTPException(status_code=404, detail="Étage non trouvé")
+        
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, floor["client_id"], "VIEW")
+            if not has_access and current_user.tenant_id != floor["client_id"]:
+                raise HTTPException(status_code=403, detail="Accès refusé")
+        
+        service = get_floor_plan_service(db)
+        return await service.get_floor_sensors(floor_id)
+    
+    @router.put("/floors/{floor_id}/markers/{sensor_id}")
+    async def update_sensor_marker(
+        floor_id: str, 
+        sensor_id: str,
+        x: float = Query(..., ge=0, le=100),
+        y: float = Query(..., ge=0, le=100),
+        current_user = Depends(get_current_user)
+    ):
+        """Update a sensor marker position on the floor plan"""
+        from floor_plan_service import get_floor_plan_service
+        
+        floor = await db.floors.find_one({"id": floor_id}, {"_id": 0})
+        if not floor:
+            raise HTTPException(status_code=404, detail="Étage non trouvé")
+        
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, floor["client_id"], "BUILDING_MANAGE")
+            if not has_access:
+                raise HTTPException(status_code=403, detail="Permission BUILDING_MANAGE requise")
+        
+        service = get_floor_plan_service(db)
+        return await service.update_sensor_marker(floor_id, sensor_id, x, y)
+    
+    @router.delete("/floors/{floor_id}/markers/{sensor_id}")
+    async def remove_sensor_marker(
+        floor_id: str, 
+        sensor_id: str,
+        current_user = Depends(get_current_user)
+    ):
+        """Remove a sensor marker from the floor plan"""
+        from floor_plan_service import get_floor_plan_service
+        
+        floor = await db.floors.find_one({"id": floor_id}, {"_id": 0})
+        if not floor:
+            raise HTTPException(status_code=404, detail="Étage non trouvé")
+        
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, floor["client_id"], "BUILDING_MANAGE")
+            if not has_access:
+                raise HTTPException(status_code=403, detail="Permission BUILDING_MANAGE requise")
+        
+        service = get_floor_plan_service(db)
+        removed = await service.remove_sensor_marker(floor_id, sensor_id)
+        if not removed:
+            raise HTTPException(status_code=404, detail="Marqueur non trouvé")
+        
+        return {"message": "Marqueur supprimé"}
+    
+    @router.put("/floors/{floor_id}/markers")
+    async def update_all_markers(
+        floor_id: str,
+        markers: list,
+        current_user = Depends(get_current_user)
+    ):
+        """Update all markers at once (batch update)"""
+        from floor_plan_service import get_floor_plan_service
+        
+        floor = await db.floors.find_one({"id": floor_id}, {"_id": 0})
+        if not floor:
+            raise HTTPException(status_code=404, detail="Étage non trouvé")
+        
+        if current_user.role != "SUPER_ADMIN":
+            has_access = await check_rbac_permission(current_user, floor["client_id"], "BUILDING_MANAGE")
+            if not has_access:
+                raise HTTPException(status_code=403, detail="Permission BUILDING_MANAGE requise")
+        
+        service = get_floor_plan_service(db)
+        return await service.update_all_markers(floor_id, markers)
+    
     return router
 
 
