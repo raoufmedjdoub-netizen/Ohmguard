@@ -979,6 +979,8 @@ class AISensorCreate(BaseModel):
     room_id: Optional[str] = None
     confidence_threshold: Optional[float] = 0.7
     enabled_warnings: Optional[List[str]] = []
+    warning_thresholds: Optional[Dict[str, float]] = None
+    push_notifications_enabled: Optional[bool] = True
 
 class AISensorUpdate(BaseModel):
     name: Optional[str] = None
@@ -989,6 +991,8 @@ class AISensorUpdate(BaseModel):
     room_id: Optional[str] = None
     confidence_threshold: Optional[float] = None
     enabled_warnings: Optional[List[str]] = None
+    warning_thresholds: Optional[Dict[str, float]] = None
+    push_notifications_enabled: Optional[bool] = None
 
 @api_router.get("/ai-sensors")
 async def list_ai_sensors(
