@@ -1660,6 +1660,54 @@ export function RoomVisualEditor({ config, onConfigChange }) {
       {/* Fullscreen overlay */}
       {isFullscreen && <FullscreenEditor />}
       
+      {/* Save Template Dialog */}
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Save className="h-5 w-5" />
+              Sauvegarder comme template
+            </DialogTitle>
+            <DialogDescription>
+              Sauvegardez la configuration actuelle pour la réutiliser plus tard.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nom du template</Label>
+              <Input
+                value={newTemplateName}
+                onChange={(e) => setNewTemplateName(e.target.value)}
+                placeholder="Ex: Chambre type A"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description (optionnel)</Label>
+              <Input
+                value={newTemplateDescription}
+                onChange={(e) => setNewTemplateDescription(e.target.value)}
+                placeholder="Ex: Configuration standard pour EHPAD"
+              />
+            </div>
+            <div className="p-3 bg-muted rounded-lg text-sm">
+              <p className="font-medium mb-1">Configuration actuelle :</p>
+              <p className="text-muted-foreground">
+                {roomWidth}m × {roomDepth}m • {radarMounting === 'Wall' ? 'Mural' : 'Plafond'} • {subRegions.length} zone(s)
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+              Annuler
+            </Button>
+            <Button onClick={saveAsTemplate} disabled={!newTemplateName.trim()}>
+              <Save className="h-4 w-4 mr-2" />
+              Sauvegarder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
       {isRoomTooLarge && (
         <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-lg flex items-start gap-2">
           <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
@@ -1686,14 +1734,89 @@ export function RoomVisualEditor({ config, onConfigChange }) {
           </TabsList>
           
           {activeTab === 'visual' && (
-            <Button 
-              variant="outline" 
-              onClick={() => setIsFullscreen(true)}
-              className="gap-2"
-            >
-              <Maximize2 className="h-4 w-4" />
-              Plein écran
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Templates dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <FolderOpen className="h-4 w-4" />
+                    Templates
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-72">
+                  <DropdownMenuLabel className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Templates prédéfinis
+                  </DropdownMenuLabel>
+                  {PREDEFINED_TEMPLATES.map((template) => (
+                    <DropdownMenuItem 
+                      key={template.id}
+                      onClick={() => applyTemplate(template)}
+                      className="cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 w-full">
+                        <span className="text-lg">{template.icon}</span>
+                        <div className="flex-1">
+                          <p className="font-medium">{template.name}</p>
+                          <p className="text-xs text-muted-foreground">{template.description}</p>
+                        </div>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                  
+                  {customTemplates.length > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="flex items-center gap-2">
+                        <Star className="h-4 w-4" />
+                        Mes templates ({customTemplates.length})
+                      </DropdownMenuLabel>
+                      {customTemplates.map((template) => (
+                        <DropdownMenuItem 
+                          key={template.id}
+                          className="cursor-pointer group"
+                        >
+                          <div className="flex items-center gap-3 w-full" onClick={() => applyTemplate(template)}>
+                            <span className="text-lg">{template.icon}</span>
+                            <div className="flex-1">
+                              <p className="font-medium">{template.name}</p>
+                              <p className="text-xs text-muted-foreground">{template.description}</p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteTemplate(template.id);
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3 text-destructive" />
+                            </Button>
+                          </div>
+                        </DropdownMenuItem>
+                      ))}
+                    </>
+                  )}
+                  
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setShowSaveDialog(true)} className="cursor-pointer">
+                    <Save className="h-4 w-4 mr-2" />
+                    Sauvegarder configuration actuelle
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
+              {/* Fullscreen button */}
+              <Button 
+                variant="outline" 
+                onClick={() => setIsFullscreen(true)}
+                className="gap-2"
+              >
+                <Maximize2 className="h-4 w-4" />
+                Plein écran
+              </Button>
+            </div>
           )}
         </div>
         
