@@ -901,6 +901,64 @@ async def rotate_sensor_key(sensor_id: str, current_user: UserInDB = Depends(get
     await log_audit(current_user.id, sensor['tenant_id'], "rotate_key", "sensor", sensor_id)
     return {"api_key": new_key}
 
+# ==================== SENSOR IMPORT ENDPOINTS ====================
+
+class ImportRequest(BaseModel):
+    csv_content: str
+
+@api_router.get("/sensors/import/template")
+async def get_import_template(current_user: UserInDB = Depends(get_current_user)):
+    """Download CSV template for sensor import"""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    
+    import_service = get_sensor_import_service()
+    template = import_service.get_csv_template()
+    
+    return StreamingResponse(
+        io.StringIO(template),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=sensors_import_template.csv"}
+    )
+
+@api_router.post("/sensors/import/preview")
+async def preview_sensor_import(request: ImportRequest, current_user: UserInDB = Depends(get_current_user)):
+    """
+    Preview sensor import from CSV.
+    Returns analysis of what will be created/updated without making changes.
+    """
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    
+    import_service = get_sensor_import_service()
+    preview = await import_service.preview_import(request.csv_content, current_user.tenant_id)
+    
+    return preview.to_dict()
+
+@api_router.post("/sensors/import/execute")
+async def execute_sensor_import(request: ImportRequest, current_user: UserInDB = Depends(get_current_user)):
+    """
+    Execute sensor import from CSV.
+    Creates/updates sensors and auto-creates missing locations.
+    """
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    
+    import_service = get_sensor_import_service()
+    result = await import_service.execute_import(request.csv_content, current_user.tenant_id)
+    
+    # Log audit
+    await log_audit(
+        current_user.id, 
+        current_user.tenant_id, 
+        "import_sensors", 
+        "sensors", 
+        None, 
+        {
+            "created": result["created_sensors"],
+            "updated": result["updated_sensors"]
+        }
+    )
+    
+    return result
+
 # ==================== RADAR ASSIGNMENT ENDPOINTS ====================
 
 class RadarAssignment(BaseModel):
