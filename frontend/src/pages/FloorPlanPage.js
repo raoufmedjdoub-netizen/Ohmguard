@@ -334,9 +334,18 @@ export function FloorPlanPage() {
       // Reload plan
       const res = await api.get(`/floors/${selectedFloor}/plan`);
       setPlanData(res.data);
-      const token = localStorage.getItem('token');
-      const backendUrl = process.env.REACT_APP_BACKEND_URL;
-      setPlanImageUrl(`${backendUrl}/api/floors/${selectedFloor}/plan/image?token=${token}&t=${Date.now()}`);
+      
+      // Reload image as blob
+      const imageRes = await api.get(`/floors/${selectedFloor}/plan/image`, {
+        responseType: 'blob'
+      });
+      const newImageUrl = URL.createObjectURL(imageRes.data);
+      
+      // Cleanup old blob URL
+      if (planImageUrl && planImageUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(planImageUrl);
+      }
+      setPlanImageUrl(newImageUrl);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erreur lors de l\'upload');
     } finally {
