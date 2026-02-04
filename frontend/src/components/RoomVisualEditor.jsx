@@ -288,10 +288,15 @@ function RoomCanvas({
     e.preventDefault();
     e.stopPropagation();
     const svg = svgRef.current;
+    if (!svg) return;
+    
     const pt = svg.createSVGPoint();
     pt.x = e.clientX;
     pt.y = e.clientY;
-    const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return;
+    
+    const svgP = pt.matrixTransform(ctm.inverse());
     
     if (target === 'radar') {
       setDragging({ type: 'radar' });
@@ -316,15 +321,20 @@ function RoomCanvas({
     }
   };
   
-  const handleMouseMove = (e) => {
+  const handleMouseMove = useCallback((e) => {
     if (!dragging) return;
     e.preventDefault();
     
     const svg = svgRef.current;
+    if (!svg) return;
+    
     const pt = svg.createSVGPoint();
     pt.x = e.clientX;
     pt.y = e.clientY;
-    const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return;
+    
+    const svgP = pt.matrixTransform(ctm.inverse());
     
     if (dragging.type === 'radar') {
       let newX = pixelsToM(svgP.x - dragOffset.x - roomRect.x);
