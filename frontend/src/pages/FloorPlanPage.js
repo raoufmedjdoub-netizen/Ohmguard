@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import api from '@/lib/api';
+import { io } from 'socket.io-client';
 import {
   Map,
   Upload,
@@ -27,22 +28,121 @@ import {
   AlertCircle,
   CheckCircle2,
   Edit3,
-  Save,
   X,
   GripVertical,
-  CircleDot
+  CircleDot,
+  Wifi,
+  WifiOff,
+  AlertTriangle,
+  Activity
 } from 'lucide-react';
 
-// Sensor Marker Component
-function SensorMarker({ sensor, isEditMode, onDragStart, onRemove, scale }) {
+// CSS Keyframes for animations (injected once)
+const injectAnimationStyles = () => {
+  if (document.getElementById('floor-plan-animations')) return;
+  
+  const style = document.createElement('style');
+  style.id = 'floor-plan-animations';
+  style.textContent = `
+    @keyframes pulse-alert {
+      0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+      }
+      50% { 
+        transform: scale(1.15);
+        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+      }
+    }
+    
+    @keyframes pulse-online {
+      0%, 100% { 
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+      }
+      50% { 
+        box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+      }
+    }
+    
+    @keyframes ripple {
+      0% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(2.5);
+        opacity: 0;
+      }
+    }
+    
+    @keyframes flash-new-event {
+      0%, 50%, 100% { opacity: 1; }
+      25%, 75% { opacity: 0.3; }
+    }
+    
+    .marker-alert {
+      animation: pulse-alert 1s ease-in-out infinite;
+    }
+    
+    .marker-online {
+      animation: pulse-online 2s ease-in-out infinite;
+    }
+    
+    .marker-new-event {
+      animation: flash-new-event 0.5s ease-in-out 3;
+    }
+    
+    .ripple-effect::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      animation: ripple 1.5s ease-out infinite;
+    }
+  `;
+  document.head.appendChild(style);
+};
+
+// Sensor Marker Component with real-time animations
+function SensorMarker({ sensor, isEditMode, onDragStart, onRemove, hasNewEvent }) {
   const [isDragging, setIsDragging] = useState(false);
   
-  const getStatusColor = () => {
+  const getStatusStyles = () => {
+    const baseStyles = 'absolute w-7 h-7 -ml-3.5 -mt-3.5 rounded-full border-2 shadow-lg cursor-pointer transition-all duration-300';
+    
     switch (sensor.status) {
-      case 'ONLINE': return 'bg-green-500 border-green-400';
-      case 'OFFLINE': return 'bg-gray-400 border-gray-300';
-      case 'ALERT': return 'bg-red-500 border-red-400 animate-pulse';
-      default: return 'bg-blue-500 border-blue-400';
+      case 'ONLINE':
+        return {
+          className: cn(baseStyles, 'bg-green-500 border-green-300 marker-online'),
+          icon: <Wifi className="w-3.5 h-3.5 text-white" />,
+          glow: 'shadow-green-500/50'
+        };
+      case 'OFFLINE':
+        return {
+          className: cn(baseStyles, 'bg-gray-400 border-gray-300'),
+          icon: <WifiOff className="w-3.5 h-3.5 text-white" />,
+          glow: ''
+        };
+      case 'ALERT':
+      case 'FALL_DETECTED':
+        return {
+          className: cn(baseStyles, 'bg-red-500 border-red-300 marker-alert ripple-effect text-red-500'),
+          icon: <AlertTriangle className="w-3.5 h-3.5 text-white" />,
+          glow: 'shadow-red-500/70 shadow-lg'
+        };
+      case 'PRESENCE':
+        return {
+          className: cn(baseStyles, 'bg-amber-500 border-amber-300'),
+          icon: <Activity className="w-3.5 h-3.5 text-white" />,
+          glow: 'shadow-amber-500/50'
+        };
+      default:
+        return {
+          className: cn(baseStyles, 'bg-blue-500 border-blue-300'),
+          icon: <Radio className="w-3.5 h-3.5 text-white" />,
+          glow: ''
+        };
     }
   };
   
@@ -53,22 +153,27 @@ function SensorMarker({ sensor, isEditMode, onDragStart, onRemove, scale }) {
     onDragStart?.(sensor, e);
   };
   
+  const statusStyles = getStatusStyles();
+  
   const markerContent = (
     <div
       className={cn(
-        'absolute w-6 h-6 -ml-3 -mt-3 rounded-full border-2 shadow-lg cursor-pointer transition-all',
-        getStatusColor(),
+        statusStyles.className,
+        statusStyles.glow,
         isEditMode && 'cursor-move hover:scale-125',
-        isDragging && 'scale-125 opacity-75'
+        isDragging && 'scale-125 opacity-75',
+        hasNewEvent && 'marker-new-event'
       )}
       style={{
         left: `${sensor.marker.x}%`,
         top: `${sensor.marker.y}%`,
-        zIndex: isDragging ? 100 : 10
+        zIndex: isDragging ? 100 : sensor.status === 'ALERT' ? 50 : 10
       }}
       onMouseDown={handleMouseDown}
     >
-      <Radio className="w-3 h-3 text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+        {statusStyles.icon}
+      </div>
       
       {/* Edit mode remove button */}
       {isEditMode && (
@@ -77,10 +182,15 @@ function SensorMarker({ sensor, isEditMode, onDragStart, onRemove, scale }) {
             e.stopPropagation();
             onRemove?.(sensor.id);
           }}
-          className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600"
+          className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 z-20"
         >
           <X className="w-3 h-3 text-white" />
         </button>
+      )}
+      
+      {/* Status indicator dot */}
+      {sensor.status === 'ONLINE' && !isEditMode && (
+        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full border border-white" />
       )}
     </div>
   );
@@ -91,30 +201,49 @@ function SensorMarker({ sensor, isEditMode, onDragStart, onRemove, scale }) {
   
   return (
     <TooltipProvider>
-      <Tooltip>
+      <Tooltip delayDuration={100}>
         <TooltipTrigger asChild>
           {markerContent}
         </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs">
-          <div className="space-y-1">
-            <p className="font-semibold">{sensor.name || sensor.device_id?.substring(0, 15)}</p>
+        <TooltipContent side="top" className="max-w-xs p-3">
+          <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Badge variant={sensor.status === 'ONLINE' ? 'default' : 'secondary'} className="text-xs">
+              <Radio className="h-4 w-4 text-primary" />
+              <span className="font-semibold">{sensor.name || sensor.device_id?.substring(0, 15)}</span>
+            </div>
+            
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge 
+                variant={sensor.status === 'ONLINE' ? 'default' : sensor.status === 'ALERT' ? 'destructive' : 'secondary'} 
+                className="text-xs"
+              >
+                {sensor.status === 'ONLINE' && <Wifi className="w-3 h-3 mr-1" />}
+                {sensor.status === 'OFFLINE' && <WifiOff className="w-3 h-3 mr-1" />}
+                {sensor.status === 'ALERT' && <AlertTriangle className="w-3 h-3 mr-1" />}
                 {sensor.status}
               </Badge>
               {sensor.type && (
                 <Badge variant="outline" className="text-xs">{sensor.type}</Badge>
               )}
             </div>
+            
             {sensor.room_info && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Building className="w-3 h-3" />
                 Chambre {sensor.room_info.room_number}
                 {sensor.room_info.name && ` - ${sensor.room_info.name}`}
               </p>
             )}
+            
             {sensor.space_info && (
               <p className="text-xs text-muted-foreground">
-                {sensor.space_info.name || sensor.space_info.space_type}
+                📍 {sensor.space_info.name || sensor.space_info.space_type}
+              </p>
+            )}
+            
+            {sensor.last_event_at && (
+              <p className="text-xs text-muted-foreground border-t pt-1 mt-1">
+                Dernier événement: {new Date(sensor.last_event_at).toLocaleString('fr-FR')}
               </p>
             )}
           </div>
@@ -130,6 +259,7 @@ function DraggableSensor({ sensor, onDragStart }) {
     switch (sensor.status) {
       case 'ONLINE': return 'text-green-500';
       case 'OFFLINE': return 'text-gray-400';
+      case 'ALERT': return 'text-red-500';
       default: return 'text-blue-500';
     }
   };
@@ -163,8 +293,34 @@ function DraggableSensor({ sensor, onDragStart }) {
   );
 }
 
+// Real-time status legend
+function StatusLegend({ sensors }) {
+  const onlineCount = sensors.filter(s => s.status === 'ONLINE').length;
+  const offlineCount = sensors.filter(s => s.status === 'OFFLINE').length;
+  const alertCount = sensors.filter(s => s.status === 'ALERT' || s.status === 'FALL_DETECTED').length;
+  
+  return (
+    <div className="flex items-center gap-4 text-sm">
+      <div className="flex items-center gap-1.5">
+        <span className="w-3 h-3 rounded-full bg-green-500 marker-online" />
+        <span className="text-muted-foreground">En ligne ({onlineCount})</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className="w-3 h-3 rounded-full bg-gray-400" />
+        <span className="text-muted-foreground">Hors ligne ({offlineCount})</span>
+      </div>
+      {alertCount > 0 && (
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-full bg-red-500 marker-alert" />
+          <span className="text-red-500 font-medium">Alerte ({alertCount})</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Floor Plan Viewer with markers support
-function FloorPlanViewer({ imageUrl, sensors, isEditMode, onMarkerUpdate, onMarkerRemove, onSensorDrop }) {
+function FloorPlanViewer({ imageUrl, sensors, isEditMode, onMarkerUpdate, onMarkerRemove, onSensorDrop, newEventSensorId }) {
   const containerRef = useRef(null);
   const imageRef = useRef(null);
   const [scale, setScale] = useState(1);
@@ -198,17 +354,12 @@ function FloorPlanViewer({ imageUrl, sensors, isEditMode, onMarkerUpdate, onMark
       });
     }
     
-    // Handle sensor marker dragging
     if (draggingSensor && imageRef.current) {
       const rect = imageRef.current.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * 100;
       const y = ((e.clientY - rect.top) / rect.height) * 100;
-      
-      // Clamp to image bounds
       const clampedX = Math.max(0, Math.min(100, x));
       const clampedY = Math.max(0, Math.min(100, y));
-      
-      // Update marker position in real-time (visual feedback)
       setDragOffset({ x: clampedX, y: clampedY });
     }
   };
@@ -216,15 +367,12 @@ function FloorPlanViewer({ imageUrl, sensors, isEditMode, onMarkerUpdate, onMark
   const handleMouseUp = (e) => {
     setIsDragging(false);
     
-    // Finalize sensor marker position
     if (draggingSensor && imageRef.current) {
       const rect = imageRef.current.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * 100;
       const y = ((e.clientY - rect.top) / rect.height) * 100;
-      
       const clampedX = Math.max(0, Math.min(100, x));
       const clampedY = Math.max(0, Math.min(100, y));
-      
       onMarkerUpdate?.(draggingSensor.id, clampedX, clampedY);
       setDraggingSensor(null);
       setDragOffset({ x: 0, y: 0 });
@@ -238,10 +386,8 @@ function FloorPlanViewer({ imageUrl, sensors, isEditMode, onMarkerUpdate, onMark
     }
   };
 
-  // Handle drop from sidebar
   const handleDrop = (e) => {
     e.preventDefault();
-    
     if (!imageRef.current) return;
     
     const sensorId = e.dataTransfer.getData('sensor-id');
@@ -250,10 +396,8 @@ function FloorPlanViewer({ imageUrl, sensors, isEditMode, onMarkerUpdate, onMark
     const rect = imageRef.current.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
-    
     const clampedX = Math.max(0, Math.min(100, x));
     const clampedY = Math.max(0, Math.min(100, y));
-    
     onSensorDrop?.(sensorId, clampedX, clampedY);
   };
 
@@ -336,16 +480,16 @@ function FloorPlanViewer({ imageUrl, sensors, isEditMode, onMarkerUpdate, onMark
                   key={sensor.id}
                   sensor={draggingSensor?.id === sensor.id ? { ...sensor, marker: { ...sensor.marker, x: dragOffset.x, y: dragOffset.y } } : sensor}
                   isEditMode={isEditMode}
-                  scale={scale}
                   onDragStart={handleSensorDragStart}
                   onRemove={onMarkerRemove}
+                  hasNewEvent={newEventSensorId === sensor.id}
                 />
               ))}
               
-              {/* Ghost marker when dragging from sidebar */}
+              {/* Ghost marker when dragging */}
               {draggingSensor && !draggingSensor.marker?.placed && dragOffset.x > 0 && (
                 <div
-                  className="absolute w-6 h-6 -ml-3 -mt-3 rounded-full border-2 border-dashed border-primary bg-primary/30"
+                  className="absolute w-7 h-7 -ml-3.5 -mt-3.5 rounded-full border-2 border-dashed border-primary bg-primary/30"
                   style={{
                     left: `${dragOffset.x}%`,
                     top: `${dragOffset.y}%`,
@@ -368,7 +512,14 @@ function FloorPlanViewer({ imageUrl, sensors, isEditMode, onMarkerUpdate, onMark
       {isEditMode && (
         <div className="absolute bottom-2 left-2 z-20 bg-blue-500/90 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-2">
           <Edit3 className="h-4 w-4" />
-          Mode édition actif - Glissez les capteurs sur le plan
+          Mode édition - Glissez les capteurs sur le plan
+        </div>
+      )}
+      
+      {/* Legend (view mode only) */}
+      {!isEditMode && placedSensors.length > 0 && (
+        <div className="absolute bottom-2 left-2 z-20 bg-background/90 backdrop-blur-sm px-3 py-2 rounded-lg border">
+          <StatusLegend sensors={placedSensors} />
         </div>
       )}
     </div>
@@ -396,7 +547,12 @@ export function FloorPlanPage() {
   
   // Edit mode
   const [isEditMode, setIsEditMode] = useState(false);
-  const [saving, setSaving] = useState(false);
+  
+  // Real-time
+  const [wsConnected, setWsConnected] = useState(false);
+  const [newEventSensorId, setNewEventSensorId] = useState(null);
+  const [lastEvent, setLastEvent] = useState(null);
+  const socketRef = useRef(null);
   
   // Upload modal
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -404,6 +560,107 @@ export function FloorPlanPage() {
   const [previewUrl, setPreviewUrl] = useState(null);
   
   const fileInputRef = useRef(null);
+
+  // Inject animation styles
+  useEffect(() => {
+    injectAnimationStyles();
+  }, []);
+
+  // WebSocket connection for real-time updates
+  useEffect(() => {
+    const backendUrl = process.env.REACT_APP_BACKEND_URL;
+    const wsUrl = backendUrl.replace(/^http/, 'ws').replace('/api', '');
+    
+    const socket = io(backendUrl, {
+      path: '/api/socket.io',
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000
+    });
+    
+    socketRef.current = socket;
+    
+    socket.on('connect', () => {
+      console.log('[FloorPlan] WebSocket connected');
+      setWsConnected(true);
+    });
+    
+    socket.on('disconnect', () => {
+      console.log('[FloorPlan] WebSocket disconnected');
+      setWsConnected(false);
+    });
+    
+    // Listen for sensor events
+    socket.on('new_event', (event) => {
+      console.log('[FloorPlan] New event received:', event);
+      
+      // Find sensor by device_id or sensor_id
+      setSensors(prev => {
+        const updatedSensors = prev.map(sensor => {
+          const isMatch = sensor.device_id === event.device_id || 
+                          sensor.id === event.sensor_id ||
+                          sensor.device_id?.includes(event.device_id);
+          
+          if (isMatch) {
+            // Update sensor status based on event type
+            let newStatus = sensor.status;
+            if (event.event_type === 'FALL' || event.event_type === 'FALL_DETECTED') {
+              newStatus = 'ALERT';
+              // Show toast notification
+              toast.error(`🚨 Alerte chute détectée - ${sensor.name || sensor.device_id}`, {
+                duration: 5000
+              });
+            } else if (event.event_type === 'PRESENCE') {
+              newStatus = 'PRESENCE';
+            } else if (event.event_type === 'STATUS_ONLINE') {
+              newStatus = 'ONLINE';
+            } else if (event.event_type === 'STATUS_OFFLINE') {
+              newStatus = 'OFFLINE';
+            }
+            
+            // Trigger flash animation
+            setNewEventSensorId(sensor.id);
+            setTimeout(() => setNewEventSensorId(null), 1500);
+            
+            return {
+              ...sensor,
+              status: newStatus,
+              last_event_at: event.timestamp || new Date().toISOString()
+            };
+          }
+          return sensor;
+        });
+        
+        return updatedSensors;
+      });
+      
+      setLastEvent(event);
+    });
+    
+    // Listen for sensor status updates
+    socket.on('sensor_status', (data) => {
+      console.log('[FloorPlan] Sensor status update:', data);
+      
+      setSensors(prev => prev.map(sensor => {
+        if (sensor.id === data.sensor_id || sensor.device_id === data.device_id) {
+          setNewEventSensorId(sensor.id);
+          setTimeout(() => setNewEventSensorId(null), 1500);
+          
+          return {
+            ...sensor,
+            status: data.status,
+            last_event_at: new Date().toISOString()
+          };
+        }
+        return sensor;
+      }));
+    });
+    
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   // Load organisations
   useEffect(() => {
@@ -480,11 +737,9 @@ export function FloorPlanPage() {
     
     setLoading(true);
     try {
-      // Load plan metadata
       const planRes = await api.get(`/floors/${selectedFloor}/plan`).catch(() => ({ data: null }));
       setPlanData(planRes.data);
       
-      // Load plan image
       if (planRes.data) {
         const imageRes = await api.get(`/floors/${selectedFloor}/plan/image`, { responseType: 'blob' });
         const imageUrl = URL.createObjectURL(imageRes.data);
@@ -493,7 +748,6 @@ export function FloorPlanPage() {
         setPlanImageUrl(null);
       }
       
-      // Load sensors with markers
       const sensorsRes = await api.get(`/floors/${selectedFloor}/sensors-markers`);
       setSensors(sensorsRes.data);
       
@@ -525,14 +779,11 @@ export function FloorPlanPage() {
   const handleMarkerUpdate = async (sensorId, x, y) => {
     try {
       await api.put(`/floors/${selectedFloor}/markers/${sensorId}?x=${x}&y=${y}`);
-      
-      // Update local state
       setSensors(prev => prev.map(s => 
         s.id === sensorId 
           ? { ...s, marker: { x, y, placed: true } }
           : s
       ));
-      
       toast.success('Position mise à jour');
     } catch (error) {
       toast.error('Erreur lors de la mise à jour');
@@ -543,13 +794,11 @@ export function FloorPlanPage() {
   const handleMarkerRemove = async (sensorId) => {
     try {
       await api.delete(`/floors/${selectedFloor}/markers/${sensorId}`);
-      
       setSensors(prev => prev.map(s => 
         s.id === sensorId 
           ? { ...s, marker: { placed: false } }
           : s
       ));
-      
       toast.success('Marqueur supprimé');
     } catch (error) {
       toast.error('Erreur lors de la suppression');
@@ -636,6 +885,8 @@ export function FloorPlanPage() {
   const selectedFloorData = floors.find(f => f.id === selectedFloor);
   const placedCount = sensors.filter(s => s.marker?.placed).length;
   const unplacedSensors = sensors.filter(s => !s.marker?.placed);
+  const onlineCount = sensors.filter(s => s.status === 'ONLINE').length;
+  const alertCount = sensors.filter(s => s.status === 'ALERT' || s.status === 'FALL_DETECTED').length;
 
   return (
     <div data-testid="floor-plan-page" className="space-y-6">
@@ -648,22 +899,42 @@ export function FloorPlanPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Carte Interactive</h1>
             <p className="text-muted-foreground">
-              Visualisez les plans d'étage et la position des capteurs
+              Visualisez les plans d'étage et la position des capteurs en temps réel
             </p>
           </div>
         </div>
         
-        {/* Edit mode toggle */}
-        {planData && sensors.length > 0 && (
-          <div className="flex items-center gap-3">
-            <Label htmlFor="edit-mode" className="text-sm">Mode édition</Label>
-            <Switch
-              id="edit-mode"
-              checked={isEditMode}
-              onCheckedChange={setIsEditMode}
-            />
+        <div className="flex items-center gap-4">
+          {/* WebSocket status */}
+          <div className={cn(
+            'flex items-center gap-2 px-3 py-1.5 rounded-full text-sm',
+            wsConnected ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'
+          )}>
+            {wsConnected ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                Temps réel actif
+              </>
+            ) : (
+              <>
+                <span className="w-2 h-2 rounded-full bg-red-500" />
+                Hors ligne
+              </>
+            )}
           </div>
-        )}
+          
+          {/* Edit mode toggle */}
+          {planData && sensors.length > 0 && (
+            <div className="flex items-center gap-3">
+              <Label htmlFor="edit-mode" className="text-sm">Mode édition</Label>
+              <Switch
+                id="edit-mode"
+                checked={isEditMode}
+                onCheckedChange={setIsEditMode}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Selectors */}
@@ -774,6 +1045,21 @@ export function FloorPlanPage() {
         </CardContent>
       </Card>
 
+      {/* Alert banner */}
+      {alertCount > 0 && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-center gap-3">
+          <AlertTriangle className="h-6 w-6 text-red-500 animate-pulse" />
+          <div>
+            <p className="font-semibold text-red-600">
+              {alertCount} alerte{alertCount > 1 ? 's' : ''} active{alertCount > 1 ? 's' : ''}
+            </p>
+            <p className="text-sm text-red-500">
+              Vérifiez les capteurs en alerte sur le plan
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Main content */}
       <div className={cn('grid gap-6', isEditMode ? 'grid-cols-1 lg:grid-cols-4' : 'grid-cols-1')}>
         {/* Sensors sidebar (edit mode only) */}
@@ -844,7 +1130,7 @@ export function FloorPlanPage() {
                 {placedCount > 0 && (
                   <div className="flex items-center gap-2 text-sm">
                     <Radio className="h-4 w-4 text-green-500" />
-                    <span>{placedCount} capteur{placedCount > 1 ? 's' : ''} placé{placedCount > 1 ? 's' : ''}</span>
+                    <span>{placedCount} placé{placedCount > 1 ? 's' : ''}</span>
                   </div>
                 )}
                 {planData && (
@@ -875,6 +1161,7 @@ export function FloorPlanPage() {
                   onMarkerUpdate={handleMarkerUpdate}
                   onMarkerRemove={handleMarkerRemove}
                   onSensorDrop={handleSensorDrop}
+                  newEventSensorId={newEventSensorId}
                 />
               )}
             </div>
@@ -884,16 +1171,16 @@ export function FloorPlanPage() {
 
       {/* Stats */}
       {selectedFloorData && !isEditMode && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-green-500/10">
-                  <Radio className="h-5 w-5 text-green-500" />
+                <div className="p-2 rounded-lg bg-blue-500/10">
+                  <Radio className="h-5 w-5 text-blue-500" />
                 </div>
                 <div>
                   <div className="text-2xl font-bold">{sensors.length}</div>
-                  <div className="text-sm text-muted-foreground">Capteurs total</div>
+                  <div className="text-sm text-muted-foreground">Total</div>
                 </div>
               </div>
             </CardContent>
@@ -901,12 +1188,38 @@ export function FloorPlanPage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-blue-500/10">
-                  <CheckCircle2 className="h-5 w-5 text-blue-500" />
+                <div className="p-2 rounded-lg bg-green-500/10">
+                  <Wifi className="h-5 w-5 text-green-500" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{placedCount}</div>
-                  <div className="text-sm text-muted-foreground">Placés sur le plan</div>
+                  <div className="text-2xl font-bold">{onlineCount}</div>
+                  <div className="text-sm text-muted-foreground">En ligne</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-gray-500/10">
+                  <WifiOff className="h-5 w-5 text-gray-500" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{sensors.length - onlineCount - alertCount}</div>
+                  <div className="text-sm text-muted-foreground">Hors ligne</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className={alertCount > 0 ? 'border-red-500/50 bg-red-500/5' : ''}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className={cn('p-2 rounded-lg', alertCount > 0 ? 'bg-red-500/20' : 'bg-red-500/10')}>
+                  <AlertTriangle className={cn('h-5 w-5 text-red-500', alertCount > 0 && 'animate-pulse')} />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{alertCount}</div>
+                  <div className="text-sm text-muted-foreground">Alertes</div>
                 </div>
               </div>
             </CardContent>
@@ -920,21 +1233,6 @@ export function FloorPlanPage() {
                 <div>
                   <div className="text-2xl font-bold">{sensors.length - placedCount}</div>
                   <div className="text-sm text-muted-foreground">Non placés</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-emerald-500/10">
-                  <Radio className="h-5 w-5 text-emerald-500" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">
-                    {sensors.filter(s => s.status === 'ONLINE').length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">En ligne</div>
                 </div>
               </div>
             </CardContent>
