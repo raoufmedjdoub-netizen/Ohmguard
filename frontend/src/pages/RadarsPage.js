@@ -272,7 +272,8 @@ export function RadarsPage() {
     const matchesAssignment = selectedAssignment === 'all' || 
       (selectedAssignment === 'PENDING' && !radar.client_id) ||
       (selectedAssignment === 'ASSIGNED' && radar.client_id);
-    return matchesSearch && matchesStatus && matchesAssignment;
+    const matchesType = selectedType === 'all' || radar.type === selectedType;
+    return matchesSearch && matchesStatus && matchesAssignment && matchesType;
   });
 
   // Stats
