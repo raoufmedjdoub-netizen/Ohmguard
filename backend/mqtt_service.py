@@ -703,16 +703,19 @@ class MQTTService:
         channel_name = payload.get("channel_name", "")
         sensor = await ai_service.get_or_create_sensor(channel, channel_name)
         
-        # Check confidence threshold
+        # Check confidence threshold (per warning type or global)
         confidence = payload.get("confidence", 0)
-        threshold = sensor.get("confidence_threshold", 0.7)
+        warning_type = payload.get("warning_type", "Unknown")
+        
+        # Use per-type threshold if available, otherwise use global threshold
+        warning_thresholds = sensor.get("warning_thresholds", {})
+        threshold = warning_thresholds.get(warning_type, sensor.get("confidence_threshold", 0.7))
         
         if confidence < threshold:
-            logger.debug(f"Ignoring low confidence AI event: {confidence} < {threshold}")
+            logger.debug(f"Ignoring low confidence AI event: {confidence} < {threshold} (type: {warning_type})")
             return
         
         # Check if warning type is enabled
-        warning_type = payload.get("warning_type", "Unknown")
         enabled_warnings = sensor.get("enabled_warnings", [])
         if enabled_warnings and warning_type not in enabled_warnings:
             logger.debug(f"Ignoring disabled warning type: {warning_type}")
