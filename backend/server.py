@@ -3111,6 +3111,22 @@ async def startup_event():
             logger.error(f"Failed to initialize MQTT services: {e}")
     else:
         logger.info("MQTT services disabled")
+    
+    # Initialize Seedoo MQTT service (separate broker for AI cameras)
+    if SEEDOO_MQTT_ENABLED:
+        try:
+            from seedoo_mqtt_service import start_seedoo_mqtt_service
+            await start_seedoo_mqtt_service(
+                broker_host=SEEDOO_MQTT_HOST,
+                broker_port=SEEDOO_MQTT_PORT,
+                db=db,
+                broadcast_callback=socketio_broadcast
+            )
+            logger.info(f"Seedoo MQTT service initialized - connected to {SEEDOO_MQTT_HOST}:{SEEDOO_MQTT_PORT}")
+        except Exception as e:
+            logger.error(f"Failed to initialize Seedoo MQTT service: {e}")
+    else:
+        logger.info("Seedoo MQTT service disabled")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
