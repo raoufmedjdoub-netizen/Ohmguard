@@ -4,6 +4,7 @@
  * Affiche UNIQUEMENT les événements reçus en temps réel via WebSocket.
  * La page démarre vide et se remplit au fur et à mesure des événements.
  * Quand presence_detected: false, la carte disparaît.
+ * Supporte les événements des radars Vayyar ET des caméras IA Seedoo.
  */
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import api from '@/lib/api';
@@ -12,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
@@ -22,7 +24,13 @@ import {
   Wifi,
   WifiOff,
   Building2,
-  Activity
+  Activity,
+  Camera,
+  Video,
+  AlertTriangle,
+  User,
+  Flame,
+  Eye
 } from 'lucide-react';
 
 import { RadarStatusCard } from '@/components/live';
