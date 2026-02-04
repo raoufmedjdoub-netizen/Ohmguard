@@ -69,7 +69,7 @@ class AISensorService:
         }
         
         await self.db.ai_sensors.insert_one(sensor)
-        del sensor["_id"] if "_id" in sensor else None
+        sensor.pop("_id", None)
         
         logger.info(f"Created AI sensor: {sensor['id']} ({sensor['channel']})")
         return sensor
