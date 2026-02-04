@@ -1416,20 +1416,33 @@ export function RoomVisualEditor({ config, onConfigChange }) {
   const selectedRegion = subRegions.find(r => r.id === selectedRegionId);
   const allTemplates = [...PREDEFINED_TEMPLATES, ...customTemplates];
   
-  // Fullscreen Editor Component
-  const FullscreenEditor = () => (
-    <div 
-      className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col select-none"
-      style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
-      onDragStart={(e) => e.preventDefault()}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-background">
-        <div className="flex items-center gap-4">
-          <h2 className="text-xl font-bold">Éditeur Visuel • Radar = (0,0)</h2>
-          <Badge variant="outline" className="text-sm px-3 py-1">
-            {roomWidth.toFixed(1)}m × {roomDepth.toFixed(1)}m
-          </Badge>
+  // Handle Escape key to exit fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen]);
+  
+  return (
+    <div className="space-y-4">
+      {/* Fullscreen overlay - rendered directly, not as a component */}
+      {isFullscreen && (
+        <div 
+          className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col select-none"
+          style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+          onDragStart={(e) => e.preventDefault()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b bg-background">
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-bold">Éditeur Visuel • Radar = (0,0)</h2>
+              <Badge variant="outline" className="text-sm px-3 py-1">
+                {roomWidth.toFixed(1)}m × {roomDepth.toFixed(1)}m
+              </Badge>
           <div className="text-sm font-mono">
             <span className="text-blue-600">X: [{(-radarPositionX).toFixed(2)}, {+(roomWidth - radarPositionX).toFixed(2)}]</span>
             <span className="mx-3 text-muted-foreground">|</span>
