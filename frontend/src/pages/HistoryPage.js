@@ -67,7 +67,7 @@ export function HistoryPage() {
     }
   }, [selectedClient]);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (noCache = false) => {
     setLoading(true);
     try {
       const params = {
@@ -78,7 +78,8 @@ export function HistoryPage() {
         ...(selectedSite !== 'all' && { site_id: selectedSite }),
         ...(selectedType !== 'all' && { event_type: selectedType }),
         ...(selectedStatus !== 'all' && { status: selectedStatus }),
-        ...(selectedSeverity !== 'all' && { severity: selectedSeverity })
+        ...(selectedSeverity !== 'all' && { severity: selectedSeverity }),
+        ...(noCache && { no_cache: true })
       };
       
       const [eventsRes, countRes, sitesRes] = await Promise.all([
