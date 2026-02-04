@@ -3134,5 +3134,9 @@ async def shutdown_db_client():
     if MQTT_ENABLED:
         await stop_mqtt_service()
         await stop_vayyar_config_service()
+    
+    if SEEDOO_MQTT_ENABLED:
+        from seedoo_mqtt_service import stop_seedoo_mqtt_service
+        await stop_seedoo_mqtt_service()
         logger.info("MQTT services stopped")
     client.close()
