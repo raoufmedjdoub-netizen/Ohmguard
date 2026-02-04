@@ -160,6 +160,15 @@ export function FloorDetailPage() {
 
   return (
     <div data-testid="floor-detail-page" className="space-y-6">
+      {/* Breadcrumb */}
+      <LocationBreadcrumb 
+        items={[
+          { type: 'organisation', label: floor.client_name || 'Organisation', href: `/organisations/${floor.client_id}` },
+          { type: 'building', label: floor.building_name || 'Bâtiment', href: `/buildings/${floor.building_id}` },
+          { type: 'floor', label: floor.name, href: null }
+        ]} 
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -172,7 +181,7 @@ export function FloorDetailPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{floor.name}</h1>
             <p className="text-muted-foreground">
-              Niveau {floor.index} • {floor.rooms_count} chambres • {floor.radars_count} radars
+              Niveau {floor.index} • {floor.rooms_count} chambres • {floor.radars_count || 0} capteurs
             </p>
           </div>
         </div>
