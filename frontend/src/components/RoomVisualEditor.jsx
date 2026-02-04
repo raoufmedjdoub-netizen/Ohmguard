@@ -285,6 +285,7 @@ function RoomCanvas({
   
   // Mouse handlers
   const handleMouseDown = (e, target, id = null) => {
+    e.preventDefault();
     e.stopPropagation();
     const svg = svgRef.current;
     const pt = svg.createSVGPoint();
@@ -317,6 +318,7 @@ function RoomCanvas({
   
   const handleMouseMove = (e) => {
     if (!dragging) return;
+    e.preventDefault();
     
     const svg = svgRef.current;
     const pt = svg.createSVGPoint();
