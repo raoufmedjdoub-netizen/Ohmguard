@@ -29,7 +29,8 @@ import {
   Wifi,
   X,
   FileText,
-  Layers
+  Layers,
+  Map
 } from 'lucide-react';
 
 const navItems = [
@@ -41,6 +42,7 @@ const navItems = [
   { path: '/capteurs', icon: Radar, labelKey: 'nav.sensors' },
   { path: '/organisations', icon: Building2, labelKey: 'nav.organisations' },
   { path: '/sites-batiments', icon: Layers, labelKey: 'nav.sites_buildings' },
+  { path: '/carte', icon: Map, labelKey: 'nav.floor_plan' },
   { path: '/alert-rules', icon: AlertTriangle, labelKey: 'nav.alert_rules', requireAdmin: true },
   { path: '/users', icon: Users, labelKey: 'nav.users', requireAdmin: true },
   { path: '/notifications', icon: Bell, labelKey: 'nav.notifications' },
