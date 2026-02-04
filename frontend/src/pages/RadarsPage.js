@@ -286,8 +286,8 @@ export function RadarsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Gestion des Radars</h1>
-          <p className="text-muted-foreground">Radars Vayyar détectés et affectations</p>
+          <h1 className="text-2xl font-bold">{t('radars.title')}</h1>
+          <p className="text-muted-foreground">{t('radars.subtitle')}</p>
         </div>
         <Button variant="outline" onClick={fetchData} disabled={loading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
