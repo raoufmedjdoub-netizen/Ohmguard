@@ -347,7 +347,7 @@ class VayyarConfigService:
                 command_type=command_type,
                 device_id=mqtt_device_id,
                 topic=cmd_topic,
-                message=f"Command sent successfully",
+                message="Command sent successfully",
                 sent_at=now
             )
             
