@@ -172,6 +172,9 @@ export function RadarConfigPage() {
   const [firmwareDialog, setFirmwareDialog] = useState(false);
   const [firmwareUrl, setFirmwareUrl] = useState('');
   const [firmwareVersion, setFirmwareVersion] = useState('');
+  const [wifiDialog, setWifiDialog] = useState(false);
+  const [wifiSsid, setWifiSsid] = useState('');
+  const [wifiPassword, setWifiPassword] = useState('');
 
   const form = useForm({
     resolver: zodResolver(vayyarConfigSchema),
