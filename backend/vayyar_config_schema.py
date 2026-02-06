@@ -88,6 +88,23 @@ class CommandType(IntEnum):
     UPDATE_WIFI_CREDENTIALS = 16
 
 
+class ConfigVersionStatus(str):
+    """Configuration version status"""
+    DRAFT = "DRAFT"
+    SENT = "SENT"
+    ACKED = "ACKED"
+    FAILED = "FAILED"
+    TIMEOUT = "TIMEOUT"
+    UPLOAD_DEV_LOGS = 2
+    REBOOT_DEVICE = 3
+    CANCEL_ALARM = 4
+    REBOOT_UPLOAD_LOG = 6
+    CANCEL_FALL = 7
+    UPDATE_BASE_URL = 8
+    DOWNLOAD_FIRMWARE = 10
+    UPDATE_WIFI_CREDENTIALS = 16
+
+
 # ==================== FLEXIBLE TYPE ====================
 
 FlexibleValue = Union[bool, int, float, str, None]
