@@ -326,8 +326,8 @@ class VayyarConfigService:
                 command_payload["ssid"] = params.get("ssid", "")
                 command_payload["password"] = params.get("password", "")
         
-        # Get command topic
-        cmd_topic = self._get_cmd_topic(mqtt_device_id)
+        # Get command topic - commands go to config topic, not commands topic
+        cmd_topic = self._get_pub_topic(mqtt_device_id)  # Use config topic
         now = datetime.now(timezone.utc).isoformat()
         
         # Log command to database
