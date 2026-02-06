@@ -341,7 +341,7 @@ class VayyarConfigService:
                     qos=1
                 )
             
-            logger.info(f"Sent command {command_payload['type']} to {cmd_topic}: {command_payload}")
+            logger.info(f"Sent command type {command_type} to {cmd_topic}: {command_payload}")
             
             return CommandResponse(
                 success=True,
