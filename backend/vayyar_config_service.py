@@ -294,19 +294,6 @@ class VayyarConfigService:
         # Build command payload with correct format as per API: {"type": N}
         command_payload = {"type": command_type}
         
-        # Add parameters based on command type
-        if params:
-            if command_type == CommandType.UPDATE_BASE_URL.value:
-                command_payload["baseUrl"] = params.get("baseUrl", "")
-            elif command_type == CommandType.DOWNLOAD_FIRMWARE.value:
-                if params.get("url"):
-                    command_payload["url"] = params["url"]
-                if params.get("version"):
-                    command_payload["version"] = params["version"]
-            elif command_type == CommandType.UPDATE_WIFI_CREDENTIALS.value:
-                command_payload["ssid"] = params.get("ssid", "")
-                command_payload["password"] = params.get("password", "")
-        
         # Get command topic - commands go to /devices/{deviceId}/commands
         cmd_topic = self._get_cmd_topic(mqtt_device_id)  # Use commands topic
         now = datetime.now(timezone.utc).isoformat()
