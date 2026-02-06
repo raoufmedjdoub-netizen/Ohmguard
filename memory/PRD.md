@@ -265,6 +265,41 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
     - Statistiques temps réel (Total, En ligne, Hors ligne, Alertes)
 - [x] **Configurateur Visuel de Radar (February 4, 2026)** - Multi-régions, Templates, Plein écran
   - Composant `RoomVisualEditor.jsx` intégré dans `RadarConfigPage.js`
+- [x] **Module Configuration Complète Vayyar API v38.42 (February 6, 2026)**
+  - **Schéma Backend enrichi (`vayyar_config_schema.py`)** :
+    - `AppConfig` complet : silentMode, ledMode, ledPolicy, volume, logging, alertes, télémétrie, dry contacts, BLE, WiFi health, NTP
+    - `WalabotConfig` complet : arena, sensorMounting, fallingSensitivity, bedExit, trackerSubRegions
+    - `RfProfile` : régulation RF, bande passante
+  - **Commandes MQTT (downstream)** :
+    - Type 1: Upload App Logs
+    - Type 2: Upload Dev Logs
+    - Type 3: Reboot Device
+    - Type 4: Cancel Alarm
+    - Type 6: Reboot + Upload Log
+    - Type 7: Cancel Fall
+    - Type 8: Update Base URL
+    - Type 10: Download Firmware
+    - Type 16: Update WiFi (deprecated)
+  - **Service Backend (`vayyar_config_service.py`)** :
+    - Envoi de commandes via MQTT avec logging
+    - Historique des commandes (`command_logs` collection)
+    - Cache de l'état du radar
+  - **Nouveaux Endpoints API** :
+    - `POST /api/devices/{id}/command` - Envoyer une commande
+    - `GET /api/devices/{id}/commands/history` - Historique des commandes
+    - `GET /api/devices/{id}/state` - État du radar (cache)
+    - `GET /api/devices/command-types` - Types de commandes disponibles
+    - `GET /api/devices/config-enums` - Valeurs d'énumération pour la config
+  - **Page Frontend (`RadarConfigPage.js`)** :
+    - **7 onglets** : Commandes, Visuel, Détection, Alertes, Télémétrie, Réseau, Avancé
+    - **Onglet Commandes** : 7 boutons d'action rapide (Redémarrer, Annuler Alarme, Logs, Firmware...)
+    - **Onglet Détection** : Arena, Chute, Sortie de lit, Présence, Sous-régions
+    - **Onglet Alertes** : Délais, Audio/LED, Rapports MQTT, Dry contacts
+    - **Onglet Télémétrie** : Politique, Transport, 15+ événements configurables
+    - **Onglet Réseau** : NTP, Santé WiFi, RSSI, BLE
+    - **Onglet Avancé** : Produit, RF, Logging, Modes, DSP
+    - Éditeur JSON Monaco avec validation en temps réel
+    - Affichage de l'état du radar (température, firmware, last seen)
 - [x] **Correction des noms de pages dans la navigation (February 4, 2026)**
   - Mise à jour de `SubNavbar.js` pour utiliser les chemins corrects (`/capteurs`, `/organisations`, `/sites-batiments`, `/carte`)
   - Ajout des configurations manquantes pour Sites & Bâtiments et Carte Interactive
