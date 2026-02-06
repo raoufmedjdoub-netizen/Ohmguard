@@ -1244,6 +1244,84 @@ export function RadarConfigPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Update WiFi Credentials Dialog */}
+      <Dialog open={wifiDialog} onOpenChange={setWifiDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wifi className="h-5 w-5" />
+              Configuration WiFi
+              <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
+                Déprécié
+              </Badge>
+            </DialogTitle>
+            <DialogDescription>
+              Modifiez les identifiants WiFi du radar. Cette commande est dépréciée et peut ne pas fonctionner sur les versions récentes du firmware.
+            </DialogDescription>
+          </DialogHeader>
+          <Alert className="bg-yellow-500/10 border-yellow-500/30">
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="text-yellow-600">
+              Cette fonctionnalité est dépréciée. Utilisez le Bluetooth ou l'interface web du radar pour modifier le WiFi.
+            </AlertDescription>
+          </Alert>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="wifiSsid">Nom du réseau (SSID)</Label>
+              <Input
+                id="wifiSsid"
+                placeholder="MonReseauWiFi"
+                value={wifiSsid}
+                onChange={(e) => setWifiSsid(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="wifiPassword">Mot de passe</Label>
+              <Input
+                id="wifiPassword"
+                type="password"
+                placeholder="••••••••"
+                value={wifiPassword}
+                onChange={(e) => setWifiPassword(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWifiDialog(false)}>
+              Annuler
+            </Button>
+            <Button 
+              variant="secondary"
+              onClick={async () => {
+                if (!wifiSsid.trim()) {
+                  toast.error('Veuillez saisir le nom du réseau (SSID)');
+                  return;
+                }
+                if (!wifiPassword.trim()) {
+                  toast.error('Veuillez saisir le mot de passe');
+                  return;
+                }
+                await sendCommand(COMMAND_TYPES.UPDATE_WIFI, { 
+                  ssid: wifiSsid.trim(), 
+                  password: wifiPassword.trim() 
+                });
+                setWifiDialog(false);
+                setWifiSsid('');
+                setWifiPassword('');
+              }}
+              disabled={commandLoading === COMMAND_TYPES.UPDATE_WIFI}
+            >
+              {commandLoading === COMMAND_TYPES.UPDATE_WIFI ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              Envoyer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
