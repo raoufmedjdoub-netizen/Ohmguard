@@ -165,6 +165,13 @@ export function RadarConfigPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showJsonEditor, setShowJsonEditor] = useState(false);
   const [mqttOptions, setMqttOptions] = useState({ qos: 1, retain: false });
+  
+  // Dialog states for commands with parameters
+  const [baseUrlDialog, setBaseUrlDialog] = useState(false);
+  const [baseUrlValue, setBaseUrlValue] = useState('');
+  const [firmwareDialog, setFirmwareDialog] = useState(false);
+  const [firmwareUrl, setFirmwareUrl] = useState('');
+  const [firmwareVersion, setFirmwareVersion] = useState('');
 
   const form = useForm({
     resolver: zodResolver(vayyarConfigSchema),
