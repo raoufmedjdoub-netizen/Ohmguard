@@ -327,7 +327,7 @@ Build OhmGuard - a SaaS platform for fall detection management using **Vayyar ra
 - [ ] Webhook delivery with HMAC signature
 - [ ] Escalation automation
 - [ ] Data export (CSV/Excel)
-- [ ] Config ACKs MQTT UI (History/Rollback modal)
+- [x] Config ACKs MQTT UI (History/Rollback modal) - **February 6, 2026**
 
 ### P2 - Medium Priority
 - [ ] Device MQTT simulator (Node.js)
