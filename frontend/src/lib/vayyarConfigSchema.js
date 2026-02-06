@@ -174,12 +174,25 @@ export const ENUM_VALUES = {
     { value: 1, label: "Allumé (AllOn)" },
     { value: 2, label: "Statut uniquement (StatusOnly)" }
   ],
+  ledPolicy: [
+    { value: 0, label: "Erreurs uniquement (ErrorsOnly)" },
+    { value: 1, label: "Toujours allumé (AlwaysOn)" },
+    { value: 2, label: "Éteint (Off)" }
+  ],
   logLevel: [
     { value: -1, label: "Verbose" },
     { value: 0, label: "Debug" },
     { value: 1, label: "Info" },
     { value: 2, label: "Warning" },
     { value: 3, label: "Error" }
+  ],
+  appLogLevel: [
+    { value: 0, label: "Désactivé (Disable)" },
+    { value: 1, label: "Error" },
+    { value: 2, label: "Warning" },
+    { value: 3, label: "Info" },
+    { value: 4, label: "Debug" },
+    { value: 5, label: "Verbose" }
   ],
   telemetryPolicy: [
     { value: 0, label: "Désactivé (Off)" },
@@ -205,6 +218,32 @@ export const ENUM_VALUES = {
     { value: 0, label: "Mur (Wall)" },
     { value: 1, label: "Plafond (Ceiling)" },
     { value: 2, label: "Coin (Corner)" }
+  ],
+  bleServerType: [
+    { value: 0, label: "Désactivé (OFF)" },
+    { value: 1, label: "GATT" },
+    { value: 2, label: "BEACON" }
+  ],
+  productType: [
+    { value: 0, label: "Falling" },
+    { value: 1, label: "Presence" },
+    { value: 2, label: "Tracking" }
+  ],
+  algoProfile: [
+    { value: 0, label: "TRACKING" },
+    { value: 1, label: "PRESENCE" },
+    { value: 2, label: "FALLING" }
+  ],
+  rfRegulationZone: [
+    { value: 0, label: "WW (Worldwide)" },
+    { value: 1, label: "US" },
+    { value: 2, label: "EU" },
+    { value: 3, label: "JP (Japan)" }
+  ],
+  rfBandWidth: [
+    { value: 0, label: "BW500" },
+    { value: 1, label: "BW1000" },
+    { value: 2, label: "BW1500" }
   ]
 };
 
