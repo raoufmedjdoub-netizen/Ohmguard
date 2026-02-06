@@ -8,7 +8,8 @@ import {
   Settings, Send, RotateCcw, History, Save, AlertTriangle,
   Check, X, Clock, ChevronLeft, Copy, Plus, Trash2, RefreshCw,
   Square, Bed, Power, Upload, Bell, BellOff, Wifi, Radio,
-  Thermometer, Activity, Terminal, Download, Play, Pause, Volume2, VolumeX
+  Thermometer, Activity, Terminal, Download, Play, Pause, Volume2, VolumeX,
+  Link, Globe
 } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
