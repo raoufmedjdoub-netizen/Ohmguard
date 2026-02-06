@@ -1,116 +1,71 @@
 """
 Vayyar Radar Configuration Schema and Validation
 Based on the official Vayyar Care Device API v38.42
+All enum values are NUMERIC as per the API specification
 """
 
 from pydantic import BaseModel, Field
 from typing import Optional, List, Union, Any, Dict
-from enum import Enum
+from enum import IntEnum
 from datetime import datetime
 import uuid
 
 
-# ==================== ENUMS ====================
+# ==================== ENUMS (NUMERIC VALUES) ====================
 
-class LedMode(str, Enum):
-    ALL_OFF = "AllOff"
-    ALL_ON = "AllOn"
-    STATUS_ONLY = "StatusOnly"
-
-
-class LedPolicy(str, Enum):
-    ERRORS_ONLY = "ErrorsOnly"
-    ALWAYS_ON = "AlwaysOn"
-    OFF = "Off"
+class LedMode(IntEnum):
+    """LED Mode - numeric values"""
+    ALL_OFF = 0
+    ALL_ON = 1
+    STATUS_ONLY = 2
 
 
-class LogLevel(str, Enum):
-    VERBOSE = "V_LOG_LEVEL_VERBOSE"
-    DEBUG = "V_LOG_LEVEL_DEBUG"
-    INFO = "V_LOG_LEVEL_INFO"
-    WARNING = "V_LOG_LEVEL_WARNING"
-    ERROR = "V_LOG_LEVEL_ERROR"
+class TelemetryPolicy(IntEnum):
+    """Telemetry Policy - numeric values"""
+    OFF = 0
+    ON = 1
+    ON_DEMAND = 2
 
 
-class TelemetryPolicy(str, Enum):
-    OFF = "Off"
-    ON = "On"
-    ON_DEMAND = "OnDemand"
+class TelemetryTransport(IntEnum):
+    """Telemetry Transport - numeric values"""
+    MQTT_QOS0 = 0
+    MQTT_QOS1 = 1
+    HTTP = 2
 
 
-class TelemetryTransport(str, Enum):
-    MQTT_QOS0 = "MqttQos0"
-    MQTT_QOS1 = "MqttQos1"
-    HTTP = "Http"
+class TrackerTargetsDebugPolicy(IntEnum):
+    """Tracker Targets Debug Policy - numeric values"""
+    OFF = 0
+    ON = 1
+    VERBOSE = 2
 
 
-class TrackerTargetsDebugPolicy(str, Enum):
-    OFF = "OFF"
-    ON = "ON"
-    VERBOSE = "VERBOSE"
+class FallingSensitivity(IntEnum):
+    """Falling Sensitivity - numeric values"""
+    LOW = 0
+    MEDIUM = 1
+    HIGH = 2
 
 
-class AlgoProfile(str, Enum):
-    TRACKING = "TRACKING"
-    PRESENCE = "PRESENCE"
-    FALLING = "FALLING"
+class SensorMounting(IntEnum):
+    """Sensor Mounting Position - numeric values"""
+    WALL = 0
+    CEILING = 1
+    CORNER = 2
 
 
-class AppLogLevel(str, Enum):
-    DISABLE = "Disable"
-    ERROR = "Error"
-    WARNING = "Warning"
-    INFO = "Info"
-    DEBUG = "Debug"
-    VERBOSE = "Verbose"
+class LogLevel(IntEnum):
+    """Log Level - numeric values"""
+    VERBOSE = -1
+    DEBUG = 0
+    INFO = 1
+    WARNING = 2
+    ERROR = 3
 
 
-class BleServerType(str, Enum):
-    OFF = "OFF"
-    GATT = "GATT"
-    BEACON = "BEACON"
-
-
-class FallingSensitivity(str, Enum):
-    LOW = "LowSensitivity"
-    MEDIUM = "MediumSensitivity"
-    HIGH = "HighSensitivity"
-
-
-class SensorMounting(str, Enum):
-    WALL = "Wall"
-    CEILING = "Ceiling"
-    CORNER = "Corner"
-
-
-class RfRegulationZone(str, Enum):
-    WW = "WW"
-    US = "US"
-    EU = "EU"
-    JP = "JP"
-
-
-class RfBandWidth(str, Enum):
-    BW500 = "BW500"
-    BW1000 = "BW1000"
-    BW1500 = "BW1500"
-
-
-class ProductType(str, Enum):
-    FALLING = "Falling"
-    PRESENCE = "Presence"
-    TRACKING = "Tracking"
-
-
-class ConfigVersionStatus(str, Enum):
-    DRAFT = "DRAFT"
-    SENT = "SENT"
-    ACKED = "ACKED"
-    FAILED = "FAILED"
-    TIMEOUT = "TIMEOUT"
-
-
-class DeviceStatus(str, Enum):
+class DeviceStatus(str):
+    """Device Status - string values as per API"""
     MONITORING = "monitoring"
     LEARNING = "learning"
     TEST = "test"
@@ -120,8 +75,8 @@ class DeviceStatus(str, Enum):
 
 # ==================== COMMAND TYPES (Downstream MQTT) ====================
 
-class CommandType(int, Enum):
-    """Device command types for MQTT downstream messages"""
+class CommandType(IntEnum):
+    """Device command types for MQTT downstream messages - numeric values"""
     UPLOAD_APP_LOGS = 1
     UPLOAD_DEV_LOGS = 2
     REBOOT_DEVICE = 3
@@ -194,31 +149,28 @@ class LoggerStats(BaseModel):
     msgsLogged: int = 0
 
 
-# ==================== APP CONFIG ====================
+# ==================== APP CONFIG (NUMERIC ENUMS) ====================
 
 class AppConfig(BaseModel):
     """
     Application configuration section.
     Controls device behavior, alerts, telemetry, and communication.
+    All enum values are NUMERIC as per API specification.
     """
     # Mode settings
     silentMode: bool = False
     demoMode: bool = False
-    enableTestMode: bool = False
+    enableTestMode: Union[bool, str] = False  # Can be bool or "false" string
     offlineMode: bool = True
     
-    # LED configuration
-    ledMode: str = "AllOff"  # AllOff, AllOn, StatusOnly
-    ledPolicy: str = "ErrorsOnly"  # ErrorsOnly, AlwaysOn, Off
+    # LED configuration (NUMERIC: 0=AllOff, 1=AllOn, 2=StatusOnly)
+    ledMode: int = 0
     
     # Audio
-    volume: FlexibleValue = 100
+    volume: int = 100
     
-    # Logging
-    logLevel: str = "V_LOG_LEVEL_VERBOSE"
-    appLogAutoLevel: str = "Disable"
-    appLogOnDemandLevel: str = "Disable"
-    legacyLogFileUpload: bool = True
+    # Logging (NUMERIC: -1=Verbose, 0=Debug, 1=Info, 2=Warning, 3=Error)
+    logLevel: int = -1
     
     # Alert timing
     confirmedToAlertTimeoutSec: int = 40
@@ -226,38 +178,28 @@ class AppConfig(BaseModel):
     
     # Presence reporting
     presenceReportMinRateMills: int = 60000
-    enablePresencePeriodicReport: bool = True
     
-    # Learning mode timestamps
-    learningModeEndTs: FlexibleValue = False
-    learningModeStartTs: FlexibleValue = False
+    # Learning mode timestamps (can be 0 or timestamp)
+    learningModeEndTs: Union[int, str] = 0
+    learningModeStartTs: Union[int, str] = 0
     
     # DSP records
-    dspRecordsPublishPolicy: FlexibleValue = False
-    dspRecordsPublishMaxLatency_sec: int = 10
+    dspRecordsPublishPolicy: bool = False
     
     # Analytics
     enableAnalytics: bool = True
     
-    # Telemetry settings
-    telemetryPolicy: str = "Off"  # Off, On, OnDemand
-    telemetryTransport: str = "MqttQos0"  # MqttQos0, MqttQos1, Http
+    # Telemetry settings (NUMERIC: 0=Off, 1=On, 2=OnDemand)
+    telemetryPolicy: int = 0
+    telemetryTransport: int = 0  # 0=MqttQos0, 1=MqttQos1, 2=Http
     telemetryEnabled: bool = False
-    
-    # Telemetry events
-    telemAlwaysON: bool = False
-    telemOnFall: bool = True
-    telemOnSensitiveFall: bool = True
-    telemOnBedExit: bool = True
-    telemOnDoorEvents: bool = False
-    telemOnOutOfBed: bool = False
     
     # Dry contacts
     dryContacts: DryContacts = Field(default_factory=DryContacts)
-    dryContactActivationDuration_sec: FlexibleValue = "30.0"
+    dryContactActivationDuration_sec: Union[int, float, str] = 30
     
-    # Tracker debug
-    trackerTargetsDebugPolicy: str = "OFF"  # OFF, ON, VERBOSE
+    # Tracker debug (NUMERIC: 0=Off, 1=On, 2=Verbose)
+    trackerTargetsDebugPolicy: int = 0
     
     # Door events
     enableDoorEvents: bool = False
@@ -267,43 +209,26 @@ class AppConfig(BaseModel):
     
     # Sensitive mode (sensitive falls)
     enableSensitiveMode: bool = False
-    sensitivityLevel: float = 0.7
+    sensitivityLevel: float = 0.78
     
     # Falling detection thresholds
     thMinEventsForFirstDecision: int = 12
     thNumOfDetectionsInChain: int = 11
     
-    # Algorithm profile
-    algoProfile: str = "TRACKING"  # TRACKING, PRESENCE, FALLING
-    
-    # Suspend duration
-    suspendDuration_sec: int = 900
-    enableTelemetriesOnEventDuringSuspend: bool = True
+    # Max time in buffer
+    max_time_in_buffer: int = 600
     
     # BLE configuration
-    bleServerType: str = "OFF"  # OFF, GATT, BEACON
-    bleCustomDeviceName: str = "VC000"
     enableBeaconScanner: bool = False
-    bleBeaconMacs: List[Any] = Field(default_factory=lambda: [{}])
     bleBeaconRssiThreshold: int = -80
     
-    # WiFi health monitoring
-    enableWifiHealthMonitor: bool = True
-    maxDisconnetionDurationSecWifiHealthMonitor: int = 240
-    disconnectionsBurstLimitWifiHealthMonitor: int = 15
-    maxDisconnectionsPerHourAverageWifiHealthMonitor: int = 15
-    
     # RSSI monitoring
-    enableRssiMonitor: bool = True
+    enableRssiMonitor: bool = False
     rssiThresholdRssiMonitor: int = -70
     samplesNumRssiMonitor: int = 30
     
-    # NTP servers
-    ntpPrimaryBackupServer: str = "europe.pool.ntp.org"
-    ntpSecondaryBackupServer: str = "us.pool.ntp.org"
-    
-    # Smart reboot
-    smartReboot: bool = False
+    # WiFi health monitoring
+    enableWifiHealthMonitor: bool = False
     
     # MQTT reporting
     reportFallsToMqtt: bool = True
@@ -313,35 +238,37 @@ class AppConfig(BaseModel):
         extra = "allow"
 
 
-# ==================== WALABOT CONFIG ====================
+# ==================== WALABOT CONFIG (NUMERIC ENUMS) ====================
 
 class WalabotConfig(BaseModel):
     """
     Walabot sensor configuration section.
     Controls radar parameters, detection zones, and sensitivity.
+    All enum values are NUMERIC as per API specification.
     """
     # Arena boundaries (meters)
     xMin: float = -1.8
     xMax: float = 1.8
     yMin: float = 0.3
     yMax: float = 3.5
-    zMin: FlexibleValue = 0
+    zMin: float = 0
     zMax: float = 1.8
     
     # Sensor position
     sensorHeight: float = 1.5
-    sensorMounting: str = "Wall"  # Wall, Ceiling, Corner
+    
+    # Sensor mounting (NUMERIC: 0=Wall, 1=Ceiling, 2=Corner)
+    sensorMounting: int = 0
     
     # Tracker sub-regions (zones)
     trackerSubRegions: List[TrackerSubRegion] = Field(default_factory=list)
     
-    # Falling detection
-    fallingSensitivity: str = "LowSensitivity"  # LowSensitivity, MediumSensitivity, HighSensitivity
-    maxTargetsForFallingTrigger: FlexibleValue = 0
-    durationUntilConfirm_sec: FlexibleValue = "52.0"
-    minTimeOfTarInFallLoc_sec: FlexibleValue = "30.0"
-    fallingMitigatorEnabled: bool = True
-    fallingMitigatorThreshold: FlexibleValue = False
+    # Falling detection (NUMERIC: 0=Low, 1=Medium, 2=High)
+    fallingSensitivity: int = 0
+    maxTargetsForFallingTrigger: int = 0
+    durationUntilConfirm_sec: Union[int, float] = 52
+    minTimeOfTarInFallLoc_sec: Union[int, float] = 30
+    fallingMitigatorEnabled: bool = False
     
     # Presence detection
     performHeatup: bool = True
@@ -349,45 +276,14 @@ class WalabotConfig(BaseModel):
     enterDuration: int = 10
     exitDuration: int = 30
     
-    # Bed exit detection
-    bedExitEnabled: bool = False
-    bedExitPredictionThreshold: float = 0.9
-    bedExitNFramesToReset: int = 100
-    
-    # Telemetry settings
-    enableFallingTelemetry: bool = True
-    enableSensitiveFallingTelemetry: bool = True
-    enablePresenceTelemetry: bool = True
-    enableTrackerTargetTelemetry: bool = True
-    enableBedExitTelemetry: bool = False
-    enableBedExitStateTelemetry: bool = False
-    enableDoorEventTelemetry: bool = False
-    enablePeakTelemetry: bool = True
-    enableAboveThPointTelemetry: bool = False
-    enableIslandPointTelemetry: bool = False
-    enableHeightProfileTelemetry: bool = True
-    enableOtfPointTelemetry: bool = True
-    enableImageParamsTelemetry: bool = True
-    enableInterfererLocHistoryTelemetry: bool = True
-    enableMtiParamsTelemetry: bool = True
-    enableReferenceTelemetry: bool = True
-    enableSuiteTelemetry: bool = False
-    enableClustersTelemetry: bool = True
-    enableSubRegionStateTelemetry: bool = True
+    # Bed exit detection (can be bool or "false" string as per API)
+    bedExitEnabled: Union[bool, str] = "false"
     
     # Dry contact
-    dryContactActivationDuration_sec: FlexibleValue = "30.0"
-
-    class Config:
-        extra = "allow"
-
-
-# ==================== RF PROFILE ====================
-
-class RfProfile(BaseModel):
-    """RF Profile configuration"""
-    rfRegulationZone: str = "WW"  # WW, US, EU, JP
-    rfBandWidth: str = "BW500"  # BW500, BW1000, BW1500
+    dryContactActivationDuration_sec: Union[int, float] = 30
+    
+    # Telemetry
+    enableAboveThPointTelemetry: bool = False
 
     class Config:
         extra = "allow"
@@ -399,65 +295,64 @@ class VayyarConfig(BaseModel):
     """Complete Vayyar radar configuration payload (downstream config)"""
     appConfig: AppConfig = Field(default_factory=AppConfig)
     walabotConfig: WalabotConfig = Field(default_factory=WalabotConfig)
-    rfProfile: RfProfile = Field(default_factory=RfProfile)
-    productType: str = "Falling"  # Falling, Presence, Tracking
 
     class Config:
         extra = "allow"
 
 
 # ==================== MQTT COMMANDS (Downstream) ====================
+# Commands use simple {"type": N} format as per API documentation
 
 class BaseCommand(BaseModel):
-    """Base command model"""
+    """Base command model - type is NUMERIC"""
     type: int
 
 
 class UploadAppLogsCommand(BaseCommand):
-    """Command to upload application logs"""
+    """Command to upload application logs - type: 1"""
     type: int = CommandType.UPLOAD_APP_LOGS.value
 
 
 class UploadDevLogsCommand(BaseCommand):
-    """Command to upload device logs"""
+    """Command to upload device logs - type: 2"""
     type: int = CommandType.UPLOAD_DEV_LOGS.value
 
 
 class RebootDeviceCommand(BaseCommand):
-    """Command to reboot the device"""
+    """Command to reboot the device - type: 3"""
     type: int = CommandType.REBOOT_DEVICE.value
 
 
 class CancelAlarmCommand(BaseCommand):
-    """Command to cancel an active alarm"""
+    """Command to cancel an active alarm - type: 4"""
     type: int = CommandType.CANCEL_ALARM.value
 
 
 class RebootUploadLogCommand(BaseCommand):
-    """Command to reboot and upload logs"""
+    """Command to reboot and upload logs - type: 6"""
     type: int = CommandType.REBOOT_UPLOAD_LOG.value
 
 
 class CancelFallCommand(BaseCommand):
-    """Command to cancel a fall detection"""
+    """Command to cancel a fall detection - type: 7"""
     type: int = CommandType.CANCEL_FALL.value
 
 
 class UpdateBaseUrlCommand(BaseCommand):
-    """Command to update base URL"""
+    """Command to update base URL - type: 8"""
     type: int = CommandType.UPDATE_BASE_URL.value
     baseUrl: str
 
 
 class DownloadFirmwareCommand(BaseCommand):
-    """Command to download firmware"""
+    """Command to download firmware - type: 10"""
     type: int = CommandType.DOWNLOAD_FIRMWARE.value
     url: Optional[str] = None
     version: Optional[str] = None
 
 
 class UpdateWifiCredentialsCommand(BaseCommand):
-    """Command to update WiFi credentials (deprecated)"""
+    """Command to update WiFi credentials (deprecated) - type: 16"""
     type: int = CommandType.UPDATE_WIFI_CREDENTIALS.value
     ssid: str
     password: str
@@ -557,9 +452,7 @@ class CommandResponse(BaseModel):
 
 DEFAULT_CONFIG = VayyarConfig(
     appConfig=AppConfig(),
-    walabotConfig=WalabotConfig(),
-    rfProfile=RfProfile(),
-    productType="Falling"
+    walabotConfig=WalabotConfig()
 )
 
 
@@ -568,23 +461,46 @@ def get_default_config_dict() -> dict:
     return DEFAULT_CONFIG.model_dump()
 
 
-# ==================== ENUM VALUES FOR FRONTEND ====================
+# ==================== ENUM VALUES FOR FRONTEND (NUMERIC) ====================
 
 ENUM_VALUES = {
-    "ledMode": ["AllOff", "AllOn", "StatusOnly"],
-    "ledPolicy": ["ErrorsOnly", "AlwaysOn", "Off"],
-    "logLevel": ["V_LOG_LEVEL_VERBOSE", "V_LOG_LEVEL_DEBUG", "V_LOG_LEVEL_INFO", "V_LOG_LEVEL_WARNING", "V_LOG_LEVEL_ERROR"],
-    "telemetryPolicy": ["Off", "On", "OnDemand"],
-    "telemetryTransport": ["MqttQos0", "MqttQos1", "Http"],
-    "trackerTargetsDebugPolicy": ["OFF", "ON", "VERBOSE"],
-    "algoProfile": ["TRACKING", "PRESENCE", "FALLING"],
-    "appLogLevel": ["Disable", "Error", "Warning", "Info", "Debug", "Verbose"],
-    "bleServerType": ["OFF", "GATT", "BEACON"],
-    "fallingSensitivity": ["LowSensitivity", "MediumSensitivity", "HighSensitivity"],
-    "sensorMounting": ["Wall", "Ceiling", "Corner"],
-    "rfRegulationZone": ["WW", "US", "EU", "JP"],
-    "rfBandWidth": ["BW500", "BW1000", "BW1500"],
-    "productType": ["Falling", "Presence", "Tracking"],
+    "ledMode": [
+        {"value": 0, "label": "Éteint (AllOff)"},
+        {"value": 1, "label": "Allumé (AllOn)"},
+        {"value": 2, "label": "Statut uniquement (StatusOnly)"}
+    ],
+    "logLevel": [
+        {"value": -1, "label": "Verbose"},
+        {"value": 0, "label": "Debug"},
+        {"value": 1, "label": "Info"},
+        {"value": 2, "label": "Warning"},
+        {"value": 3, "label": "Error"}
+    ],
+    "telemetryPolicy": [
+        {"value": 0, "label": "Désactivé (Off)"},
+        {"value": 1, "label": "Activé (On)"},
+        {"value": 2, "label": "À la demande (OnDemand)"}
+    ],
+    "telemetryTransport": [
+        {"value": 0, "label": "MQTT QoS 0"},
+        {"value": 1, "label": "MQTT QoS 1"},
+        {"value": 2, "label": "HTTP"}
+    ],
+    "trackerTargetsDebugPolicy": [
+        {"value": 0, "label": "Désactivé (Off)"},
+        {"value": 1, "label": "Activé (On)"},
+        {"value": 2, "label": "Verbose"}
+    ],
+    "fallingSensitivity": [
+        {"value": 0, "label": "Basse (Low)"},
+        {"value": 1, "label": "Moyenne (Medium)"},
+        {"value": 2, "label": "Haute (High)"}
+    ],
+    "sensorMounting": [
+        {"value": 0, "label": "Mur (Wall)"},
+        {"value": 1, "label": "Plafond (Ceiling)"},
+        {"value": 2, "label": "Coin (Corner)"}
+    ],
     "deviceStatus": ["monitoring", "learning", "test", "silent", "software update"]
 }
 
