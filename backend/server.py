@@ -2943,6 +2943,129 @@ async def delete_template(
         return {"status": "ok"}
     raise HTTPException(status_code=404, detail="Template not found")
 
+
+# ==================== DEVICE COMMANDS ENDPOINTS ====================
+
+class DeviceCommandRequest(BaseModel):
+    """Request to send a command to a device"""
+    command_type: int = Field(..., description="Command type (1=UploadAppLogs, 2=UploadDevLogs, 3=Reboot, 4=CancelAlarm, 6=RebootUploadLog, 7=CancelFall, 8=UpdateBaseUrl, 10=DownloadFirmware, 16=UpdateWifi)")
+    params: Optional[Dict] = Field(default=None, description="Additional parameters for certain commands")
+
+
+@api_router.post("/devices/{device_id}/command")
+async def send_device_command(
+    device_id: str,
+    request: DeviceCommandRequest,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Send a command to a Vayyar radar device.
+    
+    Command types:
+    - 1: Upload App Logs
+    - 2: Upload Dev Logs  
+    - 3: Reboot Device
+    - 4: Cancel Alarm
+    - 6: Reboot + Upload Log
+    - 7: Cancel Fall
+    - 8: Update Base URL (requires params.baseUrl)
+    - 10: Download Firmware (optional params.url, params.version)
+    - 16: Update WiFi Credentials (requires params.ssid, params.password) - deprecated
+    """
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN", "SUPERVISOR"])
+    
+    from vayyar_config_service import vayyar_config_service
+    
+    if not vayyar_config_service:
+        raise HTTPException(status_code=503, detail="Config service not available")
+    
+    try:
+        result = await vayyar_config_service.send_command(
+            sensor_id=device_id,
+            command_type=request.command_type,
+            params=request.params,
+            tenant_id=current_user.tenant_id
+        )
+        return result.model_dump()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to send command: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to send command: {str(e)}")
+
+
+@api_router.get("/devices/{device_id}/commands/history")
+async def get_command_history(
+    device_id: str,
+    limit: int = Query(20, le=100),
+    skip: int = 0,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Get command history for a device"""
+    from vayyar_config_service import vayyar_config_service
+    
+    if not vayyar_config_service:
+        raise HTTPException(status_code=503, detail="Config service not available")
+    
+    return await vayyar_config_service.get_command_history(device_id, limit, skip)
+
+
+@api_router.get("/devices/{device_id}/state")
+async def get_device_state(
+    device_id: str,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Get the current state of a device (from cache).
+    Returns the last received state message from the device.
+    """
+    from vayyar_config_service import vayyar_config_service
+    
+    if not vayyar_config_service:
+        raise HTTPException(status_code=503, detail="Config service not available")
+    
+    # First try to get from cache
+    state = vayyar_config_service.get_device_state(device_id)
+    
+    if not state:
+        # Try to get sensor info from database
+        sensor = await db.sensors.find_one(
+            {"$or": [{"id": device_id}, {"device_id": device_id}]},
+            {"_id": 0}
+        )
+        if sensor:
+            state = {
+                "deviceId": sensor.get("device_id", device_id),
+                "status": sensor.get("device_status", "unknown"),
+                "last_seen": sensor.get("last_seen"),
+                "firmware": sensor.get("firmware"),
+                "serial_product": sensor.get("serial_product"),
+                "hardware": sensor.get("hardware"),
+                "temperature": sensor.get("temperature"),
+                "cached": False
+            }
+        else:
+            raise HTTPException(status_code=404, detail="Device not found")
+    else:
+        state["cached"] = True
+    
+    return state
+
+
+@api_router.get("/devices/command-types")
+async def get_command_types(current_user: UserInDB = Depends(get_current_user)):
+    """Get available command types with descriptions"""
+    from vayyar_config_schema import COMMAND_TYPES
+    return COMMAND_TYPES
+
+
+@api_router.get("/devices/config-enums")
+async def get_config_enums(current_user: UserInDB = Depends(get_current_user)):
+    """Get all enum values for configuration fields"""
+    from vayyar_config_schema import ENUM_VALUES
+    return ENUM_VALUES
+
+
 # Include the router in the main app
 # Create and include Clients & Buildings router
 clients_buildings_router = create_clients_buildings_router(
