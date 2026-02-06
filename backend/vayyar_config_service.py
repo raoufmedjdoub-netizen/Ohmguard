@@ -291,27 +291,8 @@ class VayyarConfigService:
         # Use the device_id field for MQTT communications
         mqtt_device_id = sensor.get("device_id") or sensor_id
         
-        # Map command type to string name for MQTT payload
-        COMMAND_TYPE_NAMES = {
-            CommandType.UPLOAD_APP_LOGS.value: "UploadAppLogs",
-            CommandType.UPLOAD_DEV_LOGS.value: "UploadDevLogs",
-            CommandType.REBOOT_DEVICE.value: "Reboot",
-            CommandType.CANCEL_ALARM.value: "CancelAlarm",
-            CommandType.REBOOT_UPLOAD_LOG.value: "RebootUploadLog",
-            CommandType.CANCEL_FALL.value: "CancelFall",
-            CommandType.UPDATE_BASE_URL.value: "UpdateBaseUrl",
-            CommandType.DOWNLOAD_FIRMWARE.value: "DownloadFirmware",
-            CommandType.UPDATE_WIFI_CREDENTIALS.value: "UpdateWifiCredentials"
-        }
-        
-        # Build command payload with correct format:
-        # { "id": "device_id", "timestamp": ms, "type": "CommandName" }
-        timestamp_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
-        command_payload = {
-            "id": mqtt_device_id,
-            "timestamp": timestamp_ms,
-            "type": COMMAND_TYPE_NAMES.get(command_type, f"Command{command_type}")
-        }
+        # Build command payload with correct format as per API: {"type": N}
+        command_payload = {"type": command_type}
         
         # Add parameters based on command type
         if params:
