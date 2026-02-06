@@ -2,9 +2,10 @@
 Vayyar Radar Configuration Schema and Validation
 Based on the official Vayyar Care Device API v38.42
 All enum values are NUMERIC as per the API specification
+Supports backward compatibility with string enum values
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Union, Any, Dict
 from enum import IntEnum
 from datetime import datetime
@@ -95,14 +96,62 @@ class ConfigVersionStatus(str):
     ACKED = "ACKED"
     FAILED = "FAILED"
     TIMEOUT = "TIMEOUT"
-    UPLOAD_DEV_LOGS = 2
-    REBOOT_DEVICE = 3
-    CANCEL_ALARM = 4
-    REBOOT_UPLOAD_LOG = 6
-    CANCEL_FALL = 7
-    UPDATE_BASE_URL = 8
-    DOWNLOAD_FIRMWARE = 10
-    UPDATE_WIFI_CREDENTIALS = 16
+
+
+# ==================== STRING TO INT MAPPINGS (for backward compatibility) ====================
+
+LED_MODE_MAP = {
+    "AllOff": 0, "alloff": 0, "ALL_OFF": 0,
+    "AllOn": 1, "allon": 1, "ALL_ON": 1,
+    "StatusOnly": 2, "statusonly": 2, "STATUS_ONLY": 2
+}
+
+LOG_LEVEL_MAP = {
+    "V_LOG_LEVEL_VERBOSE": -1, "Verbose": -1, "verbose": -1, "VERBOSE": -1,
+    "V_LOG_LEVEL_DEBUG": 0, "Debug": 0, "debug": 0, "DEBUG": 0,
+    "V_LOG_LEVEL_INFO": 1, "Info": 1, "info": 1, "INFO": 1,
+    "V_LOG_LEVEL_WARNING": 2, "Warning": 2, "warning": 2, "WARNING": 2,
+    "V_LOG_LEVEL_ERROR": 3, "Error": 3, "error": 3, "ERROR": 3
+}
+
+TELEMETRY_POLICY_MAP = {
+    "Off": 0, "off": 0, "OFF": 0,
+    "On": 1, "on": 1, "ON": 1,
+    "OnDemand": 2, "ondemand": 2, "ON_DEMAND": 2
+}
+
+TELEMETRY_TRANSPORT_MAP = {
+    "MqttQos0": 0, "mqttqos0": 0, "MQTT_QOS0": 0,
+    "MqttQos1": 1, "mqttqos1": 1, "MQTT_QOS1": 1,
+    "Http": 2, "http": 2, "HTTP": 2
+}
+
+TRACKER_DEBUG_MAP = {
+    "OFF": 0, "Off": 0, "off": 0,
+    "ON": 1, "On": 1, "on": 1,
+    "VERBOSE": 2, "Verbose": 2, "verbose": 2
+}
+
+FALLING_SENSITIVITY_MAP = {
+    "LowSensitivity": 0, "Low": 0, "low": 0, "LOW": 0,
+    "MediumSensitivity": 1, "Medium": 1, "medium": 1, "MEDIUM": 1,
+    "HighSensitivity": 2, "High": 2, "high": 2, "HIGH": 2
+}
+
+SENSOR_MOUNTING_MAP = {
+    "Wall": 0, "wall": 0, "WALL": 0,
+    "Ceiling": 1, "ceiling": 1, "CEILING": 1,
+    "Corner": 2, "corner": 2, "CORNER": 2
+}
+
+
+def convert_enum_value(value, mapping, default=0):
+    """Convert string enum to int, or return int as-is"""
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        return mapping.get(value, default)
+    return default
 
 
 # ==================== FLEXIBLE TYPE ====================
@@ -166,28 +215,29 @@ class LoggerStats(BaseModel):
     msgsLogged: int = 0
 
 
-# ==================== APP CONFIG (NUMERIC ENUMS) ====================
+# ==================== APP CONFIG (NUMERIC ENUMS with backward compatibility) ====================
 
 class AppConfig(BaseModel):
     """
     Application configuration section.
     Controls device behavior, alerts, telemetry, and communication.
     All enum values are NUMERIC as per API specification.
+    Supports string values for backward compatibility.
     """
     # Mode settings
     silentMode: bool = False
     demoMode: bool = False
-    enableTestMode: Union[bool, str] = False  # Can be bool or "false" string
+    enableTestMode: Union[bool, str] = False
     offlineMode: bool = True
     
     # LED configuration (NUMERIC: 0=AllOff, 1=AllOn, 2=StatusOnly)
-    ledMode: int = 0
+    ledMode: Union[int, str] = 0
     
     # Audio
     volume: int = 100
     
     # Logging (NUMERIC: -1=Verbose, 0=Debug, 1=Info, 2=Warning, 3=Error)
-    logLevel: int = -1
+    logLevel: Union[int, str] = -1
     
     # Alert timing
     confirmedToAlertTimeoutSec: int = 40
@@ -207,8 +257,8 @@ class AppConfig(BaseModel):
     enableAnalytics: bool = True
     
     # Telemetry settings (NUMERIC: 0=Off, 1=On, 2=OnDemand)
-    telemetryPolicy: int = 0
-    telemetryTransport: int = 0  # 0=MqttQos0, 1=MqttQos1, 2=Http
+    telemetryPolicy: Union[int, str] = 0
+    telemetryTransport: Union[int, str] = 0
     telemetryEnabled: bool = False
     
     # Dry contacts
@@ -216,7 +266,7 @@ class AppConfig(BaseModel):
     dryContactActivationDuration_sec: Union[int, float, str] = 30
     
     # Tracker debug (NUMERIC: 0=Off, 1=On, 2=Verbose)
-    trackerTargetsDebugPolicy: int = 0
+    trackerTargetsDebugPolicy: Union[int, str] = 0
     
     # Door events
     enableDoorEvents: bool = False
@@ -251,17 +301,44 @@ class AppConfig(BaseModel):
     reportFallsToMqtt: bool = True
     reportPresenceToMqtt: bool = True
 
+    # Validators to convert string enums to int
+    @field_validator('ledMode', mode='before')
+    @classmethod
+    def convert_led_mode(cls, v):
+        return convert_enum_value(v, LED_MODE_MAP, 0)
+    
+    @field_validator('logLevel', mode='before')
+    @classmethod
+    def convert_log_level(cls, v):
+        return convert_enum_value(v, LOG_LEVEL_MAP, -1)
+    
+    @field_validator('telemetryPolicy', mode='before')
+    @classmethod
+    def convert_telemetry_policy(cls, v):
+        return convert_enum_value(v, TELEMETRY_POLICY_MAP, 0)
+    
+    @field_validator('telemetryTransport', mode='before')
+    @classmethod
+    def convert_telemetry_transport(cls, v):
+        return convert_enum_value(v, TELEMETRY_TRANSPORT_MAP, 0)
+    
+    @field_validator('trackerTargetsDebugPolicy', mode='before')
+    @classmethod
+    def convert_tracker_debug(cls, v):
+        return convert_enum_value(v, TRACKER_DEBUG_MAP, 0)
+
     class Config:
         extra = "allow"
 
 
-# ==================== WALABOT CONFIG (NUMERIC ENUMS) ====================
+# ==================== WALABOT CONFIG (NUMERIC ENUMS with backward compatibility) ====================
 
 class WalabotConfig(BaseModel):
     """
     Walabot sensor configuration section.
     Controls radar parameters, detection zones, and sensitivity.
     All enum values are NUMERIC as per API specification.
+    Supports string values for backward compatibility.
     """
     # Arena boundaries (meters)
     xMin: float = -1.8
@@ -275,13 +352,13 @@ class WalabotConfig(BaseModel):
     sensorHeight: float = 1.5
     
     # Sensor mounting (NUMERIC: 0=Wall, 1=Ceiling, 2=Corner)
-    sensorMounting: int = 0
+    sensorMounting: Union[int, str] = 0
     
     # Tracker sub-regions (zones)
     trackerSubRegions: List[TrackerSubRegion] = Field(default_factory=list)
     
     # Falling detection (NUMERIC: 0=Low, 1=Medium, 2=High)
-    fallingSensitivity: int = 0
+    fallingSensitivity: Union[int, str] = 0
     maxTargetsForFallingTrigger: int = 0
     durationUntilConfirm_sec: Union[int, float] = 52
     minTimeOfTarInFallLoc_sec: Union[int, float] = 30
@@ -302,6 +379,17 @@ class WalabotConfig(BaseModel):
     # Telemetry
     enableAboveThPointTelemetry: bool = False
 
+    # Validators to convert string enums to int
+    @field_validator('sensorMounting', mode='before')
+    @classmethod
+    def convert_sensor_mounting(cls, v):
+        return convert_enum_value(v, SENSOR_MOUNTING_MAP, 0)
+    
+    @field_validator('fallingSensitivity', mode='before')
+    @classmethod
+    def convert_falling_sensitivity(cls, v):
+        return convert_enum_value(v, FALLING_SENSITIVITY_MAP, 0)
+
     class Config:
         extra = "allow"
 
@@ -318,59 +406,27 @@ class VayyarConfig(BaseModel):
 
 
 # ==================== MQTT COMMANDS (Downstream) ====================
-# Commands use simple {"type": N} format as per API documentation
 
 class BaseCommand(BaseModel):
-    """Base command model - type is NUMERIC"""
-    type: int
+    """Base command model"""
+    id: str
+    timestamp: int
+    type: str
 
 
-class UploadAppLogsCommand(BaseCommand):
-    """Command to upload application logs - type: 1"""
-    type: int = CommandType.UPLOAD_APP_LOGS.value
-
-
-class UploadDevLogsCommand(BaseCommand):
-    """Command to upload device logs - type: 2"""
-    type: int = CommandType.UPLOAD_DEV_LOGS.value
-
-
-class RebootDeviceCommand(BaseCommand):
-    """Command to reboot the device - type: 3"""
-    type: int = CommandType.REBOOT_DEVICE.value
-
-
-class CancelAlarmCommand(BaseCommand):
-    """Command to cancel an active alarm - type: 4"""
-    type: int = CommandType.CANCEL_ALARM.value
-
-
-class RebootUploadLogCommand(BaseCommand):
-    """Command to reboot and upload logs - type: 6"""
-    type: int = CommandType.REBOOT_UPLOAD_LOG.value
-
-
-class CancelFallCommand(BaseCommand):
-    """Command to cancel a fall detection - type: 7"""
-    type: int = CommandType.CANCEL_FALL.value
-
-
-class UpdateBaseUrlCommand(BaseCommand):
-    """Command to update base URL - type: 8"""
-    type: int = CommandType.UPDATE_BASE_URL.value
+class CommandWithBaseUrl(BaseCommand):
+    """Command with baseUrl parameter"""
     baseUrl: str
 
 
-class DownloadFirmwareCommand(BaseCommand):
-    """Command to download firmware - type: 10"""
-    type: int = CommandType.DOWNLOAD_FIRMWARE.value
+class CommandWithFirmware(BaseCommand):
+    """Command with firmware parameters"""
     url: Optional[str] = None
     version: Optional[str] = None
 
 
-class UpdateWifiCredentialsCommand(BaseCommand):
-    """Command to update WiFi credentials (deprecated) - type: 16"""
-    type: int = CommandType.UPDATE_WIFI_CREDENTIALS.value
+class CommandWithWifi(BaseCommand):
+    """Command with WiFi parameters"""
     ssid: str
     password: str
 
@@ -517,8 +573,7 @@ ENUM_VALUES = {
         {"value": 0, "label": "Mur (Wall)"},
         {"value": 1, "label": "Plafond (Ceiling)"},
         {"value": 2, "label": "Coin (Corner)"}
-    ],
-    "deviceStatus": ["monitoring", "learning", "test", "silent", "software update"]
+    ]
 }
 
 
