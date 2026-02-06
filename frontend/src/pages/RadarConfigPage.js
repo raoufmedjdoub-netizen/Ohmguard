@@ -1120,6 +1120,120 @@ export function RadarConfigPage() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Update Base URL Dialog */}
+      <Dialog open={baseUrlDialog} onOpenChange={setBaseUrlDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5" />
+              Modifier l'URL de base
+            </DialogTitle>
+            <DialogDescription>
+              Changez l'URL du serveur vers lequel le radar envoie ses données.
+              Attention : une mauvaise URL peut rendre le radar inaccessible.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="baseUrl">Nouvelle URL de base</Label>
+              <Input
+                id="baseUrl"
+                placeholder="https://api.example.com"
+                value={baseUrlValue}
+                onChange={(e) => setBaseUrlValue(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Format attendu : https://domain.com ou http://ip:port
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBaseUrlDialog(false)}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={async () => {
+                if (!baseUrlValue.trim()) {
+                  toast.error('Veuillez saisir une URL');
+                  return;
+                }
+                await sendCommand(COMMAND_TYPES.UPDATE_BASE_URL, { baseUrl: baseUrlValue.trim() });
+                setBaseUrlDialog(false);
+                setBaseUrlValue('');
+              }}
+              disabled={commandLoading === COMMAND_TYPES.UPDATE_BASE_URL}
+            >
+              {commandLoading === COMMAND_TYPES.UPDATE_BASE_URL ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              Envoyer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Download Firmware Dialog */}
+      <Dialog open={firmwareDialog} onOpenChange={setFirmwareDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5" />
+              Mise à jour Firmware
+            </DialogTitle>
+            <DialogDescription>
+              Déclenchez le téléchargement d'une mise à jour firmware sur le radar.
+              Laissez les champs vides pour utiliser les paramètres par défaut du serveur.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="fwUrl">URL du firmware (optionnel)</Label>
+              <Input
+                id="fwUrl"
+                placeholder="https://updates.vayyar.com/firmware.bin"
+                value={firmwareUrl}
+                onChange={(e) => setFirmwareUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fwVersion">Version (optionnel)</Label>
+              <Input
+                id="fwVersion"
+                placeholder="38.42.0"
+                value={firmwareVersion}
+                onChange={(e) => setFirmwareVersion(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFirmwareDialog(false)}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={async () => {
+                const params = {};
+                if (firmwareUrl.trim()) params.url = firmwareUrl.trim();
+                if (firmwareVersion.trim()) params.version = firmwareVersion.trim();
+                await sendCommand(COMMAND_TYPES.DOWNLOAD_FIRMWARE, Object.keys(params).length > 0 ? params : null);
+                setFirmwareDialog(false);
+                setFirmwareUrl('');
+                setFirmwareVersion('');
+              }}
+              disabled={commandLoading === COMMAND_TYPES.DOWNLOAD_FIRMWARE}
+            >
+              {commandLoading === COMMAND_TYPES.DOWNLOAD_FIRMWARE ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              Télécharger
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
