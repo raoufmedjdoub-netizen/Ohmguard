@@ -1,6 +1,7 @@
 """
 Vayyar Configuration Service
-Handles MQTT publish/subscribe for device configuration and version management
+Handles MQTT publish/subscribe for device configuration, commands, and version management
+Based on Vayyar Care Device API v38.42
 """
 
 import asyncio
@@ -8,7 +9,7 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List, Callable
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -16,14 +17,15 @@ import aiomqtt
 
 from vayyar_config_schema import (
     VayyarConfig, ConfigVersionResponse, ConfigVersionStatus,
-    MqttPublishOptions, get_default_config_dict
+    MqttPublishOptions, CommandType, CommandResponse,
+    get_default_config_dict, COMMAND_TYPES
 )
 
 logger = logging.getLogger(__name__)
 
 
 class VayyarConfigService:
-    """Service for managing Vayyar radar configurations"""
+    """Service for managing Vayyar radar configurations and commands"""
     
     def __init__(
         self,
@@ -31,7 +33,9 @@ class VayyarConfigService:
         broker_host: str,
         broker_port: int,
         pub_topic_pattern: str = "/devices/{deviceId}/config",
+        cmd_topic_pattern: str = "/devices/{deviceId}/commands",
         ack_topic_pattern: str = "/devices/{deviceId}/config/ack",
+        state_topic_pattern: str = "/devices/{deviceId}/state",
         default_qos: int = 1,
         ack_timeout_sec: int = 60,
         username: Optional[str] = None,
@@ -41,7 +45,9 @@ class VayyarConfigService:
         self.broker_host = broker_host
         self.broker_port = broker_port
         self.pub_topic_pattern = pub_topic_pattern
+        self.cmd_topic_pattern = cmd_topic_pattern
         self.ack_topic_pattern = ack_topic_pattern
+        self.state_topic_pattern = state_topic_pattern
         self.default_qos = default_qos
         self.ack_timeout_sec = ack_timeout_sec
         self.username = username
@@ -55,6 +61,9 @@ class VayyarConfigService:
         self._pending_acks: Dict[str, str] = {}
         self._ack_callbacks: Dict[str, Callable] = {}
         
+        # Device states cache
+        self._device_states: Dict[str, dict] = {}
+        
         # WebSocket broadcast callback
         self.broadcast_callback: Optional[Callable] = None
     
@@ -63,22 +72,30 @@ class VayyarConfigService:
         self.broadcast_callback = callback
     
     def _get_pub_topic(self, device_id: str) -> str:
-        """Get publish topic for device"""
+        """Get config publish topic for device"""
         return self.pub_topic_pattern.replace("{deviceId}", device_id)
+    
+    def _get_cmd_topic(self, device_id: str) -> str:
+        """Get command topic for device"""
+        return self.cmd_topic_pattern.replace("{deviceId}", device_id)
     
     def _get_ack_topic(self, device_id: str) -> str:
         """Get ACK topic for device"""
         return self.ack_topic_pattern.replace("{deviceId}", device_id)
     
+    def _get_state_topic(self, device_id: str) -> str:
+        """Get state topic for device"""
+        return self.state_topic_pattern.replace("{deviceId}", device_id)
+    
     async def start(self):
-        """Start the config service ACK listener"""
+        """Start the config service ACK and state listener"""
         if self.running:
             logger.warning("Config service already running")
             return
         
         self.running = True
-        self._task = asyncio.create_task(self._run_ack_listener())
-        logger.info(f"Vayyar Config Service started")
+        self._task = asyncio.create_task(self._run_listener())
+        logger.info(f"Vayyar Config Service started - listening on {self.broker_host}:{self.broker_port}")
     
     async def stop(self):
         """Stop the config service"""
@@ -91,8 +108,8 @@ class VayyarConfigService:
                 pass
         logger.info("Vayyar Config Service stopped")
     
-    async def _run_ack_listener(self):
-        """Listen for ACK messages"""
+    async def _run_listener(self):
+        """Listen for ACK and state messages"""
         reconnect_interval = 5
         
         while self.running:
@@ -111,11 +128,20 @@ class VayyarConfigService:
                     await client.subscribe(ack_pattern)
                     logger.info(f"Config Service subscribed to ACK topic: {ack_pattern}")
                     
+                    # Subscribe to state topics (wildcard)
+                    state_pattern = self.state_topic_pattern.replace("{deviceId}", "+")
+                    await client.subscribe(state_pattern)
+                    logger.info(f"Config Service subscribed to state topic: {state_pattern}")
+                    
                     async for message in client.messages:
                         try:
-                            await self._handle_ack_message(message)
+                            topic = str(message.topic)
+                            if "/config/ack" in topic:
+                                await self._handle_ack_message(message)
+                            elif "/state" in topic:
+                                await self._handle_state_message(message)
                         except Exception as e:
-                            logger.error(f"Error handling ACK: {e}", exc_info=True)
+                            logger.error(f"Error handling message: {e}", exc_info=True)
                             
             except aiomqtt.MqttError as e:
                 logger.error(f"MQTT error in config service: {e}")
@@ -138,10 +164,10 @@ class VayyarConfigService:
         
         # Extract deviceId from topic
         parts = topic.split('/')
-        if len(parts) < 4:
+        if len(parts) < 3:
             return
         
-        device_id = parts[1]
+        device_id = parts[2]  # /devices/{deviceId}/config/ack
         correlation_id = payload.get("correlationId")
         
         logger.info(f"Received ACK from {device_id}: {payload}")
@@ -183,6 +209,169 @@ class VayyarConfigService:
                     "status": new_status,
                     "ackPayload": payload
                 })
+    
+    async def _handle_state_message(self, message):
+        """Handle incoming device state message"""
+        topic = str(message.topic)
+        
+        try:
+            payload = json.loads(message.payload.decode())
+        except json.JSONDecodeError:
+            logger.warning(f"Invalid JSON in state: {topic}")
+            return
+        
+        # Extract deviceId from topic
+        parts = topic.split('/')
+        if len(parts) < 3:
+            return
+        
+        device_id = parts[2]  # /devices/{deviceId}/state
+        
+        # Update cache
+        self._device_states[device_id] = {
+            **payload,
+            "received_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Update sensor in database
+        update_data = {
+            "status": "ONLINE",
+            "last_seen": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Extract additional info from state
+        if payload.get("versionName"):
+            update_data["firmware"] = payload["versionName"]
+        if payload.get("serialProduct"):
+            update_data["serial_product"] = payload["serialProduct"]
+        if payload.get("serialRadar"):
+            update_data["serial_radar"] = payload["serialRadar"]
+        if payload.get("hardware"):
+            update_data["hardware"] = payload["hardware"]
+        if payload.get("temperature"):
+            update_data["temperature"] = payload["temperature"]
+        if payload.get("status"):
+            update_data["device_status"] = payload["status"]
+        
+        await self.db.sensors.update_one(
+            {"device_id": device_id},
+            {"$set": update_data}
+        )
+        
+        logger.debug(f"Updated state for device {device_id}")
+    
+    def get_device_state(self, device_id: str) -> Optional[dict]:
+        """Get cached device state"""
+        return self._device_states.get(device_id)
+    
+    async def send_command(
+        self,
+        sensor_id: str,
+        command_type: int,
+        params: Optional[Dict[str, Any]] = None,
+        tenant_id: Optional[str] = None
+    ) -> CommandResponse:
+        """
+        Send a command to a device via MQTT.
+        
+        Args:
+            sensor_id: The platform sensor ID
+            command_type: Command type (1-16)
+            params: Additional command parameters
+            tenant_id: Optional tenant ID for audit
+        
+        Returns:
+            CommandResponse with result
+        """
+        # Get the sensor to find the MQTT device_id
+        sensor = await self.db.sensors.find_one({"id": sensor_id}, {"_id": 0})
+        if not sensor:
+            raise ValueError(f"Sensor {sensor_id} not found")
+        
+        # Use the device_id field for MQTT communications
+        mqtt_device_id = sensor.get("device_id") or sensor_id
+        
+        # Build command payload
+        command_payload = {"type": command_type}
+        
+        # Add parameters based on command type
+        if params:
+            if command_type == CommandType.UPDATE_BASE_URL.value:
+                command_payload["baseUrl"] = params.get("baseUrl", "")
+            elif command_type == CommandType.DOWNLOAD_FIRMWARE.value:
+                if params.get("url"):
+                    command_payload["url"] = params["url"]
+                if params.get("version"):
+                    command_payload["version"] = params["version"]
+            elif command_type == CommandType.UPDATE_WIFI_CREDENTIALS.value:
+                command_payload["ssid"] = params.get("ssid", "")
+                command_payload["password"] = params.get("password", "")
+        
+        # Get command topic
+        cmd_topic = self._get_cmd_topic(mqtt_device_id)
+        now = datetime.now(timezone.utc).isoformat()
+        
+        # Log command to database
+        command_log = {
+            "id": str(uuid.uuid4()),
+            "sensorId": sensor_id,
+            "deviceId": mqtt_device_id,
+            "commandType": command_type,
+            "commandName": COMMAND_TYPES.get(command_type, {}).get("name", f"Command {command_type}"),
+            "payload": command_payload,
+            "topic": cmd_topic,
+            "tenantId": tenant_id,
+            "sentAt": now,
+            "status": "SENT"
+        }
+        await self.db.command_logs.insert_one(command_log)
+        
+        # Publish command via MQTT
+        try:
+            async with aiomqtt.Client(
+                hostname=self.broker_host,
+                port=self.broker_port,
+                username=self.username,
+                password=self.password
+            ) as client:
+                await client.publish(
+                    cmd_topic,
+                    json.dumps(command_payload).encode('utf-8'),
+                    qos=1
+                )
+            
+            logger.info(f"Sent command type {command_type} to {cmd_topic}")
+            
+            return CommandResponse(
+                success=True,
+                command_type=command_type,
+                device_id=mqtt_device_id,
+                topic=cmd_topic,
+                message=f"Command sent successfully",
+                sent_at=now
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to send command: {e}")
+            await self.db.command_logs.update_one(
+                {"id": command_log["id"]},
+                {"$set": {"status": "FAILED", "error": str(e)}}
+            )
+            raise
+    
+    async def get_command_history(
+        self,
+        sensor_id: str,
+        limit: int = 20,
+        skip: int = 0
+    ) -> List[dict]:
+        """Get command history for a sensor"""
+        cursor = self.db.command_logs.find(
+            {"sensorId": sensor_id},
+            projection={"_id": 0}
+        ).sort("sentAt", -1).skip(skip).limit(limit)
+        
+        return await cursor.to_list(limit)
     
     async def publish_config(
         self,
@@ -466,7 +655,9 @@ async def init_vayyar_config_service(
         broker_host=broker_host,
         broker_port=broker_port,
         pub_topic_pattern=os.environ.get("MQTT_PUB_TOPIC", "/devices/{deviceId}/config"),
+        cmd_topic_pattern=os.environ.get("MQTT_CMD_TOPIC", "/devices/{deviceId}/commands"),
         ack_topic_pattern=os.environ.get("MQTT_ACK_TOPIC", "/devices/{deviceId}/config/ack"),
+        state_topic_pattern=os.environ.get("MQTT_STATE_TOPIC", "/devices/{deviceId}/state"),
         default_qos=int(os.environ.get("MQTT_QOS", "1")),
         ack_timeout_sec=int(os.environ.get("MQTT_ACK_TIMEOUT", "60"))
     )
