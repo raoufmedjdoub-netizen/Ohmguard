@@ -85,24 +85,41 @@ const NumberField = ({ control, name, label, description, min, max, step = 1, fl
   </ConfigField>
 );
 
-// Select field
+// Select field - supports both string options and numeric options with labels
 const SelectField = ({ control, name, label, description, options }) => (
   <ConfigField label={label} description={description}>
     <Controller
       name={name}
       control={control}
-      render={({ field }) => (
-        <Select value={field.value} onValueChange={field.onChange}>
-          <SelectTrigger className="max-w-[250px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {options.map(opt => (
-              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
+      render={({ field }) => {
+        // Check if options are objects with value/label or simple strings
+        const isNumericOptions = options.length > 0 && typeof options[0] === 'object';
+        
+        return (
+          <Select 
+            value={String(field.value)} 
+            onValueChange={(val) => {
+              // Convert back to number if numeric options
+              field.onChange(isNumericOptions ? Number(val) : val);
+            }}
+          >
+            <SelectTrigger className="max-w-[250px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {isNumericOptions ? (
+                options.map(opt => (
+                  <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                ))
+              ) : (
+                options.map(opt => (
+                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+        );
+      }}
     />
   </ConfigField>
 );
