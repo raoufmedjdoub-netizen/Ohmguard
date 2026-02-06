@@ -511,10 +511,17 @@ export function RadarConfigPage() {
                       loading={commandLoading === COMMAND_TYPES.REBOOT_UPLOAD_LOG}
                     />
                     <CommandButton
+                      icon={Globe}
+                      label="Changer Base URL"
+                      description="Modifier l'URL du serveur"
+                      onClick={() => setBaseUrlDialog(true)}
+                      loading={commandLoading === COMMAND_TYPES.UPDATE_BASE_URL}
+                    />
+                    <CommandButton
                       icon={Download}
                       label="Mise à jour FW"
                       description="Télécharger le firmware"
-                      onClick={() => sendCommand(COMMAND_TYPES.DOWNLOAD_FIRMWARE)}
+                      onClick={() => setFirmwareDialog(true)}
                       loading={commandLoading === COMMAND_TYPES.DOWNLOAD_FIRMWARE}
                     />
                   </div>
