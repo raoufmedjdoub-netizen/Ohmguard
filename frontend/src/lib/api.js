@@ -167,4 +167,46 @@ export const simulatorAPI = {
     })
 };
 
+// Device Configuration API
+export const deviceConfigAPI = {
+  // Configuration
+  getLatest: (deviceId) => api.get(`/devices/${deviceId}/config/latest`),
+  getVersions: (deviceId, limit = 10) => api.get(`/devices/${deviceId}/config/versions`, { params: { limit } }),
+  sendConfig: (deviceId, config, mqttOptions = {}) => api.post(`/devices/${deviceId}/config/send`, { config, mqttOptions }),
+  validateConfig: (deviceId, config) => api.post(`/devices/${deviceId}/config/validate`, { config }),
+  rollback: (deviceId, versionNumber) => api.post(`/devices/${deviceId}/config/rollback/${versionNumber}`),
+  retry: (deviceId, versionId) => api.post(`/devices/${deviceId}/config/retry/${versionId}`),
+  getSchema: (deviceId) => api.get(`/devices/${deviceId}/config/schema`),
+  
+  // Commands
+  sendCommand: (deviceId, commandType, params = null) => api.post(`/devices/${deviceId}/command`, { command_type: commandType, params }),
+  getCommandHistory: (deviceId, limit = 20) => api.get(`/devices/${deviceId}/commands/history`, { params: { limit } }),
+  
+  // State
+  getState: (deviceId) => api.get(`/devices/${deviceId}/state`),
+  
+  // Enums and metadata
+  getCommandTypes: () => api.get('/devices/command-types'),
+  getConfigEnums: () => api.get('/devices/config-enums'),
+  
+  // Templates
+  getTemplates: () => api.get('/config/templates'),
+  createTemplate: (name, config, description = null) => api.post('/config/templates', { name, config, description }),
+  getTemplate: (templateId) => api.get(`/config/templates/${templateId}`),
+  deleteTemplate: (templateId) => api.delete(`/config/templates/${templateId}`)
+};
+
+// Command types for reference
+export const COMMAND_TYPES = {
+  UPLOAD_APP_LOGS: 1,
+  UPLOAD_DEV_LOGS: 2,
+  REBOOT_DEVICE: 3,
+  CANCEL_ALARM: 4,
+  REBOOT_UPLOAD_LOG: 6,
+  CANCEL_FALL: 7,
+  UPDATE_BASE_URL: 8,
+  DOWNLOAD_FIRMWARE: 10,
+  UPDATE_WIFI: 16
+};
+
 export default api;
