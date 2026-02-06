@@ -1,156 +1,163 @@
 import { z } from 'zod';
 
-// Flexible value type (bool OR number OR string)
-const flexibleValue = z.union([z.boolean(), z.number(), z.string(), z.null()]);
-
-// Dry Contact Config
+// Dry Contact Config Schema
 const dryContactConfigSchema = z.object({
   mode: z.number().default(0),
   policy: z.number().default(0)
 });
 
-// Dry Contacts
+// Dry Contacts Schema
 const dryContactsSchema = z.object({
-  primary: dryContactConfigSchema.default({}),
-  secondary: dryContactConfigSchema.default({})
+  primary: dryContactConfigSchema.default({ mode: 0, policy: 0 }),
+  secondary: dryContactConfigSchema.default({ mode: 0, policy: 0 })
 });
 
-// Tracker Sub Region
-export const trackerSubRegionSchema = z.object({
+// Tracker Sub Region Schema
+const trackerSubRegionSchema = z.object({
   xMin: z.number().default(0),
-  xMax: z.number().default(0),
-  yMin: z.number().default(0),
-  yMax: z.number().default(0),
+  xMax: z.number().default(1),
+  yMin: z.number().default(0.3),
+  yMax: z.number().default(1),
   zMin: z.number().default(0),
-  zMax: z.number().default(0),
-  enterDuration: z.number().default(120),
-  exitDuration: z.number().default(120),
+  zMax: z.number().default(1.2),
+  mode: z.number().default(0),
+  enterDuration: z.number().default(10),
+  exitDuration: z.number().default(30),
   isFallingDetection: z.boolean().default(false),
-  isPresenceDetection: z.boolean().default(false),
+  isPresenceDetection: z.boolean().default(true),
   isLowSnr: z.boolean().default(true),
   isHorizontal: z.boolean().default(true),
   isDoor: z.boolean().default(false),
   name: z.string().default("region")
-});
+}).passthrough();
 
-// App Config Schema
-export const appConfigSchema = z.object({
+// App Config Schema - NUMERIC ENUMS as per Vayyar API
+const appConfigSchema = z.object({
+  // Mode settings
   silentMode: z.boolean().default(false),
-  ledMode: z.string().default("AllOff"),
-  ledPolicy: z.string().default("ErrorsOnly"),
-  volume: flexibleValue.default(false),
-  logLevel: z.string().default("V_LOG_LEVEL_VERBOSE"),
+  demoMode: z.boolean().default(false),
+  enableTestMode: z.union([z.boolean(), z.string()]).default(false),
+  offlineMode: z.boolean().default(true),
+  
+  // LED configuration (NUMERIC: 0=AllOff, 1=AllOn, 2=StatusOnly)
+  ledMode: z.number().min(0).max(2).default(0),
+  
+  // Audio
+  volume: z.number().min(0).max(100).default(100),
+  
+  // Logging (NUMERIC: -1=Verbose, 0=Debug, 1=Info, 2=Warning, 3=Error)
+  logLevel: z.number().min(-1).max(3).default(-1),
+  
+  // Alert timing
   confirmedToAlertTimeoutSec: z.number().default(40),
   callingDurationSec: z.number().default(30),
+  
+  // Presence reporting
   presenceReportMinRateMills: z.number().default(60000),
-  enablePresencePeriodicReport: z.boolean().default(true),
-  learningModeEndTs: flexibleValue.default(false),
-  learningModeStartTs: flexibleValue.default(false),
-  dspRecordsPublishPolicy: flexibleValue.default(false),
-  dspRecordsPublishMaxLatency_sec: z.number().default(10),
+  
+  // Learning mode timestamps
+  learningModeEndTs: z.union([z.number(), z.string()]).default(0),
+  learningModeStartTs: z.union([z.number(), z.string()]).default(0),
+  
+  // DSP records
+  dspRecordsPublishPolicy: z.boolean().default(false),
+  
+  // Analytics
   enableAnalytics: z.boolean().default(true),
-  enableTestMode: z.boolean().default(true),
-  telemetryPolicy: z.string().default("Off"),
-  telemetryTransport: z.string().default("MqttQos0"),
-  dryContacts: dryContactsSchema.default({}),
-  trackerTargetsDebugPolicy: z.string().default("OFF"),
-  demoMode: z.boolean().default(false),
+  
+  // Telemetry settings (NUMERIC: 0=Off, 1=On, 2=OnDemand)
+  telemetryPolicy: z.number().min(0).max(2).default(0),
+  telemetryTransport: z.number().min(0).max(2).default(0),
+  telemetryEnabled: z.boolean().default(false),
+  
+  // Dry contacts
+  dryContacts: dryContactsSchema.default({ primary: { mode: 0, policy: 0 }, secondary: { mode: 0, policy: 0 } }),
+  dryContactActivationDuration_sec: z.union([z.number(), z.string()]).default(30),
+  
+  // Tracker debug (NUMERIC: 0=Off, 1=On, 2=Verbose)
+  trackerTargetsDebugPolicy: z.number().min(0).max(2).default(0),
+  
+  // Door events
   enableDoorEvents: z.boolean().default(false),
+  
+  // Out of bed
   enableOutOfBed: z.boolean().default(false),
+  
+  // Sensitive mode
   enableSensitiveMode: z.boolean().default(false),
-  sensitivityLevel: z.number().min(0).max(1).default(0.7),
+  sensitivityLevel: z.number().min(0).max(1).default(0.78),
+  
+  // Falling detection thresholds
+  thMinEventsForFirstDecision: z.number().default(12),
+  thNumOfDetectionsInChain: z.number().default(11),
+  
+  // Max time in buffer
+  max_time_in_buffer: z.number().default(600),
+  
+  // BLE
   enableBeaconScanner: z.boolean().default(false),
-  bleBeaconMacs: z.array(z.any()).default([{}]),
-  thMinEventsForFirstDecision: z.number().default(5),
-  thNumOfDetectionsInChain: z.number().default(4),
-  suspendDuration_sec: z.number().default(900),
-  offlineMode: z.boolean().default(true),
   bleBeaconRssiThreshold: z.number().default(-80),
-  enableTelemetriesOnEventDuringSuspend: z.boolean().default(true),
-  enableRssiMonitor: z.boolean().default(true),
+  
+  // RSSI monitoring
+  enableRssiMonitor: z.boolean().default(false),
   rssiThresholdRssiMonitor: z.number().default(-70),
   samplesNumRssiMonitor: z.number().default(30),
-  enableWifiHealthMonitor: z.boolean().default(true),
-  maxDisconnetionDurationSecWifiHealthMonitor: z.number().default(240),
-  disconnectionsBurstLimitWifiHealthMonitor: z.number().default(15),
-  maxDisconnectionsPerHourAverageWifiHealthMonitor: z.number().default(15),
-  algoProfile: z.string().default("TRACKING"),
-  appLogAutoLevel: z.string().default("Disable"),
-  appLogOnDemandLevel: z.string().default("Disable"),
-  legacyLogFileUpload: z.boolean().default(true),
-  smartReboot: z.boolean().default(false),
-  bleServerType: z.string().default("OFF"),
-  bleCustomDeviceName: z.string().default("VC000"),
-  ntpPrimaryBackupServer: z.string().default("europe.pool.ntp.org"),
-  ntpSecondaryBackupServer: z.string().default("us.pool.ntp.org"),
-  dryContactActivationDuration_sec: flexibleValue.default("30.0"),
-  telemAlwaysON: z.boolean().default(false),
-  telemOnBedExit: z.boolean().default(true),
-  telemOnFall: z.boolean().default(true),
-  telemOnSensitiveFall: z.boolean().default(true),
-  telemOnDoorEvents: z.boolean().default(false),
-  telemOnOutOfBed: z.boolean().default(false)
-});
+  
+  // WiFi health
+  enableWifiHealthMonitor: z.boolean().default(false),
+  
+  // MQTT reporting
+  reportFallsToMqtt: z.boolean().default(true),
+  reportPresenceToMqtt: z.boolean().default(true)
+}).passthrough();
 
-// Walabot Config Schema
-export const walabotConfigSchema = z.object({
+// Walabot Config Schema - NUMERIC ENUMS as per Vayyar API
+const walabotConfigSchema = z.object({
+  // Arena boundaries
   xMin: z.number().default(-1.8),
   xMax: z.number().default(1.8),
   yMin: z.number().default(0.3),
   yMax: z.number().default(3.5),
-  zMin: flexibleValue.default(false),
+  zMin: z.number().default(0),
   zMax: z.number().default(1.8),
+  
+  // Sensor position
   sensorHeight: z.number().default(1.5),
+  
+  // Sensor mounting (NUMERIC: 0=Wall, 1=Ceiling, 2=Corner)
+  sensorMounting: z.number().min(0).max(2).default(0),
+  
+  // Sub-regions
   trackerSubRegions: z.array(trackerSubRegionSchema).default([]),
-  fallingSensitivity: z.string().default("LowSensitivity"),
-  sensorMounting: z.string().default("Wall"),
-  maxTargetsForFallingTrigger: flexibleValue.default(true),
+  
+  // Falling sensitivity (NUMERIC: 0=Low, 1=Medium, 2=High)
+  fallingSensitivity: z.number().min(0).max(2).default(0),
+  maxTargetsForFallingTrigger: z.number().default(0),
+  durationUntilConfirm_sec: z.union([z.number(), z.string()]).default(52),
+  minTimeOfTarInFallLoc_sec: z.union([z.number(), z.string()]).default(30),
+  fallingMitigatorEnabled: z.boolean().default(false),
+  
+  // Presence detection
   performHeatup: z.boolean().default(true),
   performAgc: z.boolean().default(true),
-  enterDuration: z.number().default(120),
-  exitDuration: z.number().default(120),
-  bedExitEnabled: z.boolean().default(true),
-  bedExitPredictionThreshold: z.number().default(0.9),
-  bedExitNFramesToReset: z.number().default(100),
-  enableBedExitTelemetry: z.boolean().default(false),
-  enableBedExitStateTelemetry: z.boolean().default(false),
-  enableTrackerTargetTelemetry: z.boolean().default(true),
-  enableDoorEventTelemetry: z.boolean().default(false),
-  enablePeakTelemetry: z.boolean().default(true),
-  enableAboveThPointTelemetry: z.boolean().default(false),
-  enableIslandPointTelemetry: z.boolean().default(false),
-  enableHeightProfileTelemetry: z.boolean().default(true),
-  enableOtfPointTelemetry: z.boolean().default(true),
-  enableFallingTelemetry: z.boolean().default(true),
-  enableSensitiveFallingTelemetry: z.boolean().default(true),
-  enablePresenceTelemetry: z.boolean().default(true),
-  enableImageParamsTelemetry: z.boolean().default(true),
-  enableInterfererLocHistoryTelemetry: z.boolean().default(true),
-  enableMtiParamsTelemetry: z.boolean().default(true),
-  enableReferenceTelemetry: z.boolean().default(true),
-  enableSuiteTelemetry: z.boolean().default(false),
-  enableClustersTelemetry: z.boolean().default(true),
-  enableSubRegionStateTelemetry: z.boolean().default(true),
-  durationUntilConfirm_sec: flexibleValue.default("52.0"),
-  minTimeOfTarInFallLoc_sec: flexibleValue.default("30.0"),
-  fallingMitigatorEnabled: z.boolean().default(true),
-  fallingMitigatorThreshold: flexibleValue.default(false),
-  dryContactActivationDuration_sec: flexibleValue.default("30.0")
-});
-
-// RF Profile Schema
-export const rfProfileSchema = z.object({
-  rfRegulationZone: z.string().default("WW"),
-  rfBandWidth: z.string().default("BW500")
-});
+  enterDuration: z.number().default(10),
+  exitDuration: z.number().default(30),
+  
+  // Bed exit (can be bool or "false" string)
+  bedExitEnabled: z.union([z.boolean(), z.string()]).default("false"),
+  
+  // Dry contact
+  dryContactActivationDuration_sec: z.union([z.number(), z.string()]).default(30),
+  
+  // Telemetry
+  enableAboveThPointTelemetry: z.boolean().default(false)
+}).passthrough();
 
 // Complete Vayyar Config Schema
 export const vayyarConfigSchema = z.object({
   appConfig: appConfigSchema.default({}),
-  walabotConfig: walabotConfigSchema.default({}),
-  rfProfile: rfProfileSchema.default({}),
-  productType: z.string().default("Falling")
-});
+  walabotConfig: walabotConfigSchema.default({})
+}).passthrough();
 
 // MQTT Options Schema
 export const mqttOptionsSchema = z.object({
@@ -160,30 +167,112 @@ export const mqttOptionsSchema = z.object({
   topic: z.string().optional()
 });
 
-// Enum values for select inputs
+// ENUM VALUES FOR UI (NUMERIC) - as per Vayyar API
 export const ENUM_VALUES = {
-  ledMode: ["AllOff", "AllOn", "StatusOnly"],
-  ledPolicy: ["ErrorsOnly", "AlwaysOn", "Off"],
-  logLevel: ["V_LOG_LEVEL_VERBOSE", "V_LOG_LEVEL_DEBUG", "V_LOG_LEVEL_INFO", "V_LOG_LEVEL_WARNING", "V_LOG_LEVEL_ERROR"],
-  telemetryPolicy: ["Off", "On", "OnDemand"],
-  telemetryTransport: ["MqttQos0", "MqttQos1", "Http"],
-  trackerTargetsDebugPolicy: ["OFF", "ON", "VERBOSE"],
-  algoProfile: ["TRACKING", "PRESENCE", "FALLING"],
-  appLogLevel: ["Disable", "Error", "Warning", "Info", "Debug", "Verbose"],
-  bleServerType: ["OFF", "GATT", "BEACON"],
-  fallingSensitivity: ["LowSensitivity", "MediumSensitivity", "HighSensitivity"],
-  sensorMounting: ["Wall", "Ceiling", "Corner"],
-  rfRegulationZone: ["WW", "US", "EU", "JP"],
-  rfBandWidth: ["BW500", "BW1000", "BW1500"],
-  productType: ["Falling", "Presence", "Tracking"]
+  ledMode: [
+    { value: 0, label: "Éteint (AllOff)" },
+    { value: 1, label: "Allumé (AllOn)" },
+    { value: 2, label: "Statut uniquement (StatusOnly)" }
+  ],
+  logLevel: [
+    { value: -1, label: "Verbose" },
+    { value: 0, label: "Debug" },
+    { value: 1, label: "Info" },
+    { value: 2, label: "Warning" },
+    { value: 3, label: "Error" }
+  ],
+  telemetryPolicy: [
+    { value: 0, label: "Désactivé (Off)" },
+    { value: 1, label: "Activé (On)" },
+    { value: 2, label: "À la demande (OnDemand)" }
+  ],
+  telemetryTransport: [
+    { value: 0, label: "MQTT QoS 0" },
+    { value: 1, label: "MQTT QoS 1" },
+    { value: 2, label: "HTTP" }
+  ],
+  trackerTargetsDebugPolicy: [
+    { value: 0, label: "Désactivé (Off)" },
+    { value: 1, label: "Activé (On)" },
+    { value: 2, label: "Verbose" }
+  ],
+  fallingSensitivity: [
+    { value: 0, label: "Basse (Low)" },
+    { value: 1, label: "Moyenne (Medium)" },
+    { value: 2, label: "Haute (High)" }
+  ],
+  sensorMounting: [
+    { value: 0, label: "Mur (Wall)" },
+    { value: 1, label: "Plafond (Ceiling)" },
+    { value: 2, label: "Coin (Corner)" }
+  ]
 };
 
-// Default configuration
+// Default configuration matching API format
 export const DEFAULT_CONFIG = {
-  appConfig: appConfigSchema.parse({}),
-  walabotConfig: walabotConfigSchema.parse({}),
-  rfProfile: rfProfileSchema.parse({}),
-  productType: "Falling"
+  appConfig: {
+    silentMode: false,
+    demoMode: false,
+    enableTestMode: false,
+    offlineMode: false,
+    ledMode: 1,
+    volume: 100,
+    logLevel: -1,
+    confirmedToAlertTimeoutSec: 30,
+    callingDurationSec: 30,
+    presenceReportMinRateMills: 60000,
+    learningModeEndTs: 0,
+    learningModeStartTs: 0,
+    dspRecordsPublishPolicy: false,
+    enableAnalytics: true,
+    telemetryPolicy: 0,
+    telemetryTransport: 0,
+    telemetryEnabled: false,
+    dryContacts: {
+      primary: { mode: 1, policy: 1 },
+      secondary: { mode: 0, policy: 0 }
+    },
+    dryContactActivationDuration_sec: 30,
+    trackerTargetsDebugPolicy: 0,
+    enableDoorEvents: false,
+    enableOutOfBed: false,
+    enableSensitiveMode: false,
+    sensitivityLevel: 0.78,
+    thMinEventsForFirstDecision: 5,
+    thNumOfDetectionsInChain: 4,
+    max_time_in_buffer: 600,
+    enableBeaconScanner: false,
+    bleBeaconRssiThreshold: -80,
+    enableRssiMonitor: false,
+    rssiThresholdRssiMonitor: -70,
+    samplesNumRssiMonitor: 30,
+    enableWifiHealthMonitor: false,
+    reportFallsToMqtt: true,
+    reportPresenceToMqtt: true
+  },
+  walabotConfig: {
+    xMin: -1.5,
+    xMax: 1.5,
+    yMin: -1.5,
+    yMax: 1.5,
+    zMin: 0,
+    zMax: 1.8,
+    sensorHeight: 2.5,
+    sensorMounting: 2,
+    trackerSubRegions: [],
+    fallingSensitivity: 1,
+    maxTargetsForFallingTrigger: 0,
+    durationUntilConfirm_sec: 52,
+    minTimeOfTarInFallLoc_sec: 30,
+    fallingMitigatorEnabled: false,
+    performHeatup: true,
+    performAgc: true,
+    enterDuration: 10,
+    exitDuration: 30,
+    bedExitEnabled: "false",
+    dryContactActivationDuration_sec: 30,
+    enableAboveThPointTelemetry: false
+  }
 };
 
 export default vayyarConfigSchema;
