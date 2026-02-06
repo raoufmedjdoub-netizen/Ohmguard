@@ -291,11 +291,24 @@ class VayyarConfigService:
         # Use the device_id field for MQTT communications
         mqtt_device_id = sensor.get("device_id") or sensor_id
         
-        # Build command payload with correct format as per API: {"type": N}
-        command_payload = {"type": command_type}
-        
         # Get command topic - commands go to /devices/{deviceId}/commands
         cmd_topic = self._get_cmd_topic(mqtt_device_id)  # Use commands topic
+        
+        # Map command type number to string name for payload
+        COMMAND_TYPE_NAMES = {
+            CommandType.UPLOAD_APP_LOGS.value: "UploadAppLogs",
+            CommandType.UPLOAD_DEV_LOGS.value: "UploadDevLogs",
+            CommandType.REBOOT_DEVICE.value: "Reboot",
+            CommandType.CANCEL_ALARM.value: "CancelAlarm",
+            CommandType.REBOOT_UPLOAD_LOG.value: "RebootUploadLog",
+            CommandType.CANCEL_FALL.value: "CancelFall",
+            CommandType.UPDATE_BASE_URL.value: "UpdateBaseUrl",
+            CommandType.DOWNLOAD_FIRMWARE.value: "DownloadFirmware",
+            CommandType.UPDATE_WIFI_CREDENTIALS.value: "UpdateWifiCredentials"
+        }
+        
+        # Build command payload: {"type": "CommandName"}
+        command_payload = {"type": COMMAND_TYPE_NAMES.get(command_type, f"Command{command_type}")}
         now = datetime.now(timezone.utc).isoformat()
         
         # Log command to database
