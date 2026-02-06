@@ -527,6 +527,13 @@ export function RadarConfigPage() {
                       onClick={() => setFirmwareDialog(true)}
                       loading={commandLoading === COMMAND_TYPES.DOWNLOAD_FIRMWARE}
                     />
+                    <CommandButton
+                      icon={Wifi}
+                      label="Config WiFi"
+                      description="Modifier les identifiants WiFi (déprécié)"
+                      onClick={() => setWifiDialog(true)}
+                      loading={commandLoading === COMMAND_TYPES.UPDATE_WIFI}
+                    />
                   </div>
                 </div>
 
