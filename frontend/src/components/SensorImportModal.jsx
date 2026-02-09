@@ -532,27 +532,26 @@ export function SensorImportModal({ open, onOpenChange, onImportComplete }) {
                   <thead className="bg-muted/50 sticky top-0 z-10">
                     <tr>
                       <th className="px-2 py-2 text-left font-medium w-[40px]">#</th>
-                      <th className="px-2 py-2 text-left font-medium min-w-[140px]">
+                      <th className="px-2 py-2 text-left font-medium min-w-[160px]">
                         N° Série <span className="text-red-500">*</span>
                       </th>
-                      <th className="px-2 py-2 text-left font-medium min-w-[120px]">Nom</th>
-                      <th className="px-2 py-2 text-left font-medium min-w-[130px]">
+                      <th className="px-2 py-2 text-left font-medium min-w-[140px]">Nom</th>
+                      <th className="px-2 py-2 text-left font-medium min-w-[150px]">
                         Organisation <span className="text-red-500">*</span>
                       </th>
-                      <th className="px-2 py-2 text-left font-medium min-w-[120px]">
+                      <th className="px-2 py-2 text-left font-medium min-w-[130px]">
                         Bâtiment <span className="text-red-500">*</span>
                       </th>
-                      <th className="px-2 py-2 text-left font-medium min-w-[100px]">
+                      <th className="px-2 py-2 text-left font-medium min-w-[110px]">
                         Étage <span className="text-red-500">*</span>
                       </th>
-                      <th className="px-2 py-2 text-left font-medium min-w-[100px]">
+                      <th className="px-2 py-2 text-left font-medium min-w-[120px]">
                         Chambre <span className="text-red-500">*</span>
                       </th>
-                      <th className="px-2 py-2 text-left font-medium min-w-[100px]">
+                      <th className="px-2 py-2 text-left font-medium min-w-[120px]">
                         Espace <span className="text-red-500">*</span>
                       </th>
-                      <th className="px-2 py-2 text-left font-medium min-w-[90px]">Modèle</th>
-                      <th className="px-2 py-2 text-left font-medium w-[60px]">Actions</th>
+                      <th className="px-2 py-2 text-left font-medium w-[80px]">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -613,14 +612,6 @@ export function SensorImportModal({ open, onOpenChange, onImportComplete }) {
                             onChange={(v) => updateRow(row.id, 'espace', v)}
                             options={espaces}
                             placeholder="Espace"
-                          />
-                        </td>
-                        <td className="px-1 py-1">
-                          <Input
-                            value={row.model}
-                            onChange={(e) => updateRow(row.id, 'model', e.target.value)}
-                            placeholder="Modèle"
-                            className="h-8 text-xs"
                           />
                         </td>
                         <td className="px-1 py-1">
