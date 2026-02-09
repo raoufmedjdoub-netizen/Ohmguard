@@ -31,7 +31,8 @@ import {
   FileText,
   Layers,
   Map,
-  Camera
+  Camera,
+  Activity
 } from 'lucide-react';
 
 const navItems = [
