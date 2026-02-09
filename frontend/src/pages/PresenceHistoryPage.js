@@ -1,0 +1,536 @@
+/**
+ * PresenceHistoryPage - Historique des Sessions de Présence
+ * 
+ * Affiche l'historique des sessions de présence agrégées (et non les événements bruts).
+ * Une session = période continue de présence détectée (début, fin, durée).
+ */
+import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+  Clock, 
+  User, 
+  Building2, 
+  Radar, 
+  RefreshCw, 
+  Filter,
+  Calendar,
+  Timer,
+  Activity,
+  TrendingUp,
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react';
+import { format, parseISO, formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+
+const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+export function PresenceHistoryPage() {
+  const { t } = useTranslation();
+  const [sessions, setSessions] = useState([]);
+  const [activeSessions, setActiveSessions] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [dailyStats, setDailyStats] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [buildings, setBuildings] = useState([]);
+  const [selectedBuilding, setSelectedBuilding] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [page, setPage] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 20;
+
+  // Fetch buildings for filter
+  const fetchBuildings = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/clients-buildings`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Flatten buildings from all clients
+        const allBuildings = [];
+        data.forEach(client => {
+          if (client.buildings) {
+            client.buildings.forEach(b => {
+              allBuildings.push({ 
+                id: b.id, 
+                name: b.name, 
+                clientName: client.name 
+              });
+            });
+          }
+        });
+        setBuildings(allBuildings);
+      }
+    } catch (error) {
+      console.error('Failed to fetch buildings:', error);
+    }
+  }, []);
+
+  // Fetch presence sessions
+  const fetchSessions = useCallback(async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams();
+      
+      if (selectedBuilding !== 'all') {
+        params.append('building_id', selectedBuilding);
+      }
+      if (statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+      params.append('limit', pageSize);
+      params.append('skip', page * pageSize);
+
+      const res = await fetch(`${API_URL}/api/presence-sessions?${params}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setSessions(data.sessions || []);
+        setTotalCount(data.count || 0);
+      }
+    } catch (error) {
+      console.error('Failed to fetch presence sessions:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedBuilding, statusFilter, page]);
+
+  // Fetch active sessions
+  const fetchActiveSessions = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams();
+      if (selectedBuilding !== 'all') {
+        params.append('building_id', selectedBuilding);
+      }
+
+      const res = await fetch(`${API_URL}/api/presence-sessions/active?${params}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setActiveSessions(data.active_sessions || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch active sessions:', error);
+    }
+  }, [selectedBuilding]);
+
+  // Fetch statistics
+  const fetchStats = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams();
+      if (selectedBuilding !== 'all') {
+        params.append('building_id', selectedBuilding);
+      }
+
+      const res = await fetch(`${API_URL}/api/presence-sessions/stats?${params}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+  }, [selectedBuilding]);
+
+  // Fetch daily statistics
+  const fetchDailyStats = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams();
+      if (selectedBuilding !== 'all') {
+        params.append('building_id', selectedBuilding);
+      }
+      params.append('days', '7');
+
+      const res = await fetch(`${API_URL}/api/presence-sessions/daily?${params}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setDailyStats(data.daily_stats || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch daily stats:', error);
+    }
+  }, [selectedBuilding]);
+
+  // Load all data
+  useEffect(() => {
+    fetchBuildings();
+  }, [fetchBuildings]);
+
+  useEffect(() => {
+    fetchSessions();
+    fetchActiveSessions();
+    fetchStats();
+    fetchDailyStats();
+  }, [fetchSessions, fetchActiveSessions, fetchStats, fetchDailyStats]);
+
+  const handleRefresh = () => {
+    fetchSessions();
+    fetchActiveSessions();
+    fetchStats();
+    fetchDailyStats();
+  };
+
+  const formatDateTime = (isoString) => {
+    if (!isoString) return '-';
+    try {
+      return format(parseISO(isoString), 'dd/MM/yyyy HH:mm:ss', { locale: fr });
+    } catch {
+      return isoString;
+    }
+  };
+
+  const formatTimeAgo = (isoString) => {
+    if (!isoString) return '-';
+    try {
+      return formatDistanceToNow(parseISO(isoString), { addSuffix: true, locale: fr });
+    } catch {
+      return isoString;
+    }
+  };
+
+  return (
+    <div className="p-4 lg:p-6 space-y-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Historique de Présence
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Sessions de présence agrégées (début, fin, durée)
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleRefresh}
+            disabled={loading}
+          >
+            <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
+            Actualiser
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Sessions actives</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {stats?.active_sessions || activeSessions.length || 0}
+                </p>
+              </div>
+              <Activity className="h-8 w-8 text-green-500 opacity-80" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total sessions</p>
+                <p className="text-2xl font-bold">{stats?.total_sessions || 0}</p>
+              </div>
+              <Clock className="h-8 w-8 text-blue-500 opacity-80" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Durée moyenne</p>
+                <p className="text-2xl font-bold">{stats?.avg_duration_display || '0s'}</p>
+              </div>
+              <Timer className="h-8 w-8 text-orange-500 opacity-80" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Durée totale</p>
+                <p className="text-2xl font-bold">{stats?.total_duration_display || '0s'}</p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-purple-500 opacity-80" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Filtres:</span>
+            </div>
+            
+            <Select value={selectedBuilding} onValueChange={(v) => { setSelectedBuilding(v); setPage(0); }}>
+              <SelectTrigger className="w-[200px]">
+                <Building2 className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Tous les bâtiments" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les bâtiments</SelectItem>
+                {buildings.map(b => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name} ({b.clientName})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Toutes les sessions" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toutes</SelectItem>
+                <SelectItem value="ACTIVE">En cours</SelectItem>
+                <SelectItem value="COMPLETED">Terminées</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Active Sessions */}
+      {activeSessions.length > 0 && (
+        <Card className="border-green-200 bg-green-50/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-green-700">
+              <Activity className="h-5 w-5" />
+              Sessions en cours ({activeSessions.length})
+            </CardTitle>
+            <CardDescription>
+              Présence actuellement détectée
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {activeSessions.map(session => (
+                <div 
+                  key={session.id}
+                  className="p-4 bg-white rounded-lg border border-green-200 shadow-sm"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <Radar className="h-4 w-4 text-green-600" />
+                      <span className="font-medium text-sm">
+                        {session.sensor_name || 'Capteur'}
+                      </span>
+                    </div>
+                    <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
+                      En cours
+                    </Badge>
+                  </div>
+                  
+                  <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+                    {session.room_name && (
+                      <div className="flex items-center gap-1">
+                        <Building2 className="h-3 w-3" />
+                        <span>{session.room_name}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      <span>Début: {formatDateTime(session.start_at)}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-green-600 font-medium">
+                      <Timer className="h-3 w-3" />
+                      <span>Durée: {session.current_duration_display || session.duration_display}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Sessions List */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-5 w-5" />
+            Historique des sessions
+          </CardTitle>
+          <CardDescription>
+            Liste des sessions de présence terminées
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : sessions.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Aucune session de présence trouvée</p>
+              <p className="text-sm mt-1">
+                Les sessions apparaîtront ici lorsque les capteurs détecteront de la présence
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Sessions Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-2 font-medium">Capteur</th>
+                      <th className="text-left py-3 px-2 font-medium">Emplacement</th>
+                      <th className="text-left py-3 px-2 font-medium">Début</th>
+                      <th className="text-left py-3 px-2 font-medium">Fin</th>
+                      <th className="text-left py-3 px-2 font-medium">Durée</th>
+                      <th className="text-left py-3 px-2 font-medium">Statut</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sessions.map(session => (
+                      <tr key={session.id} className="border-b hover:bg-muted/50">
+                        <td className="py-3 px-2">
+                          <div className="flex items-center gap-2">
+                            <Radar className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">{session.sensor_name || 'Capteur'}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-2 text-muted-foreground">
+                          {session.room_name || session.space_name || '-'}
+                        </td>
+                        <td className="py-3 px-2">
+                          <div>
+                            <div>{formatDateTime(session.start_at)}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {formatTimeAgo(session.start_at)}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-2">
+                          {session.end_at ? (
+                            <div>
+                              <div>{formatDateTime(session.end_at)}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatTimeAgo(session.end_at)}
+                              </div>
+                            </div>
+                          ) : '-'}
+                        </td>
+                        <td className="py-3 px-2">
+                          <span className={cn(
+                            "font-medium",
+                            session.status === 'ACTIVE' && "text-green-600"
+                          )}>
+                            {session.duration_display || '-'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-2">
+                          <Badge 
+                            variant={session.status === 'ACTIVE' ? 'default' : 'secondary'}
+                            className={session.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : ''}
+                          >
+                            {session.status === 'ACTIVE' ? 'En cours' : 'Terminée'}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              <div className="flex items-center justify-between pt-4">
+                <div className="text-sm text-muted-foreground">
+                  Page {page + 1} ({sessions.length} résultats)
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === 0}
+                    onClick={() => setPage(p => Math.max(0, p - 1))}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Précédent
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={sessions.length < pageSize}
+                    onClick={() => setPage(p => p + 1)}
+                  >
+                    Suivant
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Daily Stats Chart */}
+      {dailyStats.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Statistiques des 7 derniers jours
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-7 gap-2">
+              {dailyStats.map(day => (
+                <div key={day.date} className="text-center p-3 bg-muted/50 rounded-lg">
+                  <div className="text-xs text-muted-foreground mb-1">
+                    {format(parseISO(day.date), 'EEE', { locale: fr })}
+                  </div>
+                  <div className="text-lg font-bold">{day.sessions_count}</div>
+                  <div className="text-xs text-muted-foreground">sessions</div>
+                  <div className="text-xs text-primary mt-1">
+                    {day.avg_duration_display}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+export default PresenceHistoryPage;
