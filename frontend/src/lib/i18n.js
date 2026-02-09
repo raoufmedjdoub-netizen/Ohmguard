@@ -37,6 +37,8 @@ const resources = {
         dashboard_desc: 'System overview',
         live: 'Live',
         live_desc: 'Real-time events',
+        live_state: 'Live State',
+        live_state_desc: 'Real-time sensor status',
         history: 'History',
         history_desc: 'Alert history',
         reports: 'Reports',
