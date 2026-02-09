@@ -31,6 +31,10 @@ export function RadarsPage() {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedAssignment, setSelectedAssignment] = useState('all');
   
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+  
   // Dialog states
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
