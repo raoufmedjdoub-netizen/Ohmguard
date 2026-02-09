@@ -84,12 +84,22 @@ class PresenceSessionService:
     ) -> None:
         """Start a new presence session"""
         
-        # Check if session already exists
+        # Check if session already exists in Redis
         if redis:
             existing = redis.get(session_key)
             if existing:
                 # Session already active, ignore
-                logger.debug(f"Session already active for sensor {sensor_id}")
+                logger.debug(f"Session already active in Redis for sensor {sensor_id}")
+                return None
+        
+        # Fallback: Check if session already exists in MongoDB (when Redis is unavailable)
+        if self._db is not None:
+            existing_db = await self._db.presence_sessions.find_one({
+                "sensor_id": sensor_id,
+                "status": "ACTIVE"
+            })
+            if existing_db:
+                logger.debug(f"Session already active in MongoDB for sensor {sensor_id}")
                 return None
         
         # Create new session
