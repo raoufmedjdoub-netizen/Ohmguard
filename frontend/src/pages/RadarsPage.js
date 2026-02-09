@@ -212,6 +212,107 @@ export function RadarsPage() {
     }
   };
 
+  // Selection handlers for bulk operations
+  const toggleRadarSelection = (radarId) => {
+    setSelectedRadars(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(radarId)) {
+        newSet.delete(radarId);
+      } else {
+        newSet.add(radarId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllVisible = () => {
+    const visibleIds = paginatedRadars.map(r => r.id);
+    setSelectedRadars(prev => {
+      const newSet = new Set(prev);
+      visibleIds.forEach(id => newSet.add(id));
+      return newSet;
+    });
+  };
+
+  const deselectAll = () => {
+    setSelectedRadars(new Set());
+  };
+
+  const selectByBuilding = (buildingId) => {
+    const buildingRadarIds = radars
+      .filter(r => r.building_id === buildingId)
+      .map(r => r.id);
+    setSelectedRadars(prev => {
+      const newSet = new Set(prev);
+      buildingRadarIds.forEach(id => newSet.add(id));
+      return newSet;
+    });
+  };
+
+  const selectByFloor = (floorId) => {
+    const floorRadarIds = radars
+      .filter(r => r.floor_id === floorId)
+      .map(r => r.id);
+    setSelectedRadars(prev => {
+      const newSet = new Set(prev);
+      floorRadarIds.forEach(id => newSet.add(id));
+      return newSet;
+    });
+  };
+
+  // Bulk UpdateBaseUrl command
+  const handleBulkUpdateBaseUrl = async () => {
+    if (selectedRadars.size === 0) {
+      toast.error('Veuillez sélectionner au moins un radar');
+      return;
+    }
+    
+    if (!newBaseUrl.trim()) {
+      toast.error('Veuillez entrer une URL valide');
+      return;
+    }
+    
+    setBulkOperationLoading(true);
+    
+    try {
+      // Get device_ids for selected radars
+      const deviceIds = radars
+        .filter(r => selectedRadars.has(r.id))
+        .map(r => r.device_id)
+        .filter(Boolean);
+      
+      if (deviceIds.length === 0) {
+        toast.error('Aucun radar sélectionné n\'a de device_id');
+        return;
+      }
+      
+      const response = await api.post('/devices/bulk-command', {
+        device_ids: deviceIds,
+        command_type: 8, // UpdateBaseUrl
+        params: { baseUrl: newBaseUrl.trim() }
+      });
+      
+      const result = response.data;
+      
+      if (result.success_count > 0) {
+        toast.success(`Commande envoyée à ${result.success_count}/${result.total} radars`);
+      }
+      
+      if (result.failed_count > 0) {
+        toast.error(`Échec pour ${result.failed_count} radars`);
+      }
+      
+      setUpdateBaseUrlDialogOpen(false);
+      setSelectedRadars(new Set());
+      
+    } catch (error) {
+      console.error('Bulk command error:', error);
+      toast.error(error.response?.data?.detail || 'Erreur lors de l\'envoi des commandes');
+    } finally {
+      setBulkOperationLoading(false);
+    }
+  };
+
   const handleRotateKey = async (radarId) => {
     try {
       await api.post(`/sensors/${radarId}/rotate-key`);
