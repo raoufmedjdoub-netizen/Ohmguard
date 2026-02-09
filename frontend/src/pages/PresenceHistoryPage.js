@@ -462,9 +462,9 @@ export function PresenceHistoryPage() {
               </div>
 
               {/* Pagination */}
-              <div className="flex items-center justify-between pt-4">
+              <div className="flex items-center justify-between px-3 py-2 border-t">
                 <div className="text-sm text-muted-foreground">
-                  Page {page + 1} ({activeSessions.length + sessions.length} résultats)
+                  {activeSessions.length + sessions.length} résultats
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -474,15 +474,14 @@ export function PresenceHistoryPage() {
                     onClick={() => setPage(p => Math.max(0, p - 1))}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Précédent
                   </Button>
+                  <span className="text-sm">Page {page + 1}</span>
                   <Button
                     variant="outline"
                     size="sm"
                     disabled={sessions.length < pageSize}
                     onClick={() => setPage(p => p + 1)}
                   >
-                    Suivant
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
