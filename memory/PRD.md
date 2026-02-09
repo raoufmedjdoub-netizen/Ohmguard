@@ -113,13 +113,15 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 
 ### Backend
 - `server.py` - Main FastAPI application
-- `mqtt_service.py` - MQTT event handling
+- `mqtt_service.py` - MQTT event handling (PRESENCE events → sessions, not events)
+- `presence_session_service.py` - Presence session lifecycle management
 - `last_state_service.py` - Redis state management
 - `radar_event_models.py` - Event type definitions
 - `vayyar_config_service.py` - Radar configuration
 - `sensor_import_service.py` - CSV/Excel import
 
 ### Frontend
+- `PresenceHistoryPage.js` - Presence session history and statistics
 - `LiveStatePage.js` - Real-time sensor monitoring
 - `RadarsPage.js` - Sensor management with pagination
 - `SensorImportModal.jsx` - Import with table interface
