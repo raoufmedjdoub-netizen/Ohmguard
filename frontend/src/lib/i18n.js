@@ -218,7 +218,9 @@ const resources = {
         
         // Types
         type_fall: 'Fall',
+        type_sensitive_fall: 'Suspected Fall',
         type_pre_fall: 'Pre-Fall',
+        type_bed_exit: 'Bed Exit',
         type_presence: 'Presence',
         type_inactivity: 'Inactivity',
         type_unknown: 'Unknown',
@@ -676,7 +678,9 @@ const resources = {
         
         // Types
         type_fall: 'Chute',
+        type_sensitive_fall: 'Chute suspectée',
         type_pre_fall: 'Pré-Chute',
+        type_bed_exit: 'Sortie de lit',
         type_presence: 'Présence',
         type_inactivity: 'Inactivité',
         type_unknown: 'Inconnu',
