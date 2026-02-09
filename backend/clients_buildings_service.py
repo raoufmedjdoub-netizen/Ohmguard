@@ -919,10 +919,10 @@ class ClientsBuildingsService:
                 zone_nodes = [
                     TreeNode(
                         id=zone["id"],
-                        name=zone["name"],
+                        name=zone.get("name", "Zone"),
                         type="zone",
                         parent_id=floor["id"],
-                        metadata={"zone_type": zone["zone_type"]},
+                        metadata={"zone_type": zone.get("zone_type", "UNKNOWN")},
                         radars_count=zone.get("radars_count", 0)
                     )
                     for zone in zones
