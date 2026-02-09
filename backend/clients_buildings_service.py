@@ -891,17 +891,17 @@ class ClientsBuildingsService:
                 
                 for room in rooms:
                     spaces = await self.db.room_spaces.find({"room_id": room["id"]}, {"_id": 0}).to_list(20)
-                    space_nodes = [
-                        TreeNode(
+                    space_nodes = []
+                    for space in spaces:
+                        has_radar = await self.db.sensors.find_one({"room_space_id": space["id"]})
+                        space_nodes.append(TreeNode(
                             id=space["id"],
                             name=space.get("name") or space["space_type"],
                             type="space",
                             parent_id=room["id"],
                             metadata={"space_type": space["space_type"]},
-                            radars_count=1 if await self.db.sensors.find_one({"room_space_id": space["id"]}) else 0
-                        )
-                        for space in spaces
-                    ]
+                            radars_count=1 if has_radar else 0
+                        ))
                     
                     room_nodes.append(TreeNode(
                         id=room["id"],
