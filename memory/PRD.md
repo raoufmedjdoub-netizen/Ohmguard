@@ -57,6 +57,16 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - **Added**: MongoDB indexes for performance
 - **Added**: Redis cache on /api/sensors endpoint
 
+### 2026-02-09 - Presence Sessions Architecture (MAJOR)
+- **Created**: `presence_session_service.py` - Manages presence session lifecycle
+- **Created**: `/api/presence-sessions/*` endpoints for session history and stats
+- **Created**: `PresenceHistoryPage.js` - Frontend page for presence history
+- **ARCHITECTURAL CHANGE**: PRESENCE events (type=4) are NO LONGER saved in the `events` collection
+- **New collection**: `presence_sessions` stores aggregated sessions with start_at, end_at, duration_sec
+- **Session tracking**: presence=true starts a session, presence=false ends it
+- **SUPER_ADMIN**: Can see all sessions across all tenants
+- **Real-time duration**: Active sessions show live-updating duration on frontend
+
 ### 2026-02-09 - Vayyar Event Mapping Fix
 - **Fixed**: Corrected event type mapping in `radar_event_models.py`
 - **Added**: `SENSITIVE_FALL` and `BED_EXIT` event types
