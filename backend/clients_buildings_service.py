@@ -930,11 +930,11 @@ class ClientsBuildingsService:
                 
                 floor_nodes.append(TreeNode(
                     id=floor["id"],
-                    name=floor["name"],
+                    name=floor.get("name", f"Étage {floor.get('index', '?')}"),
                     type="floor",
                     parent_id=building["id"],
                     children=room_nodes + zone_nodes,
-                    metadata={"index": floor["index"]},
+                    metadata={"index": floor.get("index", 0)},
                     radars_count=floor.get("radars_count", 0)
                 ))
             
@@ -949,16 +949,16 @@ class ClientsBuildingsService:
                 zone_radar_count = await self.db.sensors.count_documents({"zone_id": z["id"]})
                 building_zone_nodes.append(TreeNode(
                     id=z["id"],
-                    name=z["name"],
+                    name=z.get("name", "Zone"),
                     type="zone",
                     parent_id=building["id"],
-                    metadata={"zone_type": z["zone_type"]},
+                    metadata={"zone_type": z.get("zone_type", "UNKNOWN")},
                     radars_count=zone_radar_count
                 ))
             
             building_nodes.append(TreeNode(
                 id=building["id"],
-                name=building["name"],
+                name=building.get("name", "Bâtiment"),
                 type="building",
                 parent_id=client_id,
                 children=floor_nodes + building_zone_nodes,
