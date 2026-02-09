@@ -207,7 +207,7 @@ from radar_event_models import (
 
 # Role enum
 RoleType = Literal["SUPER_ADMIN", "TENANT_ADMIN", "SUPERVISOR", "OPERATOR", "VIEWER"]
-EventType = Literal["FALL", "PRE_FALL", "PRESENCE", "INACTIVITY", "UNKNOWN"]
+EventType = Literal["FALL", "SENSITIVE_FALL", "PRE_FALL", "BED_EXIT", "PRESENCE", "INACTIVITY", "UNKNOWN"]
 SeverityType = Literal["LOW", "MED", "HIGH"]
 EventStatus = Literal["NEW", "ACK", "RESOLVED", "FALSE_ALARM"]
 SensorType = Literal["RADAR"]
