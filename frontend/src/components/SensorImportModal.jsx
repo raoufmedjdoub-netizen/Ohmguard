@@ -37,9 +37,7 @@ const EMPTY_ROW = {
   batiment: '',
   etage: '',
   chambre: '',
-  espace: '',
-  model: '',
-  firmware: ''
+  espace: ''
 };
 
 // Autocomplete Input Component
