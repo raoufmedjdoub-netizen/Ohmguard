@@ -903,13 +903,14 @@ class ClientsBuildingsService:
                             radars_count=1 if has_radar else 0
                         ))
                     
+                    room_name = room.get("name") or f"Ch. {room.get('room_number', 'N/A')}"
                     room_nodes.append(TreeNode(
                         id=room["id"],
-                        name=f"Ch. {room['room_number']}",
+                        name=room_name,
                         type="room",
                         parent_id=floor["id"],
                         children=space_nodes,
-                        metadata={"room_type": room["room_type"]},
+                        metadata={"room_type": room.get("room_type", "UNKNOWN")},
                         radars_count=room.get("radars_count", 0)
                     ))
                 
