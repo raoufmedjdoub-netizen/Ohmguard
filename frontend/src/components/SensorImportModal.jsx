@@ -291,48 +291,120 @@ export function SensorImportModal({ open, onOpenChange, onImportComplete }) {
     }
   };
 
-  // Handle file selection
-  const handleFileSelect = (event) => {
+  // Handle file selection (CSV or Excel)
+  const handleFileSelect = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.endsWith('.csv')) {
-      toast.error('Veuillez sélectionner un fichier CSV');
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+    const isCsv = file.name.endsWith('.csv');
+
+    if (!isExcel && !isCsv) {
+      toast.error('Veuillez sélectionner un fichier CSV ou Excel (.xlsx)');
       return;
     }
 
     setFileName(file.name);
     
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target.result;
-      setCsvContent(content);
-      
-      // Parse CSV to populate table
-      const lines = content.split('\n');
-      if (lines.length > 1) {
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-        const parsedRows = [];
-        
-        for (let i = 1; i < lines.length; i++) {
-          const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-          if (values.length > 0 && values[0]) {
-            const row = { id: nextId.current++ };
-            headers.forEach((h, idx) => {
-              row[h] = values[idx] || '';
-            });
-            parsedRows.push(row);
+    if (isCsv) {
+      // Parse CSV file
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target.result;
+        setCsvContent(content);
+        parseCsvToRows(content);
+      };
+      reader.readAsText(file);
+    } else {
+      // Parse Excel file using SheetJS (loaded dynamically)
+      try {
+        const XLSX = await import('xlsx');
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+            
+            if (jsonData.length > 1) {
+              // First row is headers
+              const headers = jsonData[0].map(h => 
+                h?.toString().toLowerCase()
+                  .replace('n° série', 'serial_number')
+                  .replace('organisation', 'organisation')
+                  .replace('bâtiment', 'batiment')
+                  .replace('étage', 'etage')
+                  .replace('chambre', 'chambre')
+                  .replace('espace', 'espace')
+                  .replace('modèle', 'model')
+                  .replace('nom', 'name')
+                  .replace('firmware', 'firmware')
+                  .replace(/\s*\*\s*$/, '') // Remove asterisk
+                  .trim()
+              );
+              
+              const parsedRows = [];
+              for (let i = 1; i < jsonData.length; i++) {
+                const rowValues = jsonData[i];
+                if (rowValues && rowValues.length > 0 && rowValues[0]) {
+                  const row = { id: nextId.current++ };
+                  headers.forEach((h, idx) => {
+                    if (h) {
+                      row[h] = rowValues[idx]?.toString()?.trim() || '';
+                    }
+                  });
+                  // Only add if serial_number is not empty
+                  if (row.serial_number) {
+                    parsedRows.push(row);
+                  }
+                }
+              }
+              
+              if (parsedRows.length > 0) {
+                setRows(parsedRows);
+                setMode('table');
+                toast.success(`${parsedRows.length} lignes importées depuis Excel`);
+              } else {
+                toast.warning('Aucune donnée valide trouvée dans le fichier');
+              }
+            }
+          } catch (parseError) {
+            console.error('Excel parse error:', parseError);
+            toast.error('Erreur lors de la lecture du fichier Excel');
           }
-        }
-        
-        if (parsedRows.length > 0) {
-          setRows(parsedRows);
-          setMode('table');
-          toast.success(`${parsedRows.length} lignes importées du CSV`);
+        };
+        reader.readAsArrayBuffer(file);
+      } catch (importError) {
+        toast.error('Erreur lors du chargement du module Excel');
+      }
+    }
+  };
+
+  // Parse CSV content to rows
+  const parseCsvToRows = (content) => {
+    const lines = content.split('\n');
+    if (lines.length > 1) {
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      const parsedRows = [];
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+        if (values.length > 0 && values[0]) {
+          const row = { id: nextId.current++ };
+          headers.forEach((h, idx) => {
+            row[h] = values[idx] || '';
+          });
+          parsedRows.push(row);
         }
       }
-    };
-    reader.readAsText(file);
+      
+      if (parsedRows.length > 0) {
+        setRows(parsedRows);
+        setMode('table');
+        toast.success(`${parsedRows.length} lignes importées du CSV`);
+      }
+    }
   };
 
   // Preview import
