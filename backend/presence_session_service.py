@@ -243,7 +243,11 @@ class PresenceSessionService:
         if self._db is None:
             return []
         
-        query = {"tenant_id": tenant_id}
+        query = {}
+        
+        # Only filter by tenant_id if specified (SUPER_ADMIN passes None to see all)
+        if tenant_id is not None:
+            query["tenant_id"] = tenant_id
         
         if sensor_id:
             query["sensor_id"] = sensor_id
