@@ -37,6 +37,7 @@ import {
 const navItems = [
   { path: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard' },
   { path: '/live', icon: Wifi, labelKey: 'nav.live' },
+  { path: '/live-state', icon: Activity, labelKey: 'nav.live_state' },
   { path: '/history', icon: History, labelKey: 'nav.history' },
   { path: '/reports', icon: FileText, labelKey: 'nav.reports' },
   { path: '/statistics', icon: BarChart3, labelKey: 'nav.statistics' },
