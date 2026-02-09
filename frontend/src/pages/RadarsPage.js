@@ -666,14 +666,24 @@ export function RadarsPage() {
                 </TableRow>
               ) : filteredRadars.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
+                  <TableCell colSpan={8} className="text-center py-8">
                     <Radio className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
                     <p className="text-muted-foreground">Aucun capteur trouvé</p>
                   </TableCell>
                 </TableRow>
               ) : (
                 paginatedRadars.map(radar => (
-                  <TableRow key={radar.id} data-testid={`radar-row-${radar.id}`}>
+                  <TableRow 
+                    key={radar.id} 
+                    data-testid={`radar-row-${radar.id}`}
+                    className={selectedRadars.has(radar.id) ? 'bg-primary/5' : ''}
+                  >
+                    <TableCell>
+                      <Checkbox 
+                        checked={selectedRadars.has(radar.id)}
+                        onCheckedChange={() => toggleRadarSelection(radar.id)}
+                      />
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div className={`p-1.5 rounded-lg ${radar.status === 'ONLINE' ? 'bg-green-500/10' : 'bg-muted'}`}>
