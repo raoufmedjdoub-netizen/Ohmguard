@@ -72,6 +72,10 @@ class MQTTService:
         self._task: Optional[asyncio.Task] = None
         self._client: Optional[aiomqtt.Client] = None
         
+        # Throttle for PRESENCE events (avoid flooding WebSocket)
+        self._last_presence_broadcast = {}  # device_id -> timestamp
+        self._presence_broadcast_interval = 5  # seconds between PRESENCE broadcasts per device
+        
         # Cache for device to sensor mapping
         self._device_sensor_cache: Dict[str, Dict[str, Any]] = {}
         self._cache_ttl = 300  # 5 minutes cache
