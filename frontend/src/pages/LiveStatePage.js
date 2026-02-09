@@ -386,11 +386,18 @@ export function LiveStatePage() {
             <div className="text-center py-12">
               <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
               <p className="text-muted-foreground">
-                {selectedBuilding 
-                  ? 'Aucun capteur trouvé pour ce bâtiment'
-                  : 'Sélectionnez un bâtiment pour voir les capteurs'
+                {!selectedBuilding 
+                  ? 'Sélectionnez un bâtiment pour voir les capteurs'
+                  : stats.total === 0
+                    ? 'Aucun capteur affecté à ce bâtiment'
+                    : 'Aucun capteur ne correspond aux filtres'
                 }
               </p>
+              {stats.total === 0 && selectedBuilding && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Affectez des capteurs à ce bâtiment depuis la page Capteurs
+                </p>
+              )}
             </div>
           ) : (
             // Sensors grid
