@@ -549,6 +549,34 @@ class MQTTService:
             {"$set": sensor_update}
         )
         
+        # Update Last State in Redis
+        try:
+            from last_state_service import get_last_state_service
+            last_state_service = get_last_state_service()
+            await last_state_service.update_sensor_state(
+                sensor_id=sensor['id'],
+                tenant_id=sensor['tenant_id'],
+                building_id=sensor.get('building_id'),
+                floor_id=sensor.get('floor_id'),
+                state_data={
+                    "device_id": device_id,
+                    "sensor_name": sensor.get('name'),
+                    "room_id": sensor.get('room_id'),
+                    "room_name": sensor.get('room_name'),
+                    "space_id": sensor.get('space_id'),
+                    "space_name": sensor.get('space_name'),
+                    "last_event_type": normalized.eventType.value,
+                    "last_event_severity": normalized.severity.value,
+                    "presence_detected": normalized.presenceDetected,
+                    "target_count": normalized.targetCount,
+                    "active_regions": normalized.activeRegions,
+                    "model": sensor.get('model'),
+                    "firmware_version": sensor.get('firmware_version')
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Failed to update last state in Redis: {e}")
+        
         logger.info(f"Created {normalized.eventType.value} event from device {device_id}, "
                    f"presence={normalized.presenceDetected}, regions={normalized.activeRegions}, "
                    f"targets={normalized.targetCount}")
