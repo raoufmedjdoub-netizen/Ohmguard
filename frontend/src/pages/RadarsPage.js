@@ -78,11 +78,34 @@ export function RadarsPage() {
     fetchData();
   }, []);
 
+  // Handle WebSocket messages - update specific sensor instead of refetching all
   useEffect(() => {
     if (lastMessage) {
-      if (lastMessage.type === 'sensor_status' || lastMessage.type === 'sensor_registered' || lastMessage.type === 'new_event') {
+      if (lastMessage.type === 'sensor_status') {
+        // Update only the specific sensor status
+        const sensorId = lastMessage.sensor_id;
+        if (sensorId) {
+          setRadars(prev => prev.map(r => 
+            r.id === sensorId ? { ...r, status: lastMessage.status, last_seen: lastMessage.timestamp } : r
+          ));
+        }
+      } else if (lastMessage.type === 'sensor_registered') {
+        // Only refetch if a new sensor is registered
         fetchData();
+      } else if (lastMessage.type === 'presence_update') {
+        // Update presence state for specific sensor
+        const sensorId = lastMessage.sensor_id;
+        if (sensorId) {
+          setRadars(prev => prev.map(r => 
+            r.id === sensorId ? { 
+              ...r, 
+              presence_detected: lastMessage.presence_detected,
+              last_seen: lastMessage.timestamp 
+            } : r
+          ));
+        }
       }
+      // Ignore 'new_event' to avoid constant refetches
     }
   }, [lastMessage]);
 
