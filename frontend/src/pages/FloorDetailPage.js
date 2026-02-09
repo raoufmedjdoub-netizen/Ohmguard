@@ -289,7 +289,21 @@ export function FloorDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rooms.sort((a, b) => (a.room_number || '').localeCompare(b.room_number || '')).map((room) => (
+                {rooms
+                  .sort((a, b) => {
+                    // Utiliser room_number ou name comme identifiant
+                    const numA = a.room_number || a.name || '';
+                    const numB = b.room_number || b.name || '';
+                    
+                    // Tri numérique naturel (101, 102, 103... pas 1, 10, 101, 2)
+                    const parseNum = (val) => {
+                      const match = String(val).match(/\d+/);
+                      return match ? parseInt(match[0], 10) : 0;
+                    };
+                    
+                    return parseNum(numA) - parseNum(numB);
+                  })
+                  .map((room) => (
                   <TableRow 
                     key={room.id}
                     className="cursor-pointer hover:bg-accent/50"
