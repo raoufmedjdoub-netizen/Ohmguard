@@ -48,7 +48,7 @@ export function PresenceHistoryPage() {
   // Fetch buildings for filter
   const fetchBuildings = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');
       
       // First try to get clients with their buildings
       let res = await fetch(`${API_URL}/api/clients`, {
