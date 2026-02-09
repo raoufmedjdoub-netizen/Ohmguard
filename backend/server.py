@@ -2497,6 +2497,206 @@ async def get_sensors_presence_state(current_user: UserInDB = Depends(get_curren
     }
 
 
+# ==================== PRESENCE SESSIONS API ====================
+# These endpoints provide aggregated presence history (sessions) instead of raw events
+
+from presence_session_service import get_presence_session_service, init_presence_session_service
+
+# Initialize presence session service with db
+@app.on_event("startup")
+async def init_presence_sessions():
+    init_presence_session_service(db)
+
+
+@api_router.get("/presence-sessions")
+async def list_presence_sessions(
+    building_id: Optional[str] = None,
+    room_id: Optional[str] = None,
+    sensor_id: Optional[str] = None,
+    status: Optional[str] = Query(None, description="ACTIVE or COMPLETED"),
+    date_from: Optional[str] = Query(None, description="ISO date string (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="ISO date string (YYYY-MM-DD)"),
+    limit: int = Query(100, le=500),
+    skip: int = 0,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Get presence sessions (aggregated presence periods).
+    A session represents a continuous period of presence detection.
+    """
+    service = get_presence_session_service()
+    
+    # Determine tenant
+    user_client_id = current_user.tenant_id
+    if current_user.role == "SUPER_ADMIN" and building_id:
+        # For super admin, use building's tenant
+        building = await db.buildings.find_one({"id": building_id}, {"_id": 0, "tenant_id": 1, "client_id": 1})
+        if building:
+            user_client_id = building.get("tenant_id") or building.get("client_id")
+    
+    # Parse dates
+    date_from_dt = None
+    date_to_dt = None
+    if date_from:
+        try:
+            date_from_dt = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
+        except:
+            date_from_dt = datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    if date_to:
+        try:
+            date_to_dt = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
+        except:
+            date_to_dt = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+    
+    sessions = await service.get_sessions(
+        tenant_id=user_client_id,
+        sensor_id=sensor_id,
+        building_id=building_id,
+        room_id=room_id,
+        date_from=date_from_dt,
+        date_to=date_to_dt,
+        status=status,
+        limit=limit,
+        skip=skip
+    )
+    
+    return {
+        "sessions": sessions,
+        "count": len(sessions),
+        "filters": {
+            "building_id": building_id,
+            "room_id": room_id,
+            "sensor_id": sensor_id,
+            "status": status,
+            "date_from": date_from,
+            "date_to": date_to
+        }
+    }
+
+
+@api_router.get("/presence-sessions/active")
+async def get_active_presence_sessions(
+    building_id: Optional[str] = None,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Get currently active presence sessions (presence detected, not yet ended).
+    """
+    service = get_presence_session_service()
+    
+    # Determine tenant
+    user_client_id = current_user.tenant_id
+    if current_user.role == "SUPER_ADMIN" and building_id:
+        building = await db.buildings.find_one({"id": building_id}, {"_id": 0, "tenant_id": 1, "client_id": 1})
+        if building:
+            user_client_id = building.get("tenant_id") or building.get("client_id")
+    
+    sessions = await service.get_active_sessions(
+        tenant_id=user_client_id,
+        building_id=building_id
+    )
+    
+    return {
+        "active_sessions": sessions,
+        "count": len(sessions)
+    }
+
+
+@api_router.get("/presence-sessions/stats")
+async def get_presence_session_stats(
+    building_id: Optional[str] = None,
+    date_from: Optional[str] = Query(None, description="ISO date string (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="ISO date string (YYYY-MM-DD)"),
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Get aggregated statistics for presence sessions.
+    Includes total sessions, total/average duration, min/max duration.
+    """
+    service = get_presence_session_service()
+    
+    # Determine tenant
+    user_client_id = current_user.tenant_id
+    if current_user.role == "SUPER_ADMIN" and building_id:
+        building = await db.buildings.find_one({"id": building_id}, {"_id": 0, "tenant_id": 1, "client_id": 1})
+        if building:
+            user_client_id = building.get("tenant_id") or building.get("client_id")
+    
+    # Parse dates
+    date_from_dt = None
+    date_to_dt = None
+    if date_from:
+        try:
+            date_from_dt = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
+        except:
+            date_from_dt = datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    if date_to:
+        try:
+            date_to_dt = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
+        except:
+            date_to_dt = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+    
+    stats = await service.get_session_stats(
+        tenant_id=user_client_id,
+        building_id=building_id,
+        date_from=date_from_dt,
+        date_to=date_to_dt
+    )
+    
+    return stats
+
+
+@api_router.get("/presence-sessions/daily")
+async def get_daily_presence_stats(
+    building_id: Optional[str] = None,
+    days: int = Query(7, le=30, description="Number of days to fetch"),
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Get daily presence session statistics for charts.
+    """
+    service = get_presence_session_service()
+    
+    # Determine tenant
+    user_client_id = current_user.tenant_id
+    if current_user.role == "SUPER_ADMIN" and building_id:
+        building = await db.buildings.find_one({"id": building_id}, {"_id": 0, "tenant_id": 1, "client_id": 1})
+        if building:
+            user_client_id = building.get("tenant_id") or building.get("client_id")
+    
+    daily_stats = await service.get_daily_stats(
+        tenant_id=user_client_id,
+        building_id=building_id,
+        days=days
+    )
+    
+    return {
+        "daily_stats": daily_stats,
+        "days": days
+    }
+
+
+@api_router.get("/presence-sessions/{session_id}")
+async def get_presence_session(
+    session_id: str,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Get a specific presence session by ID.
+    """
+    service = get_presence_session_service()
+    
+    session = await service.get_session_by_id(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Check access
+    if current_user.role != "SUPER_ADMIN" and session.get("tenant_id") != current_user.tenant_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    return session
+
+
 # ==================== LAST STATE API ====================
 
 from last_state_service import get_last_state_service, init_last_state_service
