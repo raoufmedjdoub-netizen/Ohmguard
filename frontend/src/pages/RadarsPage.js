@@ -974,6 +974,85 @@ export function RadarsPage() {
         onOpenChange={setImportDialogOpen}
         onImportComplete={fetchData}
       />
+
+      {/* Update Base URL Dialog */}
+      <Dialog open={updateBaseUrlDialogOpen} onOpenChange={setUpdateBaseUrlDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5" />
+              Modifier UpdateBaseUrl
+            </DialogTitle>
+            <DialogDescription>
+              Cette commande sera envoyée à {selectedRadars.size} radar(s) sélectionné(s).
+              Chaque radar recevra une commande MQTT pour mettre à jour son URL de base.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="baseUrl">Nouvelle URL de base</Label>
+              <Input 
+                id="baseUrl"
+                value={newBaseUrl}
+                onChange={(e) => setNewBaseUrl(e.target.value)}
+                placeholder="http://auth.ohmguard.fr:5051"
+              />
+              <p className="text-xs text-muted-foreground">
+                Format: http://hostname:port ou https://hostname:port
+              </p>
+            </div>
+            
+            <div className="rounded-lg border p-3 bg-muted/50">
+              <p className="text-sm font-medium mb-2">Radars sélectionnés:</p>
+              <div className="max-h-32 overflow-y-auto space-y-1">
+                {radars
+                  .filter(r => selectedRadars.has(r.id))
+                  .slice(0, 10)
+                  .map(r => (
+                    <div key={r.id} className="text-xs flex items-center gap-2">
+                      <Radio className="h-3 w-3" />
+                      <span>{r.name}</span>
+                      <span className="text-muted-foreground">({r.device_id?.substring(0, 15)}...)</span>
+                    </div>
+                  ))
+                }
+                {selectedRadars.size > 10 && (
+                  <p className="text-xs text-muted-foreground">
+                    ... et {selectedRadars.size - 10} autres
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setUpdateBaseUrlDialogOpen(false)}
+              disabled={bulkOperationLoading}
+            >
+              Annuler
+            </Button>
+            <Button 
+              onClick={handleBulkUpdateBaseUrl}
+              disabled={bulkOperationLoading || !newBaseUrl.trim()}
+            >
+              {bulkOperationLoading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Envoi en cours...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Envoyer la commande
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
