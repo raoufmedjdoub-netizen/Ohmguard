@@ -9,11 +9,13 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 3. **Configuration Management**: Remote configuration of radar parameters via MQTT
 4. **Multi-tenant Architecture**: Support for multiple care facilities
 5. **Real-time Dashboard**: Live monitoring of sensor status and events
+6. **Last State Module**: Redis-based fast access to sensor states
 
 ## Technical Stack
 - **Backend**: FastAPI + Python + Motor (async MongoDB)
 - **Frontend**: React + Vite + Shadcn/UI + TailwindCSS
 - **Database**: MongoDB
+- **Cache**: Redis (Last State, sensors cache)
 - **Real-time**: MQTT (aiomqtt) + WebSocket (python-socketio)
 - **Mobile**: React Native / Expo (in progress)
 
@@ -25,41 +27,58 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 | 8           | SENSITIVE_FALL  | HIGH     | Suspected fall (confidence)    |
 | 10          | BED_EXIT        | MED      | Person exiting bed             |
 
-## MQTT Topics
-- Config: `/devices/{deviceId}/config`
-- Commands: `/devices/{deviceId}/commands`
-- State: `/devices/{deviceId}/state`
-- Events: `/devices/{deviceId}/events`
+## MQTT Configuration
+- **Broker**: 185.249.227.251:1883
+- **Topics**:
+  - Config: `/devices/{deviceId}/config`
+  - Commands: `/devices/{deviceId}/commands`
+  - State: `/devices/{deviceId}/state`
+  - Events: `/devices/{deviceId}/events`
 
-## Command Payload Format
-```json
-{"type": "Reboot"}
-{"type": "CancelAlarm"}
-{"type": "UpdateBaseUrl"}
-```
+## Redis Key Design (Last State Module)
+- Sensor state: `ls:{tenant_id}:sensor:{sensor_id}`
+- Building index: `ls:{tenant_id}:building:{building_id}:sensors`
+- Floor index: `ls:{tenant_id}:floor:{floor_id}:sensors`
+- TTL: 7 days (604800 seconds)
+- OFFLINE_THRESHOLD: 120 seconds
 
 ---
 
 ## Changelog
 
+### 2026-02-09 - Last State Module Implementation
+- **Created**: `last_state_service.py` - Redis-based state management
+- **Created**: `/api/last-state/*` endpoints with RBAC
+- **Created**: `LiveStatePage.js` - Real-time monitoring UI
+- **Created**: `useLastState.js` hook for React
+- **Created**: `SensorStatusBadge.jsx` components
+- **Added**: Pagination on RadarsPage (20 items/page)
+- **Added**: WebSocket throttling for PRESENCE events (5s interval)
+- **Added**: MongoDB indexes for performance
+- **Added**: Redis cache on /api/sensors endpoint
+
 ### 2026-02-09 - Vayyar Event Mapping Fix
 - **Fixed**: Corrected event type mapping in `radar_event_models.py`
 - **Added**: `SENSITIVE_FALL` and `BED_EXIT` event types
-- **Added**: Push notification support for fall events in `mqtt_service.py`
-- **Verified**: Command payload format `{"type": "CommandName"}` working
+- **Added**: Push notification support for fall events
+
+### 2026-02-09 - Sensor Import Improvements
+- **Added**: Excel template generation with formatting
+- **Added**: Interactive table for data entry
+- **Removed**: Model/Firmware columns (auto-retrieved from MQTT)
 
 ---
 
 ## Roadmap
 
 ### P0 - Critical
-- [ ] Test configuration payload with real radar (numeric enums)
-- [ ] Verify RadarConfigPage frontend crash fix
+- [x] Last State Module implementation
+- [ ] Test SENSITIVE_FALL (type 8) and BED_EXIT (type 10) events
+- [ ] WebSocket rooms by building/floor for push updates
 
 ### P1 - High Priority
-- [ ] Redis environment variables in production
-- [ ] WebSocket upgrade from polling mode
 - [ ] CSV import error reports (downloadable)
+- [ ] Redis production environment configuration
 
 ### P2 - Medium Priority
 - [ ] Mobile app startup issue
@@ -77,7 +96,25 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 
 ---
 
+## Key Files Reference
+
+### Backend
+- `server.py` - Main FastAPI application
+- `mqtt_service.py` - MQTT event handling
+- `last_state_service.py` - Redis state management
+- `radar_event_models.py` - Event type definitions
+- `vayyar_config_service.py` - Radar configuration
+- `sensor_import_service.py` - CSV/Excel import
+
+### Frontend
+- `LiveStatePage.js` - Real-time sensor monitoring
+- `RadarsPage.js` - Sensor management with pagination
+- `SensorImportModal.jsx` - Import with table interface
+- `useLastState.js` - Last state React hook
+- `SensorStatusBadge.jsx` - Status indicator components
+
+---
+
 ## Known Issues
-1. **RadarConfigPage crash** - Possible `undefined` options in SelectField
-2. **Redis production** - Environment variable configuration pending
-3. **Mobile app** - Not starting (React Native/Expo issue)
+1. **Mobile app** - Not starting (React Native/Expo issue)
+2. **RadarConfigPage** - Large file, needs refactoring
