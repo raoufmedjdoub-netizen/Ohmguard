@@ -575,12 +575,79 @@ export function RadarsPage() {
         </Select>
       </div>
 
+      {/* Selection Actions Bar */}
+      {selectedRadars.size > 0 && (
+        <Card className="border-primary/50 bg-primary/5">
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="font-medium">
+                  {selectedRadars.size} radar(s) sélectionné(s)
+                </span>
+                <Button variant="ghost" size="sm" onClick={deselectAll}>
+                  Tout désélectionner
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="default" 
+                  size="sm"
+                  onClick={() => setUpdateBaseUrlDialogOpen(true)}
+                >
+                  <Settings2 className="h-4 w-4 mr-2" />
+                  Modifier UpdateBaseUrl
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Quick Selection */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-muted-foreground">Sélection rapide:</span>
+        <Button variant="outline" size="sm" onClick={selectAllVisible}>
+          <CheckSquare className="h-4 w-4 mr-1" />
+          Page actuelle ({paginatedRadars.length})
+        </Button>
+        {clients.map(client => (
+          client.buildings?.map(building => (
+            <Button 
+              key={building.id} 
+              variant="outline" 
+              size="sm"
+              onClick={() => selectByBuilding(building.id)}
+            >
+              <Building2 className="h-4 w-4 mr-1" />
+              {building.name}
+            </Button>
+          ))
+        ))}
+      </div>
+
       {/* Radars Table */}
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">
+                  <Checkbox 
+                    checked={paginatedRadars.length > 0 && paginatedRadars.every(r => selectedRadars.has(r.id))}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        selectAllVisible();
+                      } else {
+                        const visibleIds = paginatedRadars.map(r => r.id);
+                        setSelectedRadars(prev => {
+                          const newSet = new Set(prev);
+                          visibleIds.forEach(id => newSet.delete(id));
+                          return newSet;
+                        });
+                      }
+                    }}
+                  />
+                </TableHead>
                 <TableHead>Capteur</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Localisation</TableHead>
@@ -593,7 +660,7 @@ export function RadarsPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
+                  <TableCell colSpan={8} className="text-center py-8">
                     <RefreshCw className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                   </TableCell>
                 </TableRow>
