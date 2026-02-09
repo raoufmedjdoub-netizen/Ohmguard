@@ -2526,13 +2526,17 @@ async def list_presence_sessions(
     """
     service = get_presence_session_service()
     
-    # Determine tenant
+    # Determine tenant - SUPER_ADMIN can see all sessions (tenant_id=None bypasses filter)
     user_client_id = current_user.tenant_id
-    if current_user.role == "SUPER_ADMIN" and building_id:
-        # For super admin, use building's tenant
-        building = await db.buildings.find_one({"id": building_id}, {"_id": 0, "tenant_id": 1, "client_id": 1})
-        if building:
-            user_client_id = building.get("tenant_id") or building.get("client_id")
+    if current_user.role == "SUPER_ADMIN":
+        if building_id:
+            # Filter by building's tenant
+            building = await db.buildings.find_one({"id": building_id}, {"_id": 0, "tenant_id": 1, "client_id": 1})
+            if building:
+                user_client_id = building.get("tenant_id") or building.get("client_id")
+        else:
+            # SUPER_ADMIN without building filter sees all sessions
+            user_client_id = None
     
     # Parse dates
     date_from_dt = None
