@@ -54,12 +54,28 @@ const EVENT_TYPES = {
     borderColor: 'border-red-500/50',
     priority: 1
   },
+  SENSITIVE_FALL: {
+    icon: AlertTriangle,
+    label: 'Chute suspectée',
+    color: 'text-red-400',
+    bgColor: 'bg-red-400/10',
+    borderColor: 'border-red-400/50',
+    priority: 1
+  },
   PRE_FALL: {
     icon: AlertTriangle,
     label: 'Pré-chute',
     color: 'text-orange-500',
     bgColor: 'bg-orange-500/10',
     borderColor: 'border-orange-500/50',
+    priority: 2
+  },
+  BED_EXIT: {
+    icon: Clock,
+    label: 'Sortie de lit',
+    color: 'text-purple-500',
+    bgColor: 'bg-purple-500/10',
+    borderColor: 'border-purple-500/50',
     priority: 2
   },
   PRESENCE: {

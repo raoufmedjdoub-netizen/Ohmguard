@@ -14,7 +14,9 @@ import { cn } from '@/lib/utils';
 // Types d'événements avec couleurs
 const EVENT_TYPE_CONFIG = {
   FALL: { label: 'Chute', color: 'text-red-600' },
+  SENSITIVE_FALL: { label: 'Chute suspectée', color: 'text-red-500' },
   PRE_FALL: { label: 'Pré-chute', color: 'text-orange-600' },
+  BED_EXIT: { label: 'Sortie de lit', color: 'text-purple-600' },
   PRESENCE: { label: 'Présence', color: 'text-emerald-600' },
   INACTIVITY: { label: 'Inactivité', color: 'text-amber-600' },
   UNKNOWN: { label: 'Inconnu', color: 'text-slate-500' }
