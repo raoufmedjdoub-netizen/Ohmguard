@@ -88,7 +88,7 @@ class ImportPreviewResponse:
 
 
 class SensorImportService:
-    """Service for importing sensors from CSV"""
+    """Service for importing sensors from CSV/Excel"""
     
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
@@ -96,6 +96,156 @@ class SensorImportService:
     def get_csv_template(self) -> str:
         """Return CSV template content"""
         return CSV_TEMPLATE
+    
+    async def get_excel_template(self) -> bytes:
+        """Generate Excel template with formatting and data validation"""
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Import Capteurs"
+        
+        # Define headers
+        headers = [
+            ("N° Série", "serial_number", 20, True),
+            ("Nom", "name", 25, False),
+            ("Organisation", "organisation", 20, True),
+            ("Bâtiment", "batiment", 18, True),
+            ("Étage", "etage", 12, True),
+            ("Chambre", "chambre", 15, True),
+            ("Espace", "espace", 15, True),
+            ("Modèle", "model", 15, False),
+            ("Firmware", "firmware", 12, False),
+        ]
+        
+        # Styles
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        header_fill = PatternFill(start_color="1E3A5F", end_color="1E3A5F", fill_type="solid")
+        required_fill = PatternFill(start_color="2E5A8F", end_color="2E5A8F", fill_type="solid")
+        header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell_alignment = Alignment(horizontal="left", vertical="center")
+        thin_border = Border(
+            left=Side(style='thin', color='CCCCCC'),
+            right=Side(style='thin', color='CCCCCC'),
+            top=Side(style='thin', color='CCCCCC'),
+            bottom=Side(style='thin', color='CCCCCC')
+        )
+        
+        # Write headers
+        for col_idx, (header_name, field_name, width, required) in enumerate(headers, start=1):
+            cell = ws.cell(row=1, column=col_idx)
+            cell.value = f"{header_name} *" if required else header_name
+            cell.font = header_font
+            cell.fill = required_fill if required else header_fill
+            cell.alignment = header_alignment
+            cell.border = thin_border
+            ws.column_dimensions[get_column_letter(col_idx)].width = width
+        
+        # Set row height for header
+        ws.row_dimensions[1].height = 25
+        
+        # Add example data rows
+        example_data = [
+            ["VPRD-0001-0001", "Radar Chambre 101", "OHMCARE LAB", "Bâtiment A", "RDC", "Ch 101", "Lit Principal", "VCZ-3000", "1.2.3"],
+            ["VPRD-0001-0002", "Radar Chambre 102", "OHMCARE LAB", "Bâtiment A", "RDC", "Ch 102", "Lit 1", "VCZ-3000", "1.2.3"],
+            ["VPRD-0001-0003", "", "OHMCARE LAB", "Bâtiment A", "1er Étage", "Ch 201", "Lit Principal", "", ""],
+        ]
+        
+        example_fill = PatternFill(start_color="F5F5F5", end_color="F5F5F5", fill_type="solid")
+        example_font = Font(italic=True, color="666666")
+        
+        for row_idx, row_data in enumerate(example_data, start=2):
+            for col_idx, value in enumerate(row_data, start=1):
+                cell = ws.cell(row=row_idx, column=col_idx)
+                cell.value = value
+                cell.fill = example_fill
+                cell.font = example_font
+                cell.alignment = cell_alignment
+                cell.border = thin_border
+        
+        # Add empty rows for user input (with light formatting)
+        input_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+        for row_idx in range(5, 105):  # 100 empty rows
+            for col_idx in range(1, len(headers) + 1):
+                cell = ws.cell(row=row_idx, column=col_idx)
+                cell.fill = input_fill
+                cell.alignment = cell_alignment
+                cell.border = thin_border
+        
+        # Try to add data validation with existing values
+        try:
+            # Get existing organisations
+            orgs = await self.db.clients.find({}, {"_id": 0, "name": 1}).to_list(100)
+            org_names = list(set([o.get("name", "") for o in orgs if o.get("name")]))
+            
+            if org_names:
+                org_list = ",".join(org_names[:50])  # Limit to 50 for Excel
+                dv_org = DataValidation(type="list", formula1=f'"{org_list}"', allow_blank=True)
+                dv_org.error = "Sélectionnez une organisation existante ou entrez un nouveau nom"
+                dv_org.errorTitle = "Organisation"
+                dv_org.prompt = "Choisissez ou entrez une organisation"
+                dv_org.promptTitle = "Organisation"
+                ws.add_data_validation(dv_org)
+                dv_org.add(f'C5:C104')  # Organisation column
+            
+            # Get existing buildings
+            buildings = await self.db.buildings.find({}, {"_id": 0, "name": 1}).to_list(100)
+            building_names = list(set([b.get("name", "") for b in buildings if b.get("name")]))
+            
+            if building_names:
+                building_list = ",".join(building_names[:50])
+                dv_building = DataValidation(type="list", formula1=f'"{building_list}"', allow_blank=True)
+                ws.add_data_validation(dv_building)
+                dv_building.add(f'D5:D104')  # Bâtiment column
+                
+        except Exception as e:
+            logger.warning(f"Could not add data validation: {e}")
+        
+        # Add instructions sheet
+        ws_instructions = wb.create_sheet(title="Instructions")
+        instructions = [
+            ["Instructions pour l'import de capteurs"],
+            [""],
+            ["1. Colonnes obligatoires (marquées avec *)"],
+            ["   - N° Série : Identifiant unique du capteur (ex: VPRD-0001-0001)"],
+            ["   - Organisation : Nom de l'organisation/client"],
+            ["   - Bâtiment : Nom du bâtiment"],
+            ["   - Étage : Nom de l'étage (ex: RDC, 1er Étage)"],
+            ["   - Chambre : Nom de la chambre (ex: Ch 101)"],
+            ["   - Espace : Nom de l'espace/zone (ex: Lit Principal, Salle de bain)"],
+            [""],
+            ["2. Colonnes optionnelles"],
+            ["   - Nom : Nom personnalisé du capteur (généré automatiquement si vide)"],
+            ["   - Modèle : Modèle du capteur"],
+            ["   - Firmware : Version du firmware"],
+            [""],
+            ["3. Comportement"],
+            ["   - Si une organisation/bâtiment/étage/chambre/espace n'existe pas, il sera créé automatiquement"],
+            ["   - Si un capteur avec le même N° série existe déjà, il sera mis à jour"],
+            ["   - Les lignes avec des erreurs seront ignorées et signalées"],
+            [""],
+            ["4. Conseils"],
+            ["   - Supprimez les lignes d'exemple (en italique) avant l'import"],
+            ["   - Utilisez le copier-coller depuis un autre fichier Excel si nécessaire"],
+            ["   - Vérifiez l'aperçu avant de confirmer l'import"],
+        ]
+        
+        title_font = Font(bold=True, size=14, color="1E3A5F")
+        section_font = Font(bold=True, size=11)
+        
+        for row_idx, row_data in enumerate(instructions, start=1):
+            cell = ws_instructions.cell(row=row_idx, column=1)
+            cell.value = row_data[0] if row_data else ""
+            if row_idx == 1:
+                cell.font = title_font
+            elif row_data and row_data[0].startswith(("1.", "2.", "3.", "4.")):
+                cell.font = section_font
+        
+        ws_instructions.column_dimensions['A'].width = 80
+        
+        # Save to bytes
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        return output.getvalue()
     
     def parse_csv(self, csv_content: str) -> List[Dict[str, str]]:
         """Parse CSV content and return list of dictionaries"""
