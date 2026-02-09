@@ -231,15 +231,15 @@ export function PresenceHistoryPage() {
   };
 
   return (
-    <div className="p-4 lg:p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 lg:p-6 space-y-4 h-full">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-xl font-bold text-gray-900">
             Historique de Présence
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Sessions de présence agrégées (début, fin, durée)
+          <p className="text-xs text-muted-foreground">
+            Sessions de présence agrégées
           </p>
         </div>
         
@@ -256,18 +256,67 @@ export function PresenceHistoryPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Sessions actives</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {stats?.active_sessions || activeSessions.length || 0}
-                </p>
-              </div>
-              <Activity className="h-8 w-8 text-green-500 opacity-80" />
+      {/* Stats + Filters Row */}
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Stats inline */}
+        <div className="flex items-center gap-1 px-3 py-1.5 bg-green-50 rounded-lg border border-green-200">
+          <Activity className="h-4 w-4 text-green-600" />
+          <span className="text-sm font-medium text-green-700">{stats?.active_sessions || activeSessions.length || 0} actives</span>
+        </div>
+        <div className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 rounded-lg border border-blue-200">
+          <Clock className="h-4 w-4 text-blue-600" />
+          <span className="text-sm font-medium text-blue-700">{stats?.total_sessions || 0} total</span>
+        </div>
+        <div className="flex items-center gap-1 px-3 py-1.5 bg-orange-50 rounded-lg border border-orange-200">
+          <Timer className="h-4 w-4 text-orange-600" />
+          <span className="text-sm font-medium text-orange-700">Moy: {stats?.avg_duration_display || '0s'}</span>
+        </div>
+        
+        <div className="flex-1" />
+        
+        {/* Filters */}
+        <Select value={selectedBuilding} onValueChange={(v) => { setSelectedBuilding(v); setPage(0); }}>
+          <SelectTrigger className="w-[180px] h-8 text-sm">
+            <Building2 className="h-3 w-3 mr-1" />
+            <SelectValue placeholder="Tous les bâtiments" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les bâtiments</SelectItem>
+            {buildings.map(b => (
+              <SelectItem key={b.id} value={b.id}>
+                {b.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
+          <SelectTrigger className="w-[130px] h-8 text-sm">
+            <SelectValue placeholder="Toutes" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes</SelectItem>
+            <SelectItem value="ACTIVE">En cours</SelectItem>
+            <SelectItem value="COMPLETED">Terminées</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Sessions Table */}
+      <Card className="flex-1">
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (activeSessions.length === 0 && sessions.length === 0) ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Aucune session de présence trouvée</p>
+            </div>
+          ) : (
+            <div>
+              {/* Sessions Table */}
             </div>
           </CardContent>
         </Card>
