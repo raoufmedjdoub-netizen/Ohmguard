@@ -34,7 +34,7 @@ export function useLastState({
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
   
-  const { lastMessage } = useSocket();
+  const { lastMessage } = useWebSocket();
   const intervalRef = useRef(null);
 
   // Fetch data from API
@@ -147,7 +147,7 @@ export function useSensorLastState(sensorId) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  const { lastMessage } = useSocket();
+  const { lastMessage } = useWebSocket();
 
   const fetchState = useCallback(async () => {
     if (!sensorId) {
