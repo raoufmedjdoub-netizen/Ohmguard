@@ -516,7 +516,7 @@ export function SensorImportModal({ open, onOpenChange, onImportComplete }) {
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileSelect}
-                  accept=".csv"
+                  accept=".csv,.xlsx,.xls"
                   className="hidden"
                 />
               </div>
