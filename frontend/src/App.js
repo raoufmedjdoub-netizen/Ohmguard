@@ -21,12 +21,8 @@ import { RadarConfigPage } from '@/pages/RadarConfigPage';
 import { AISensorsPage } from '@/pages/AISensorsPage';
 import { RulesPage } from '@/pages/RulesPage';
 import UsersPage from '@/pages/UsersPage';
-import { NotificationsPage } from '@/pages/NotificationsPage';
-import { SimulatorPage } from '@/pages/SimulatorPage';
-import { PresenceSimulatorPage } from '@/pages/PresenceSimulatorPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { StatisticsPage } from '@/pages/StatisticsPage';
-import { WidgetPage } from '@/components/widgets/DashboardWidget';
 import { ReportsPage } from '@/pages/ReportsPage';
 
 // Clients & Buildings Pages
