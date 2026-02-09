@@ -4,7 +4,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '@/lib/api';
-import { useSocket } from '@/contexts/SocketContext';
+import { useSocket } from '@/contexts/WebSocketContext';
 
 // Refresh interval in ms
 const REFRESH_INTERVAL = 30000; // 30 seconds
