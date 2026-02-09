@@ -943,17 +943,17 @@ class ClientsBuildingsService:
                 "floor_id": None
             }, {"_id": 0}).to_list(50)
             
-            building_zone_nodes = [
-                TreeNode(
+            building_zone_nodes = []
+            for z in building_zones:
+                zone_radar_count = await self.db.sensors.count_documents({"zone_id": z["id"]})
+                building_zone_nodes.append(TreeNode(
                     id=z["id"],
                     name=z["name"],
                     type="zone",
                     parent_id=building["id"],
                     metadata={"zone_type": z["zone_type"]},
-                    radars_count=await self.db.sensors.count_documents({"zone_id": z["id"]})
-                )
-                for z in building_zones
-            ]
+                    radars_count=zone_radar_count
+                ))
             
             building_nodes.append(TreeNode(
                 id=building["id"],
