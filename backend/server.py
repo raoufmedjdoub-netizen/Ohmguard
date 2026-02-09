@@ -906,6 +906,9 @@ async def update_sensor(sensor_id: str, update: SensorUpdate, current_user: User
     if update_data:
         await db.sensors.update_one({"id": sensor_id}, {"$set": update_data})
         await log_audit(current_user.id, sensor['tenant_id'], "update", "sensor", sensor_id, update_data)
+        # Invalidate cache
+        from cache_service import get_cache_service
+        get_cache_service().invalidate_sensors(sensor['tenant_id'])
     
     updated = await db.sensors.find_one({"id": sensor_id}, {"_id": 0})
     return updated
@@ -923,6 +926,9 @@ async def rotate_sensor_key(sensor_id: str, current_user: UserInDB = Depends(get
     
     new_key = f"sk_{uuid.uuid4().hex}"
     await db.sensors.update_one({"id": sensor_id}, {"$set": {"api_key": new_key}})
+    # Invalidate cache
+    from cache_service import get_cache_service
+    get_cache_service().invalidate_sensors(sensor['tenant_id'])
     
     await log_audit(current_user.id, sensor['tenant_id'], "rotate_key", "sensor", sensor_id)
     return {"api_key": new_key}
