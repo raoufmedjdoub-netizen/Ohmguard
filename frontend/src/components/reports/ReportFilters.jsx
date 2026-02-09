@@ -24,7 +24,9 @@ import {
 
 const EVENT_TYPES = [
   { value: 'FALL', labelKey: 'events.type_fall' },
+  { value: 'SENSITIVE_FALL', labelKey: 'events.type_sensitive_fall' },
   { value: 'PRE_FALL', labelKey: 'events.type_pre_fall' },
+  { value: 'BED_EXIT', labelKey: 'events.type_bed_exit' },
   { value: 'PRESENCE', labelKey: 'events.type_presence' },
   { value: 'INACTIVITY', labelKey: 'events.type_inactivity' },
   { value: 'UNKNOWN', labelKey: 'events.type_unknown' }
