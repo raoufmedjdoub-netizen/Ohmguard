@@ -87,12 +87,27 @@ export function LiveStatePage() {
 
   const loadBuildings = async () => {
     try {
-      const response = await api.get('/buildings');
-      setBuildings(response.data || []);
+      // Get all clients first
+      const clientsResponse = await api.get('/clients');
+      const clients = clientsResponse.data || [];
+      
+      // Get buildings for all clients
+      const allBuildings = [];
+      for (const client of clients) {
+        const buildingsResponse = await api.get(`/clients/${client.id}/buildings`);
+        const clientBuildings = (buildingsResponse.data || []).map(b => ({
+          ...b,
+          client_name: client.name,
+          tenant_id: client.tenant_id
+        }));
+        allBuildings.push(...clientBuildings);
+      }
+      
+      setBuildings(allBuildings);
       
       // Auto-select first building if available
-      if (response.data?.length > 0) {
-        setSelectedBuilding(response.data[0].id);
+      if (allBuildings.length > 0) {
+        setSelectedBuilding(allBuildings[0].id);
       }
     } catch (err) {
       console.error('Error loading buildings:', err);
