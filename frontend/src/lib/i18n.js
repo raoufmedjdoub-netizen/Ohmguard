@@ -41,6 +41,8 @@ const resources = {
         live_state_desc: 'Real-time sensor status',
         history: 'History',
         history_desc: 'Alert history',
+        presence_history: 'Presence History',
+        presence_history_desc: 'Aggregated presence sessions',
         reports: 'Reports',
         reports_desc: 'Event reports generation',
         statistics: 'Statistics',
