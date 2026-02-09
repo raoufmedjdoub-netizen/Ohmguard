@@ -297,7 +297,7 @@ class PresenceSessionService:
     
     async def get_session_stats(
         self,
-        tenant_id: str,
+        tenant_id: Optional[str],
         building_id: Optional[str] = None,
         date_from: Optional[datetime] = None,
         date_to: Optional[datetime] = None
@@ -306,8 +306,10 @@ class PresenceSessionService:
         if self._db is None:
             return {}
         
-        # Build match stage
-        match_stage = {"tenant_id": tenant_id, "status": "COMPLETED"}
+        # Build match stage - tenant_id is optional for SUPER_ADMIN
+        match_stage = {"status": "COMPLETED"}
+        if tenant_id is not None:
+            match_stage["tenant_id"] = tenant_id
         if building_id:
             match_stage["building_id"] = building_id
         if date_from:
@@ -354,11 +356,12 @@ class PresenceSessionService:
         stats["max_duration_display"] = self._format_duration(stats.get("max_duration_sec", 0))
         
         # Get active sessions count
-        active_count = await self._db.presence_sessions.count_documents({
-            "tenant_id": tenant_id,
-            "status": "ACTIVE",
-            **({"building_id": building_id} if building_id else {})
-        })
+        active_query = {"status": "ACTIVE"}
+        if tenant_id is not None:
+            active_query["tenant_id"] = tenant_id
+        if building_id:
+            active_query["building_id"] = building_id
+        active_count = await self._db.presence_sessions.count_documents(active_query)
         stats["active_sessions"] = active_count
         
         return stats
