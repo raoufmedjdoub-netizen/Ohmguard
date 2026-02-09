@@ -226,9 +226,7 @@ export function SensorImportModal({ open, onOpenChange, onImportComplete }) {
             batiment: cells[3]?.trim() || '',
             etage: cells[4]?.trim() || '',
             chambre: cells[5]?.trim() || '',
-            espace: cells[6]?.trim() || '',
-            model: cells[7]?.trim() || '',
-            firmware: cells[8]?.trim() || ''
+            espace: cells[6]?.trim() || ''
           });
         }
       });
