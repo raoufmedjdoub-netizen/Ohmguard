@@ -491,31 +491,43 @@ class LastStateService:
             return []
         
         try:
+            # Filter by building_id only - tenant_id may be inconsistent
             sensors = await self._db.sensors.find(
-                {"tenant_id": tenant_id, "building_id": building_id},
+                {"building_id": building_id},
                 {"_id": 0}
             ).to_list(500)
             
             states = []
             for sensor in sensors:
-                last_event = await self._db.events.find_one(
-                    {"sensor_id": sensor["id"]},
-                    {"_id": 0},
-                    sort=[("timestamp", -1)]
-                )
-                
-                state = self._build_state_from_mongo(sensor, last_event)
-                
-                # Rehydrate Redis
-                await self.update_sensor_state(
-                    sensor_id=sensor["id"],
-                    tenant_id=tenant_id,
-                    building_id=building_id,
-                    floor_id=sensor.get("floor_id"),
-                    state_data=state
-                )
+                # Build state directly from sensor document (faster than querying events)
+                state = {
+                    "sensor_id": sensor.get("id"),
+                    "device_id": sensor.get("device_id"),
+                    "sensor_name": sensor.get("name"),
+                    "room_id": sensor.get("room_id"),
+                    "room_name": sensor.get("room_name"),
+                    "space_id": sensor.get("room_space_id"),
+                    "space_name": sensor.get("space_name"),
+                    "floor_id": sensor.get("floor_id"),
+                    "model": sensor.get("model"),
+                    "firmware_version": sensor.get("firmware_version"),
+                    "status": sensor.get("status", "UNKNOWN"),
+                    "last_seen": sensor.get("last_seen"),
+                    "presence_detected": sensor.get("current_presence", False),
+                    "target_count": sensor.get("current_target_count", 0),
+                    "last_event_type": sensor.get("last_event_type"),
+                    "last_event_severity": sensor.get("last_event_severity"),
+                    "updated_at": sensor.get("last_seen") or sensor.get("updated_at")
+                }
                 
                 states.append(self._enrich_state(state))
+            
+            # Sort by room name
+            states.sort(key=lambda x: (
+                x.get("room_name") or "",
+                x.get("space_name") or "",
+                x.get("sensor_name") or ""
+            ))
             
             return states
             
