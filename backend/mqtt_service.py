@@ -424,6 +424,10 @@ class MQTTService:
             if is_assigned:
                 try:
                     presence_service = get_presence_session_service()
+                    # Ensure the service has database access
+                    if presence_service._db is None:
+                        presence_service.set_db(self.db)
+                    
                     # Build metadata for the session
                     session_metadata = {
                         "client_id": sensor.get('client_id'),
