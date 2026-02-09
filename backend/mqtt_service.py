@@ -574,9 +574,11 @@ class MQTTService:
                     "timestamp": datetime.now(timezone.utc).isoformat()
                 })
         
-        # Trigger alert rules for HIGH severity events
+        # Trigger alert rules for HIGH severity events (FALL, SENSITIVE_FALL)
         if normalized.severity == EventSeverity.HIGH:
             await self._process_alert_rules(event, sensor)
+            # Send push notification for fall events
+            await self._send_fall_push_notification(event, sensor, normalized.eventType.value)
     
     async def _handle_device_event_legacy(self, device_id: str, payload: Dict, sensor: Dict):
         """Legacy event handler for non-standard payloads"""
