@@ -496,7 +496,7 @@ export function RadarsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredRadars.map(radar => (
+                paginatedRadars.map(radar => (
                   <TableRow key={radar.id} data-testid={`radar-row-${radar.id}`}>
                     <TableCell>
                       <div className="flex items-center gap-2">
