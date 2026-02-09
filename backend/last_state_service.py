@@ -149,7 +149,7 @@ class LastStateService:
                 logger.error(f"Error getting sensor state from Redis: {e}")
         
         # Fallback to MongoDB
-        if with_fallback and self._db:
+        if with_fallback and self._db is not None:
             return await self._fallback_get_sensor(sensor_id, tenant_id)
         
         return None
@@ -205,7 +205,7 @@ class LastStateService:
                 logger.error(f"Error getting building sensors from Redis: {e}")
         
         # Fallback to MongoDB
-        if with_fallback and self._db:
+        if with_fallback and self._db is not None:
             return await self._fallback_get_building_sensors(tenant_id, building_id)
         
         return []
@@ -248,7 +248,7 @@ class LastStateService:
                 logger.error(f"Error getting floor sensors from Redis: {e}")
         
         # Fallback to MongoDB
-        if with_fallback and self._db:
+        if with_fallback and self._db is not None:
             return await self._fallback_get_floor_sensors(tenant_id, floor_id)
         
         return []
