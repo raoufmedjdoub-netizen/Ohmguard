@@ -355,10 +355,6 @@ export function RoomDetailPage() {
                   ))}
                 </TableBody>
               </Table>
-                    </div>
-                  </div>
-                ))}
-              </div>
             )}
           </CardContent>
         </Card>
