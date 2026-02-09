@@ -63,7 +63,14 @@ export function useLastState({
       setError(null);
     } catch (err) {
       console.error('Error fetching last state:', err);
-      setError(err.response?.data?.detail || 'Erreur de chargement');
+      // Handle 404 or empty building gracefully
+      if (err.response?.status === 404) {
+        setSensors([]);
+        setStats({ total: 0, online: 0, offline: 0, unknown: 0 });
+        setError(null); // Not an error, just no sensors
+      } else {
+        setError(err.response?.data?.detail || 'Erreur de chargement');
+      }
     } finally {
       setLoading(false);
     }
