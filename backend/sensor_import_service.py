@@ -1,6 +1,6 @@
 """
 Sensor Import Service
-Service for batch importing sensors/radars from CSV files
+Service for batch importing sensors/radars from CSV/Excel files
 """
 
 from typing import List, Dict, Any, Optional
@@ -10,6 +10,10 @@ import uuid
 import csv
 import io
 import logging
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
 
 logger = logging.getLogger(__name__)
 
