@@ -554,12 +554,8 @@ class MQTTService:
             tenant_id=sensor['tenant_id']
         )
         
-        # Determine if we should store this event
-        # Skip ALL PRESENCE events with no detection (presenceDetected=false) to avoid flooding
-        # These are "absence" notifications and should not be recorded as events
-        if normalized.eventType == RadarEventType.PRESENCE and not normalized.presenceDetected:
-            logger.debug(f"Skipping absence event from {device_id} (presenceDetected=false, targets={normalized.targetCount})")
-            return
+        # NOTE: PRESENCE events (type 4) are already handled above and returned early
+        # This code only processes FALL, SENSITIVE_FALL, BED_EXIT, and other critical events
         
         # Deduplication: check for similar event in last 10 seconds
         from datetime import timedelta
