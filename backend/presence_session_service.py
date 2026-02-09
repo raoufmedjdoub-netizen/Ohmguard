@@ -335,6 +335,14 @@ class PresenceSessionService:
         
         result = await self._db.presence_sessions.aggregate(pipeline).to_list(1)
         
+        # Get active sessions count (regardless of completed sessions)
+        active_query = {"status": "ACTIVE"}
+        if tenant_id is not None:
+            active_query["tenant_id"] = tenant_id
+        if building_id:
+            active_query["building_id"] = building_id
+        active_count = await self._db.presence_sessions.count_documents(active_query)
+        
         if not result:
             return {
                 "total_sessions": 0,
@@ -343,7 +351,8 @@ class PresenceSessionService:
                 "min_duration_sec": 0,
                 "max_duration_sec": 0,
                 "total_duration_display": "0s",
-                "avg_duration_display": "0s"
+                "avg_duration_display": "0s",
+                "active_sessions": active_count
             }
         
         stats = result[0]
@@ -354,14 +363,6 @@ class PresenceSessionService:
         stats["avg_duration_display"] = self._format_duration(int(stats.get("avg_duration_sec", 0)))
         stats["min_duration_display"] = self._format_duration(stats.get("min_duration_sec", 0))
         stats["max_duration_display"] = self._format_duration(stats.get("max_duration_sec", 0))
-        
-        # Get active sessions count
-        active_query = {"status": "ACTIVE"}
-        if tenant_id is not None:
-            active_query["tenant_id"] = tenant_id
-        if building_id:
-            active_query["building_id"] = building_id
-        active_count = await self._db.presence_sessions.count_documents(active_query)
         stats["active_sessions"] = active_count
         
         return stats
