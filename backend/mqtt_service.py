@@ -26,6 +26,9 @@ from radar_event_models import (
 # Import cache service
 from cache_service import get_cache_service
 
+# Import presence session service for aggregated presence tracking
+from presence_session_service import get_presence_session_service
+
 logger = logging.getLogger(__name__)
 
 # Vayyar event type mapping (updated based on actual Vayyar API)
