@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Wifi, WifiOff, Radio, RefreshCw, Activity, 
   Clock, Plus, Copy, Key, 
-  Trash2, Search, MapPin, Sliders, Building2, AlertCircle, Link2, Upload
+  Trash2, Search, MapPin, Sliders, Building2, AlertCircle, Link2, Upload,
+  CheckSquare, Square, Settings2, Send
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import api, { sensorsAPI } from '@/lib/api';
 import { useWebSocket } from '@/contexts/WebSocketContext';
@@ -34,6 +36,12 @@ export function RadarsPage() {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
+  
+  // Selection for bulk operations
+  const [selectedRadars, setSelectedRadars] = useState(new Set());
+  const [updateBaseUrlDialogOpen, setUpdateBaseUrlDialogOpen] = useState(false);
+  const [newBaseUrl, setNewBaseUrl] = useState('http://auth.ohmguard.fr:5051');
+  const [bulkOperationLoading, setBulkOperationLoading] = useState(false);
   
   // Dialog states
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
