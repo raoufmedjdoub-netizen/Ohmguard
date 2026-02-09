@@ -76,6 +76,7 @@ function AppRoutes() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="live" element={<LivePage />} />
+        <Route path="live-state" element={<LiveStatePage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="events/:eventId" element={<EventDetailPage />} />
         
