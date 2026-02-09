@@ -232,7 +232,7 @@ class PresenceSessionService:
     
     async def get_sessions(
         self,
-        tenant_id: str,
+        tenant_id: Optional[str],
         sensor_id: Optional[str] = None,
         building_id: Optional[str] = None,
         room_id: Optional[str] = None,
