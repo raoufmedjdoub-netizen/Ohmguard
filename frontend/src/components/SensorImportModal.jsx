@@ -269,23 +269,23 @@ export function SensorImportModal({ open, onOpenChange, onImportComplete }) {
     return csvLines.join('\n');
   };
 
-  // Download template
+  // Download Excel template
   const downloadTemplate = async () => {
     try {
-      const response = await api.get('/sensors/import/template', {
+      const response = await api.get('/sensors/import/template?format=xlsx', {
         responseType: 'blob'
       });
       
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'sensors_import_template.csv');
+      link.setAttribute('download', 'template_import_capteurs.xlsx');
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
       
-      toast.success('Template téléchargé');
+      toast.success('Template Excel téléchargé');
     } catch (error) {
       toast.error('Erreur lors du téléchargement');
     }
