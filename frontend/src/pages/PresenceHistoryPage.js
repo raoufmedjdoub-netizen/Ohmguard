@@ -49,25 +49,45 @@ export function PresenceHistoryPage() {
   const fetchBuildings = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/clients-buildings`, {
+      
+      // First try to get clients with their buildings
+      let res = await fetch(`${API_URL}/api/clients`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        const clients = await res.json();
+        // Flatten buildings from all clients
+        const allBuildings = [];
+        if (Array.isArray(clients)) {
+          clients.forEach(client => {
+            if (client.buildings) {
+              client.buildings.forEach(b => {
+                allBuildings.push({ 
+                  id: b.id, 
+                  name: b.name, 
+                  clientName: client.name 
+                });
+              });
+            }
+          });
+        }
+        setBuildings(allBuildings);
+        return;
+      }
+      
+      // Fallback: try buildings endpoint directly
+      res = await fetch(`${API_URL}/api/buildings`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
         const data = await res.json();
-        // Flatten buildings from all clients
-        const allBuildings = [];
-        data.forEach(client => {
-          if (client.buildings) {
-            client.buildings.forEach(b => {
-              allBuildings.push({ 
-                id: b.id, 
-                name: b.name, 
-                clientName: client.name 
-              });
-            });
-          }
-        });
-        setBuildings(allBuildings);
+        const buildingsList = Array.isArray(data) ? data : data.buildings || [];
+        setBuildings(buildingsList.map(b => ({
+          id: b.id,
+          name: b.name,
+          clientName: b.client_name || ''
+        })));
       }
     } catch (error) {
       console.error('Failed to fetch buildings:', error);
