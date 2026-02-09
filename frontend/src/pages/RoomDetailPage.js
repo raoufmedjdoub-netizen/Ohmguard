@@ -213,7 +213,7 @@ export function RoomDetailPage() {
           { type: 'organisation', label: room.client_name || 'Organisation', href: `/organisations/${room.client_id}` },
           { type: 'building', label: room.building_name || 'Bâtiment', href: `/buildings/${room.building_id}` },
           { type: 'floor', label: room.floor_name || 'Étage', href: `/floors/${room.floor_id}` },
-          { type: 'room', label: `Chambre ${room.room_number}`, href: null }
+          { type: 'room', label: room.room_number ? `Chambre ${room.room_number}` : (room.name || 'Chambre'), href: null }
         ]} 
       />
 
@@ -227,7 +227,9 @@ export function RoomDetailPage() {
             <DoorOpen className="h-6 w-6 text-green-500" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Chambre {room.room_number}</h1>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {room.room_number ? `Chambre ${room.room_number}` : (room.name || 'Chambre')}
+            </h1>
             <p className="text-muted-foreground">
               {getRoomTypeLabel(room.room_type)} • {room.spaces_count} espaces • {room.radars_count} radars
             </p>
