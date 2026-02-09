@@ -2566,20 +2566,30 @@ async def get_last_state_sensors(
     if not building_id and not floor_id:
         raise HTTPException(status_code=400, detail="building_id or floor_id is required")
     
-    # Determine tenant_id
-    if current_user.role == "SUPER_ADMIN":
-        # Get tenant from building/floor
-        if building_id:
-            building = await db.buildings.find_one({"id": building_id}, {"_id": 0})
-            if not building:
-                raise HTTPException(status_code=404, detail="Building not found")
-            tenant_id = building.get("tenant_id")
-        else:
-            floor = await db.floors.find_one({"id": floor_id}, {"_id": 0})
-            if not floor:
-                raise HTTPException(status_code=404, detail="Floor not found")
-            tenant_id = floor.get("tenant_id")
+    # Determine tenant_id from building or floor
+    if building_id:
+        building = await db.buildings.find_one({"id": building_id}, {"_id": 0})
+        if not building:
+            raise HTTPException(status_code=404, detail="Building not found")
+        
+        # Get tenant from client
+        client = await db.clients.find_one({"id": building.get("client_id")}, {"_id": 0})
+        tenant_id = client.get("tenant_id") if client else building.get("tenant_id") or current_user.tenant_id
     else:
+        floor = await db.floors.find_one({"id": floor_id}, {"_id": 0})
+        if not floor:
+            raise HTTPException(status_code=404, detail="Floor not found")
+        
+        # Get building then client
+        building = await db.buildings.find_one({"id": floor.get("building_id")}, {"_id": 0})
+        if building:
+            client = await db.clients.find_one({"id": building.get("client_id")}, {"_id": 0})
+            tenant_id = client.get("tenant_id") if client else floor.get("tenant_id") or current_user.tenant_id
+        else:
+            tenant_id = floor.get("tenant_id") or current_user.tenant_id
+    
+    # Fallback to user's tenant
+    if not tenant_id:
         tenant_id = current_user.tenant_id
     
     # Check access
