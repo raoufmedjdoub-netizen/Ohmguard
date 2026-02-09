@@ -3540,6 +3540,64 @@ async def send_device_command(
         raise HTTPException(status_code=500, detail=f"Failed to send command: {str(e)}")
 
 
+class BulkCommandRequest(BaseModel):
+    """Request model for bulk device commands"""
+    device_ids: List[str] = Field(..., description="List of device IDs to send command to")
+    command_type: int = Field(..., description="Command type")
+    params: Optional[Dict] = Field(default=None, description="Additional parameters")
+
+
+@api_router.post("/devices/bulk-command")
+async def send_bulk_device_command(
+    request: BulkCommandRequest,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Send a command to multiple Vayyar radar devices.
+    
+    Useful for bulk operations like updating base URL on all selected devices.
+    Returns results for each device.
+    """
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN", "SUPERVISOR"])
+    
+    from vayyar_config_service import vayyar_config_service
+    
+    if not vayyar_config_service:
+        raise HTTPException(status_code=503, detail="Config service not available")
+    
+    results = {
+        "success": [],
+        "failed": [],
+        "total": len(request.device_ids)
+    }
+    
+    for device_id in request.device_ids:
+        try:
+            result = await vayyar_config_service.send_command(
+                sensor_id=device_id,
+                command_type=request.command_type,
+                params=request.params,
+                tenant_id=current_user.tenant_id
+            )
+            results["success"].append({
+                "device_id": device_id,
+                "status": "sent",
+                "result": result.model_dump() if hasattr(result, 'model_dump') else str(result)
+            })
+        except Exception as e:
+            logger.error(f"Failed to send command to {device_id}: {e}")
+            results["failed"].append({
+                "device_id": device_id,
+                "status": "failed",
+                "error": str(e)
+            })
+    
+    results["success_count"] = len(results["success"])
+    results["failed_count"] = len(results["failed"])
+    
+    return results
+
+
 @api_router.get("/devices/{device_id}/commands/history")
 async def get_command_history(
     device_id: str,
