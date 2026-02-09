@@ -915,18 +915,31 @@ class ImportRequest(BaseModel):
     csv_content: str
 
 @api_router.get("/sensors/import/template")
-async def get_import_template(current_user: UserInDB = Depends(get_current_user)):
-    """Download CSV template for sensor import"""
+async def get_import_template(
+    format: str = "xlsx",
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Download template for sensor import (Excel or CSV)"""
     check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
     
     import_service = get_sensor_import_service()
-    template = import_service.get_csv_template()
     
-    return StreamingResponse(
-        io.StringIO(template),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=sensors_import_template.csv"}
-    )
+    if format == "xlsx":
+        # Generate Excel template
+        excel_bytes = await import_service.get_excel_template()
+        return Response(
+            content=excel_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=template_import_capteurs.xlsx"}
+        )
+    else:
+        # CSV template
+        template = import_service.get_csv_template()
+        return StreamingResponse(
+            io.StringIO(template),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=sensors_import_template.csv"}
+        )
 
 @api_router.post("/sensors/import/preview")
 async def preview_sensor_import(request: ImportRequest, current_user: UserInDB = Depends(get_current_user)):
