@@ -371,7 +371,9 @@ class ClientsBuildingsService:
         room = await self.db.rooms.find_one({"id": room_id}, {"_id": 0})
         
         if room:
-            room["spaces_count"] = await self.db.room_spaces.count_documents({"room_id": room_id})
+            # Les espaces sont stockés dans le tableau "spaces" du document room
+            embedded_spaces = room.get("spaces", [])
+            room["spaces_count"] = len(embedded_spaces)
             room["radars_count"] = await self.db.sensors.count_documents({"room_id": room_id})
             
             # Add parent names for breadcrumb
@@ -386,17 +388,15 @@ class ClientsBuildingsService:
                         room["client_name"] = client.get("name")
             
             if include_spaces:
-                room["spaces"] = await self.db.room_spaces.find(
-                    {"room_id": room_id}, {"_id": 0}
-                ).to_list(20)
-                
-                # Add radar info to each space
-                for space in room["spaces"]:
+                # Enrichir chaque espace avec les infos du radar
+                for space in embedded_spaces:
                     radar = await self.db.sensors.find_one(
                         {"room_space_id": space["id"]}, {"_id": 0, "id": 1, "name": 1, "device_id": 1, "status": 1}
                     )
                     space["has_radar"] = radar is not None
                     space["radar"] = radar
+                
+                room["spaces"] = embedded_spaces
         
         return room
     
