@@ -451,7 +451,7 @@ export function SensorImportModal({ open, onOpenChange, onImportComplete }) {
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" onClick={downloadTemplate}>
                   <Download className="h-4 w-4 mr-1" />
-                  Template
+                  Template Excel
                 </Button>
                 <Badge variant="outline">{rows.length} ligne(s)</Badge>
               </div>
