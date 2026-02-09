@@ -83,10 +83,13 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 
 ### P0 - Critical
 - [x] Last State Module implementation
+- [x] Presence Sessions Architecture (stop saving raw PRESENCE events)
+- [x] Presence History page (frontend)
 - [ ] Test SENSITIVE_FALL (type 8) and BED_EXIT (type 10) events
 - [ ] WebSocket rooms by building/floor for push updates
 
 ### P1 - High Priority
+- [ ] Data migration: Delete old PRESENCE events from events collection
 - [ ] CSV import error reports (downloadable)
 - [ ] Redis production environment configuration
 
