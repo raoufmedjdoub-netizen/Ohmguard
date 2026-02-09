@@ -10,6 +10,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional, Callable, Dict, Any
 import uuid
+import time
 
 import aiomqtt
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -21,6 +22,9 @@ from radar_event_models import (
     normalize_radar_event, extract_active_regions, epoch_ms_to_iso,
     format_active_regions_display, format_target_count_display
 )
+
+# Import cache service
+from cache_service import get_cache_service
 
 logger = logging.getLogger(__name__)
 
