@@ -558,6 +558,17 @@ class MQTTService:
             tenant_id=sensor['tenant_id']
         )
         
+        # ===================================================================================
+        # IMPORTANT: Reject FALL/SENSITIVE_FALL events when no presence is detected
+        # The Vayyar radar sends type=5 (FALL) even when the room is empty as a "status clear"
+        # A real fall requires someone to be in the room (presenceDetected=true OR trackerTargets not empty)
+        # ===================================================================================
+        if normalized.eventType in [RadarEventType.FALL, RadarEventType.SENSITIVE_FALL]:
+            has_presence = normalized.presenceDetected or normalized.targetCount > 0
+            if not has_presence:
+                logger.info(f"Ignoring {normalized.eventType.value} event from {device_id} - no presence detected (likely a status clear, not a real fall)")
+                return
+        
         # NOTE: PRESENCE events (type 4) are already handled above and returned early
         # This code only processes FALL, SENSITIVE_FALL, BED_EXIT, and other critical events
         
