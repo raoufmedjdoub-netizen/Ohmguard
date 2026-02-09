@@ -36,7 +36,9 @@ export function formatRelativeTime(date, locale = 'fr') {
 export function getEventTypeColor(type) {
   switch (type) {
     case 'FALL': return 'bg-destructive text-destructive-foreground';
+    case 'SENSITIVE_FALL': return 'bg-red-500 text-white';
     case 'PRE_FALL': return 'bg-warning text-warning-foreground';
+    case 'BED_EXIT': return 'bg-purple-500 text-white';
     case 'PRESENCE': return 'bg-primary/80 text-primary-foreground';
     case 'INACTIVITY': return 'bg-orange-500 text-white';
     case 'UNKNOWN': return 'bg-muted text-muted-foreground';
@@ -47,7 +49,9 @@ export function getEventTypeColor(type) {
 export function getEventTypeIcon(type) {
   switch (type) {
     case 'FALL': return '🚨';
+    case 'SENSITIVE_FALL': return '⚠️';
     case 'PRE_FALL': return '⚠️';
+    case 'BED_EXIT': return '🛏️';
     case 'PRESENCE': return '👤';
     case 'INACTIVITY': return '💤';
     default: return '❓';
