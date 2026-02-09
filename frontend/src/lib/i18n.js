@@ -499,6 +499,8 @@ const resources = {
         dashboard_desc: 'Vue d\'ensemble du système',
         live: 'En direct',
         live_desc: 'Événements en temps réel',
+        live_state: 'État en direct',
+        live_state_desc: 'Statut des capteurs en temps réel',
         history: 'Historique',
         history_desc: 'Historique des alertes',
         reports: 'Rapports',
