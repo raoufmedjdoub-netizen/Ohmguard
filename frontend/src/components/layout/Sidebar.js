@@ -49,12 +49,7 @@ const navItems = [
   { path: '/organisations', icon: Building2, labelKey: 'nav.organisations' },
   { path: '/sites-batiments', icon: Layers, labelKey: 'nav.sites_buildings' },
   { path: '/carte', icon: Map, labelKey: 'nav.floor_plan' },
-  { path: '/alert-rules', icon: AlertTriangle, labelKey: 'nav.alert_rules', requireAdmin: true },
   { path: '/users', icon: Users, labelKey: 'nav.users', requireAdmin: true },
-  { path: '/notifications', icon: Bell, labelKey: 'nav.notifications' },
-  { path: '/simulator', icon: Play, labelKey: 'nav.simulator', requireOperator: true },
-  { path: '/presence-simulator', icon: Radio, labelKey: 'nav.presence_simulator', requireOperator: true },
-  { path: '/widgets', icon: LayoutGrid, labelKey: 'nav.widgets' },
   { path: '/settings', icon: Settings, labelKey: 'nav.settings' }
 ];
 
