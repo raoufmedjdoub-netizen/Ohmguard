@@ -315,69 +315,21 @@ export function PresenceHistoryPage() {
               <p>Aucune session de présence trouvée</p>
             </div>
           ) : (
-            <div>
+            <div className="space-y-4">
               {/* Sessions Table */}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total sessions</p>
-                <p className="text-2xl font-bold">{stats?.total_sessions || 0}</p>
-              </div>
-              <Clock className="h-8 w-8 text-blue-500 opacity-80" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Durée moyenne</p>
-                <p className="text-2xl font-bold">{stats?.avg_duration_display || '0s'}</p>
-              </div>
-              <Timer className="h-8 w-8 text-orange-500 opacity-80" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Durée totale</p>
-                <p className="text-2xl font-bold">{stats?.total_duration_display || '0s'}</p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-purple-500 opacity-80" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Filtres:</span>
-            </div>
-            
-            <Select value={selectedBuilding} onValueChange={(v) => { setSelectedBuilding(v); setPage(0); }}>
-              <SelectTrigger className="w-[200px]">
-                <Building2 className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Tous les bâtiments" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les bâtiments</SelectItem>
-                {buildings.map(b => (
-                  <SelectItem key={b.id} value={b.id}>
-                    {b.name} ({b.clientName})
-                  </SelectItem>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="text-left py-2 px-3 font-medium">Capteur</th>
+                      <th className="text-left py-2 px-3 font-medium">Emplacement</th>
+                      <th className="text-left py-2 px-3 font-medium">Début</th>
+                      <th className="text-left py-2 px-3 font-medium">Fin</th>
+                      <th className="text-left py-2 px-3 font-medium">Durée</th>
+                      <th className="text-left py-2 px-3 font-medium">Statut</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                 ))}
               </SelectContent>
             </Select>
