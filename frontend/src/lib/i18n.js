@@ -505,6 +505,8 @@ const resources = {
         live_state_desc: 'Statut des capteurs en temps réel',
         history: 'Historique',
         history_desc: 'Historique des alertes',
+        presence_history: 'Historique Présence',
+        presence_history_desc: 'Sessions de présence agrégées',
         reports: 'Rapports',
         reports_desc: 'Génération de rapports d\'événements',
         statistics: 'Statistiques',
