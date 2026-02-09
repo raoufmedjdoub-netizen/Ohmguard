@@ -267,77 +267,94 @@ export function RoomDetailPage() {
                 <p>Aucun espace configuré</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {spaces.map((space) => (
-                  <div
-                    key={space.id}
-                    className={cn(
-                      'p-4 rounded-lg border-2 transition-all',
-                      getSpaceColor(space.space_type)
-                    )}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={cn('p-2 rounded-lg', getSpaceColor(space.space_type))}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Espace</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Radar</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {spaces.map((space) => (
+                    <TableRow key={space.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
                           {getSpaceIcon(space.space_type)}
-                        </div>
-                        <div>
-                          <p className="font-medium">
+                          <span className="font-medium">
                             {space.name || getSpaceLabel(space.space_type)}
-                          </p>
-                          <Badge variant="outline" className="mt-1">
-                            {getSpaceLabel(space.space_type)}
-                          </Badge>
+                          </span>
                         </div>
-                      </div>
-                      
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleDeleteSpace(space.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                    
-                    {/* Radar info */}
-                    <div className="mt-4 pt-4 border-t border-current/10">
-                      {space.has_radar && space.radar ? (
-                        <div className="flex items-center justify-between">
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {getSpaceLabel(space.space_type)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {space.has_radar && space.radar ? (
                           <div className="flex items-center gap-2">
-                            <Radio className="h-4 w-4 text-green-500" />
-                            <span className="text-sm">
-                              {space.radar.name || space.radar.device_id?.substring(0, 15)}
-                            </span>
-                            <Badge 
-                              variant="outline" 
-                              className={space.radar.status === 'ONLINE' ? 'bg-green-500/10 text-green-500' : ''}
-                            >
-                              {space.radar.status}
-                            </Badge>
+                            <Radio className="h-4 w-4 text-primary" />
+                            <span>{space.radar.name || space.radar.device_id?.substring(0, 15)}</span>
                           </div>
+                        ) : (
+                          <span className="text-muted-foreground">Non affecté</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {space.has_radar && space.radar ? (
+                          <Badge 
+                            variant="outline" 
+                            className={space.radar.status === 'ONLINE' ? 'bg-green-500/10 text-green-500' : 'bg-gray-500/10 text-gray-500'}
+                          >
+                            {space.radar.status}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-orange-500/10 text-orange-500">
+                            En attente
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {space.has_radar && space.radar ? (
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleUnassignRadar(space.radar.id)}
+                              title="Désaffecter le radar"
+                            >
+                              <Unlink className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => {
+                                setSelectedSpace(space);
+                                setShowAssignModal(true);
+                              }}
+                              title="Affecter un radar"
+                            >
+                              <Link className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button 
                             variant="ghost" 
                             size="sm"
-                            onClick={() => handleUnassignRadar(space.radar.id)}
+                            onClick={() => handleDeleteSpace(space.id)}
+                            title="Supprimer l'espace"
                           >
-                            <Unlink className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
-                      ) : (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="w-full"
-                          onClick={() => {
-                            setSelectedSpace(space);
-                            setShowAssignModal(true);
-                          }}
-                        >
-                          <Link className="h-4 w-4 mr-2" />
-                          Affecter un radar
-                        </Button>
-                      )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
                     </div>
                   </div>
                 ))}
