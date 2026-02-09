@@ -844,8 +844,21 @@ async def list_sensors(
     site_id: Optional[str] = None,
     zone_id: Optional[str] = None,
     status: Optional[SensorStatus] = None,
+    skip_cache: bool = False,
     current_user: UserInDB = Depends(get_current_user)
 ):
+    from cache_service import get_cache_service
+    cache = get_cache_service()
+    
+    # Determine tenant for cache key
+    cache_tenant = current_user.tenant_id if current_user.role != "SUPER_ADMIN" else (tenant_id or "all")
+    
+    # Try cache first (if no filters and not skipping)
+    if not skip_cache and not site_id and not zone_id and not status:
+        cached = cache.get_sensors_list(cache_tenant)
+        if cached:
+            return cached
+    
     query = {}
     if current_user.role != "SUPER_ADMIN":
         query["tenant_id"] = current_user.tenant_id
@@ -860,6 +873,11 @@ async def list_sensors(
         query["status"] = status
     
     sensors = await db.sensors.find(query, {"_id": 0}).to_list(1000)
+    
+    # Cache result if no filters
+    if not site_id and not zone_id and not status:
+        cache.set_sensors_list(cache_tenant, sensors)
+    
     return sensors
 
 @api_router.get("/sensors/{sensor_id}", response_model=Sensor)
