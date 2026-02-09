@@ -381,6 +381,40 @@ export function PresenceHistoryPage() {
                     </tr>
                   </thead>
                   <tbody>
+                    {/* Sessions actives en premier */}
+                    {activeSessions.map(session => (
+                      <tr key={session.id} className="border-b hover:bg-green-50/50 bg-green-50/30">
+                        <td className="py-3 px-2">
+                          <div className="flex items-center gap-2">
+                            <Radar className="h-4 w-4 text-green-600" />
+                            <span className="font-medium">{session.sensor_name || 'Capteur'}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-2 text-muted-foreground">
+                          {session.room_name || session.space_name || '-'}
+                        </td>
+                        <td className="py-3 px-2">
+                          <div>
+                            <div>{formatDateTime(session.start_at)}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {formatTimeAgo(session.start_at)}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-2 text-muted-foreground">-</td>
+                        <td className="py-3 px-2">
+                          <span className="font-medium text-green-600">
+                            {session.current_duration_display || session.duration_display || '-'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-2">
+                          <Badge className="bg-green-100 text-green-700">
+                            En cours
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                    {/* Sessions historiques */}
                     {sessions.map(session => (
                       <tr key={session.id} className="border-b hover:bg-muted/50">
                         <td className="py-3 px-2">
@@ -411,19 +445,13 @@ export function PresenceHistoryPage() {
                           ) : '-'}
                         </td>
                         <td className="py-3 px-2">
-                          <span className={cn(
-                            "font-medium",
-                            session.status === 'ACTIVE' && "text-green-600"
-                          )}>
+                          <span className="font-medium">
                             {session.duration_display || '-'}
                           </span>
                         </td>
                         <td className="py-3 px-2">
-                          <Badge 
-                            variant={session.status === 'ACTIVE' ? 'default' : 'secondary'}
-                            className={session.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : ''}
-                          >
-                            {session.status === 'ACTIVE' ? 'En cours' : 'Terminée'}
+                          <Badge variant="secondary">
+                            Terminée
                           </Badge>
                         </td>
                       </tr>
@@ -435,7 +463,7 @@ export function PresenceHistoryPage() {
               {/* Pagination */}
               <div className="flex items-center justify-between pt-4">
                 <div className="text-sm text-muted-foreground">
-                  Page {page + 1} ({sessions.length} résultats)
+                  Page {page + 1} ({activeSessions.length + sessions.length} résultats)
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
