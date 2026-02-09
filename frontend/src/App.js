@@ -37,6 +37,7 @@ import { FloorDetailPage } from '@/pages/FloorDetailPage';
 import { RoomDetailPage } from '@/pages/RoomDetailPage';
 import { SitesBatimentsPage } from '@/pages/SitesBatimentsPage';
 import { FloorPlanPage } from '@/pages/FloorPlanPage';
+import { PresenceHistoryPage } from '@/pages/PresenceHistoryPage';
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
