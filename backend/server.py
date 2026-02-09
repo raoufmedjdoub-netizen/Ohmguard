@@ -2522,8 +2522,23 @@ async def check_building_access(user: UserInDB, building_id: str) -> bool:
     if not building:
         return False
     
+    # Get tenant_id from building or from client
+    building_tenant_id = building.get("tenant_id")
+    if not building_tenant_id:
+        # Try to get tenant from client
+        client = await db.clients.find_one({"id": building.get("client_id")}, {"_id": 0})
+        if client:
+            building_tenant_id = client.get("tenant_id")
+    
+    # If still no tenant_id, allow access for admins (legacy data)
+    if not building_tenant_id:
+        if user.role in ["TENANT_ADMIN", "ORG_ADMIN"]:
+            return True
+        # For other roles, deny access to unassigned buildings
+        return False
+    
     # Check tenant match
-    if building.get("tenant_id") != user.tenant_id:
+    if building_tenant_id != user.tenant_id:
         return False
     
     # Org/Tenant admins have access to all buildings in their tenant
