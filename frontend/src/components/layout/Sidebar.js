@@ -32,7 +32,8 @@ import {
   Layers,
   Map,
   Camera,
-  Activity
+  Activity,
+  Clock
 } from 'lucide-react';
 
 const navItems = [
@@ -40,6 +41,7 @@ const navItems = [
   { path: '/live', icon: Wifi, labelKey: 'nav.live' },
   { path: '/live-state', icon: Activity, labelKey: 'nav.live_state' },
   { path: '/history', icon: History, labelKey: 'nav.history' },
+  { path: '/presence-history', icon: Clock, labelKey: 'nav.presence_history' },
   { path: '/reports', icon: FileText, labelKey: 'nav.reports' },
   { path: '/statistics', icon: BarChart3, labelKey: 'nav.statistics' },
   { path: '/capteurs', icon: Radar, labelKey: 'nav.sensors' },
