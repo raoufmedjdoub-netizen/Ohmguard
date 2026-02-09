@@ -103,17 +103,15 @@ class SensorImportService:
         ws = wb.active
         ws.title = "Import Capteurs"
         
-        # Define headers
+        # Define headers (removed Modèle and Firmware - retrieved from MQTT state)
         headers = [
-            ("N° Série", "serial_number", 20, True),
-            ("Nom", "name", 25, False),
-            ("Organisation", "organisation", 20, True),
-            ("Bâtiment", "batiment", 18, True),
-            ("Étage", "etage", 12, True),
-            ("Chambre", "chambre", 15, True),
-            ("Espace", "espace", 15, True),
-            ("Modèle", "model", 15, False),
-            ("Firmware", "firmware", 12, False),
+            ("N° Série", "serial_number", 22, True),
+            ("Nom", "name", 28, False),
+            ("Organisation", "organisation", 22, True),
+            ("Bâtiment", "batiment", 20, True),
+            ("Étage", "etage", 14, True),
+            ("Chambre", "chambre", 16, True),
+            ("Espace", "espace", 18, True),
         ]
         
         # Styles
@@ -144,9 +142,9 @@ class SensorImportService:
         
         # Add example data rows
         example_data = [
-            ["VPRD-0001-0001", "Radar Chambre 101", "OHMCARE LAB", "Bâtiment A", "RDC", "Ch 101", "Lit Principal", "VCZ-3000", "1.2.3"],
-            ["VPRD-0001-0002", "Radar Chambre 102", "OHMCARE LAB", "Bâtiment A", "RDC", "Ch 102", "Lit 1", "VCZ-3000", "1.2.3"],
-            ["VPRD-0001-0003", "", "OHMCARE LAB", "Bâtiment A", "1er Étage", "Ch 201", "Lit Principal", "", ""],
+            ["VPRD-0001-0001", "Radar Chambre 101", "OHMCARE LAB", "Bâtiment A", "RDC", "Ch 101", "Lit Principal"],
+            ["VPRD-0001-0002", "Radar Chambre 102", "OHMCARE LAB", "Bâtiment A", "RDC", "Ch 102", "Lit 1"],
+            ["VPRD-0001-0003", "", "OHMCARE LAB", "Bâtiment A", "1er Étage", "Ch 201", "Lit Principal"],
         ]
         
         example_fill = PatternFill(start_color="F5F5F5", end_color="F5F5F5", fill_type="solid")
@@ -214,15 +212,16 @@ class SensorImportService:
             [""],
             ["2. Colonnes optionnelles"],
             ["   - Nom : Nom personnalisé du capteur (généré automatiquement si vide)"],
-            ["   - Modèle : Modèle du capteur"],
-            ["   - Firmware : Version du firmware"],
             [""],
-            ["3. Comportement"],
+            ["3. Informations récupérées automatiquement"],
+            ["   - Le modèle et le firmware sont récupérés automatiquement via MQTT"],
+            [""],
+            ["4. Comportement"],
             ["   - Si une organisation/bâtiment/étage/chambre/espace n'existe pas, il sera créé automatiquement"],
             ["   - Si un capteur avec le même N° série existe déjà, il sera mis à jour"],
             ["   - Les lignes avec des erreurs seront ignorées et signalées"],
             [""],
-            ["4. Conseils"],
+            ["5. Conseils"],
             ["   - Supprimez les lignes d'exemple (en italique) avant l'import"],
             ["   - Utilisez le copier-coller depuis un autre fichier Excel si nécessaire"],
             ["   - Vérifiez l'aperçu avant de confirmer l'import"],
@@ -236,7 +235,7 @@ class SensorImportService:
             cell.value = row_data[0] if row_data else ""
             if row_idx == 1:
                 cell.font = title_font
-            elif row_data and row_data[0].startswith(("1.", "2.", "3.", "4.")):
+            elif row_data and row_data[0].startswith(("1.", "2.", "3.", "4.", "5.")):
                 cell.font = section_font
         
         ws_instructions.column_dimensions['A'].width = 80
