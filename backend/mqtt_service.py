@@ -827,6 +827,61 @@ class MQTTService:
             # Webhook (mock in dev)
             if rule.get('webhook_url'):
                 logger.info(f"[MOCK] Webhook to {rule['webhook_url']}: {event}")
+    
+    async def _send_fall_push_notification(self, event: Dict, sensor: Dict, event_type: str):
+        """Send push notification for FALL and SENSITIVE_FALL events"""
+        try:
+            from push_notification_service import send_expo_push_notification
+            
+            # Get all push tokens for this tenant
+            tokens_cursor = self.db.push_tokens.find(
+                {"tenant_id": event.get('tenant_id')}, 
+                {"_id": 0, "push_token": 1}
+            )
+            tokens = [doc['push_token'] async for doc in tokens_cursor]
+            
+            # If no tenant-specific tokens, get all tokens
+            if not tokens:
+                tokens_cursor = self.db.push_tokens.find({}, {"_id": 0, "push_token": 1})
+                tokens = [doc['push_token'] async for doc in tokens_cursor]
+            
+            if not tokens:
+                logger.debug("No push tokens found for fall notification")
+                return
+            
+            # Build notification message based on event type
+            if event_type == "FALL":
+                title = "🚨 CHUTE DÉTECTÉE"
+                body = f"Chute détectée par {sensor.get('name', 'Radar')} - Intervention requise!"
+            elif event_type == "SENSITIVE_FALL":
+                title = "⚠️ Chute suspectée"
+                body = f"Chute possible détectée par {sensor.get('name', 'Radar')} - Vérification recommandée"
+            else:
+                title = "⚠️ Alerte Radar"
+                body = f"Alerte {event_type} de {sensor.get('name', 'Radar')}"
+            
+            # Send push notification
+            result = await send_expo_push_notification(
+                tokens=tokens,
+                title=title,
+                body=body,
+                data={
+                    "type": "fall_event",
+                    "event_id": event.get("id"),
+                    "event_type": event_type,
+                    "sensor_id": sensor.get("id"),
+                    "sensor_name": sensor.get("name"),
+                    "severity": event.get("severity", "HIGH")
+                }
+            )
+            
+            if result:
+                logger.info(f"Fall push notification sent for {event_type}: {len(tokens)} recipients")
+            
+        except ImportError:
+            logger.warning("push_notification_service not available for fall notifications")
+        except Exception as e:
+            logger.error(f"Failed to send fall push notification: {e}")
 
 
 # Global MQTT service instance
