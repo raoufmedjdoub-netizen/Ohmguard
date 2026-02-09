@@ -249,7 +249,7 @@ export function SensorImportModal({ open, onOpenChange, onImportComplete }) {
 
   // Convert table rows to CSV
   const tableToCsv = () => {
-    const headers = ['serial_number', 'name', 'organisation', 'batiment', 'etage', 'chambre', 'espace', 'model', 'firmware'];
+    const headers = ['serial_number', 'name', 'organisation', 'batiment', 'etage', 'chambre', 'espace'];
     const csvLines = [headers.join(',')];
     
     rows.forEach(row => {
