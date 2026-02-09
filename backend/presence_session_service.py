@@ -203,14 +203,17 @@ class PresenceSessionService:
     
     async def get_active_sessions(
         self,
-        tenant_id: str,
+        tenant_id: Optional[str],
         building_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get all currently active sessions"""
         if self._db is None:
             return []
         
-        query = {"tenant_id": tenant_id, "status": "ACTIVE"}
+        query = {"status": "ACTIVE"}
+        # Only filter by tenant_id if specified
+        if tenant_id is not None:
+            query["tenant_id"] = tenant_id
         if building_id:
             query["building_id"] = building_id
         
