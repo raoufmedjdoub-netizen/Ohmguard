@@ -420,7 +420,7 @@ class AuditLog(BaseModel):
     tenant_id: Optional[str] = None
     action: str
     resource_type: str
-    resource_id: str
+    resource_id: Optional[str] = None
     details: dict = {}
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
