@@ -2496,6 +2496,273 @@ async def get_sensors_presence_state(current_user: UserInDB = Depends(get_curren
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
+
+# ==================== LAST STATE API ====================
+
+from last_state_service import get_last_state_service, init_last_state_service
+
+# Initialize last state service with db
+@app.on_event("startup")
+async def init_last_state():
+    init_last_state_service(db)
+
+
+async def check_building_access(user: UserInDB, building_id: str) -> bool:
+    """
+    Check if user has access to a building.
+    - SUPER_ADMIN: access to all
+    - TENANT_ADMIN / ORG_ADMIN: access to all buildings in their tenant
+    - SUPERVISOR / OPERATOR: check allowed_building_ids or assignments
+    """
+    if user.role == "SUPER_ADMIN":
+        return True
+    
+    # Get building to check tenant
+    building = await db.buildings.find_one({"id": building_id}, {"_id": 0})
+    if not building:
+        return False
+    
+    # Check tenant match
+    if building.get("tenant_id") != user.tenant_id:
+        return False
+    
+    # Org/Tenant admins have access to all buildings in their tenant
+    if user.role in ["TENANT_ADMIN", "ORG_ADMIN"]:
+        return True
+    
+    # Check allowed_building_ids
+    if hasattr(user, 'allowed_building_ids') and user.allowed_building_ids:
+        if building_id in user.allowed_building_ids:
+            return True
+    
+    # Check assignments
+    assignment = await db.user_assignments.find_one({
+        "user_id": user.id,
+        "building_id": building_id
+    })
+    
+    return assignment is not None
+
+
+async def check_floor_access(user: UserInDB, floor_id: str) -> bool:
+    """Check if user has access to a floor via building access"""
+    floor = await db.floors.find_one({"id": floor_id}, {"_id": 0})
+    if not floor:
+        return False
+    
+    return await check_building_access(user, floor.get("building_id"))
+
+
+@api_router.get("/last-state/sensors")
+async def get_last_state_sensors(
+    building_id: Optional[str] = None,
+    floor_id: Optional[str] = None,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Get last state of all sensors in a building or floor.
+    Uses Redis for fast access with MongoDB fallback.
+    """
+    if not building_id and not floor_id:
+        raise HTTPException(status_code=400, detail="building_id or floor_id is required")
+    
+    # Determine tenant_id
+    if current_user.role == "SUPER_ADMIN":
+        # Get tenant from building/floor
+        if building_id:
+            building = await db.buildings.find_one({"id": building_id}, {"_id": 0})
+            if not building:
+                raise HTTPException(status_code=404, detail="Building not found")
+            tenant_id = building.get("tenant_id")
+        else:
+            floor = await db.floors.find_one({"id": floor_id}, {"_id": 0})
+            if not floor:
+                raise HTTPException(status_code=404, detail="Floor not found")
+            tenant_id = floor.get("tenant_id")
+    else:
+        tenant_id = current_user.tenant_id
+    
+    # Check access
+    if building_id:
+        if not await check_building_access(current_user, building_id):
+            raise HTTPException(status_code=403, detail="Access denied to this building")
+    elif floor_id:
+        if not await check_floor_access(current_user, floor_id):
+            raise HTTPException(status_code=403, detail="Access denied to this floor")
+    
+    # Get last states
+    last_state_service = get_last_state_service()
+    
+    if building_id:
+        states = await last_state_service.get_building_sensors_state(tenant_id, building_id)
+        stats = await last_state_service.get_building_stats(tenant_id, building_id)
+        
+        # Get building info
+        building = await db.buildings.find_one({"id": building_id}, {"_id": 0})
+        
+        return {
+            "building_id": building_id,
+            "building_name": building.get("name") if building else None,
+            "tenant_id": tenant_id,
+            "sensors_count": stats["total"],
+            "online_count": stats["online"],
+            "offline_count": stats["offline"],
+            "unknown_count": stats["unknown"],
+            "sensors": states,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    else:
+        states = await last_state_service.get_floor_sensors_state(tenant_id, floor_id)
+        stats = await last_state_service.get_floor_stats(tenant_id, floor_id)
+        
+        # Get floor info
+        floor = await db.floors.find_one({"id": floor_id}, {"_id": 0})
+        
+        return {
+            "floor_id": floor_id,
+            "floor_name": floor.get("name") if floor else None,
+            "building_id": floor.get("building_id") if floor else None,
+            "tenant_id": tenant_id,
+            "sensors_count": stats["total"],
+            "online_count": stats["online"],
+            "offline_count": stats["offline"],
+            "unknown_count": stats["unknown"],
+            "sensors": states,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+
+@api_router.get("/last-state/sensor/{sensor_id}")
+async def get_last_state_sensor(
+    sensor_id: str,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Get last state of a specific sensor.
+    """
+    # Get sensor to check access
+    sensor = await db.sensors.find_one({"id": sensor_id}, {"_id": 0})
+    if not sensor:
+        raise HTTPException(status_code=404, detail="Sensor not found")
+    
+    # Check tenant access
+    if current_user.role != "SUPER_ADMIN" and sensor.get("tenant_id") != current_user.tenant_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Check building access for non-admin users
+    if sensor.get("building_id") and current_user.role not in ["SUPER_ADMIN", "TENANT_ADMIN", "ORG_ADMIN"]:
+        if not await check_building_access(current_user, sensor["building_id"]):
+            raise HTTPException(status_code=403, detail="Access denied to this sensor's building")
+    
+    # Get last state
+    last_state_service = get_last_state_service()
+    state = await last_state_service.get_sensor_state(
+        sensor_id=sensor_id,
+        tenant_id=sensor.get("tenant_id")
+    )
+    
+    if not state:
+        return {
+            "sensor_id": sensor_id,
+            "status": "unknown",
+            "sensor_name": sensor.get("name"),
+            "message": "No state data available"
+        }
+    
+    return state
+
+
+@api_router.post("/last-state/rehydrate")
+async def rehydrate_last_state(
+    building_id: Optional[str] = None,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Manually trigger rehydration of Redis cache from MongoDB.
+    Admin only.
+    """
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    
+    tenant_id = current_user.tenant_id if current_user.role != "SUPER_ADMIN" else None
+    
+    if building_id:
+        # Rehydrate specific building
+        building = await db.buildings.find_one({"id": building_id}, {"_id": 0})
+        if not building:
+            raise HTTPException(status_code=404, detail="Building not found")
+        
+        if current_user.role != "SUPER_ADMIN" and building.get("tenant_id") != current_user.tenant_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        tenant_id = building.get("tenant_id")
+    
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="tenant_id required for SUPER_ADMIN")
+    
+    last_state_service = get_last_state_service()
+    await last_state_service.rehydrate_from_mongo(tenant_id, building_id)
+    
+    return {"status": "success", "message": f"Rehydrated cache for tenant {tenant_id}"}
+
+
+@api_router.get("/last-state/stats")
+async def get_last_state_stats(
+    building_id: Optional[str] = None,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Get aggregated stats for last states.
+    """
+    tenant_id = current_user.tenant_id if current_user.role != "SUPER_ADMIN" else None
+    
+    if building_id:
+        if not await check_building_access(current_user, building_id):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        building = await db.buildings.find_one({"id": building_id}, {"_id": 0})
+        if building:
+            tenant_id = building.get("tenant_id")
+    
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Cannot determine tenant")
+    
+    last_state_service = get_last_state_service()
+    
+    if building_id:
+        stats = await last_state_service.get_building_stats(tenant_id, building_id)
+        return {
+            "building_id": building_id,
+            **stats,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    
+    # Get all buildings for tenant
+    buildings = await db.buildings.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(100)
+    
+    all_stats = {"total": 0, "online": 0, "offline": 0, "unknown": 0}
+    building_stats = []
+    
+    for building in buildings:
+        stats = await last_state_service.get_building_stats(tenant_id, building["id"])
+        all_stats["total"] += stats["total"]
+        all_stats["online"] += stats["online"]
+        all_stats["offline"] += stats["offline"]
+        all_stats["unknown"] += stats["unknown"]
+        
+        building_stats.append({
+            "building_id": building["id"],
+            "building_name": building.get("name"),
+            **stats
+        })
+    
+    return {
+        "tenant_id": tenant_id,
+        **all_stats,
+        "buildings": building_stats,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+
 # ==================== WEBSOCKET ====================
 
 @app.websocket("/ws/{tenant_id}")
