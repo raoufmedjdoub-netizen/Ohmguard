@@ -400,33 +400,108 @@ class MQTTService:
             logger.warning(f"Event payload is not a dict, using root payload. Type: {type(event_payload)}")
             event_payload = payload
         
-        # EARLY EXIT: Ignore PRESENCE events where presenceDetected is false
-        # These "absence" messages are noise and should not create events in the database
-        # BUT we still need to update the sensor's current presence state
+        # ===================================================================================
+        # PRESENCE EVENT HANDLING (type 4)
+        # Instead of saving raw presence events, we use the PresenceSessionService
+        # to track presence sessions (start time, end time, duration).
+        # ===================================================================================
         presence_detected = event_payload.get("presenceDetected", False)
-        if event_type_code == 4 and not presence_detected:  # type 4 = PRESENCE
-            logger.debug(f"Ignoring absence event from {device_id} (presenceDetected=false)")
-            # Update sensor with current presence state (absence) and last_seen
+        
+        if event_type_code == 4:  # PRESENCE event type
+            # Update sensor with current presence state and last_seen
             await self.db.sensors.update_one(
                 {"id": sensor['id']},
                 {"$set": {
                     "status": "ONLINE", 
                     "last_seen": datetime.now(timezone.utc).isoformat(),
-                    "current_presence": False,  # No presence currently
-                    "current_target_count": 0,
+                    "current_presence": presence_detected,
+                    "current_target_count": len(event_payload.get('trackerTargets', [])) if presence_detected else 0,
                     "presence_updated_at": datetime.now(timezone.utc).isoformat()
                 }}
             )
-            # Broadcast presence update to frontend (only for assigned radars)
-            if self.broadcast_callback and is_assigned:
-                await self.broadcast_callback(sensor['tenant_id'], {
-                    "type": "presence_update",
-                    "sensor_id": sensor['id'],
-                    "device_id": device_id,
-                    "presence_detected": False,
-                    "target_count": 0,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                })
+            
+            # Handle presence session lifecycle (only for assigned radars)
+            if is_assigned:
+                try:
+                    presence_service = get_presence_session_service()
+                    # Build metadata for the session
+                    session_metadata = {
+                        "client_id": sensor.get('client_id'),
+                        "building_id": sensor.get('building_id'),
+                        "floor_id": sensor.get('floor_id'),
+                        "room_id": sensor.get('room_id'),
+                        "space_id": sensor.get('room_space_id'),
+                        "sensor_name": sensor.get('name'),
+                        "room_name": sensor.get('room_name'),
+                        "space_name": sensor.get('space_name')
+                    }
+                    
+                    # Handle session start (presence=true) or end (presence=false)
+                    completed_session = await presence_service.handle_presence_event(
+                        sensor_id=sensor['id'],
+                        device_id=device_id,
+                        tenant_id=sensor['tenant_id'],
+                        presence_detected=presence_detected,
+                        metadata=session_metadata
+                    )
+                    
+                    if completed_session:
+                        logger.info(f"Presence session completed for {sensor.get('name')}: "
+                                   f"duration={completed_session.get('duration_sec')}s")
+                        
+                        # Broadcast session completion
+                        if self.broadcast_callback:
+                            await self.broadcast_callback(sensor['tenant_id'], {
+                                "type": "presence_session_completed",
+                                "session": completed_session,
+                                "sensor_id": sensor['id'],
+                                "sensor_name": sensor.get('name')
+                            })
+                    
+                except Exception as e:
+                    logger.error(f"Failed to handle presence session: {e}")
+                
+                # Broadcast presence update to frontend
+                if self.broadcast_callback:
+                    await self.broadcast_callback(sensor['tenant_id'], {
+                        "type": "presence_update",
+                        "sensor_id": sensor['id'],
+                        "device_id": device_id,
+                        "presence_detected": presence_detected,
+                        "target_count": len(event_payload.get('trackerTargets', [])) if presence_detected else 0,
+                        "timestamp": datetime.now(timezone.utc).isoformat()
+                    })
+                
+                # Update Last State in Redis
+                try:
+                    from last_state_service import get_last_state_service
+                    last_state_service = get_last_state_service()
+                    await last_state_service.update_sensor_state(
+                        sensor_id=sensor['id'],
+                        tenant_id=sensor['tenant_id'],
+                        building_id=sensor.get('building_id'),
+                        floor_id=sensor.get('floor_id'),
+                        state_data={
+                            "device_id": device_id,
+                            "sensor_name": sensor.get('name'),
+                            "room_id": sensor.get('room_id'),
+                            "room_name": sensor.get('room_name'),
+                            "space_id": sensor.get('space_id'),
+                            "space_name": sensor.get('space_name'),
+                            "last_event_type": "PRESENCE",
+                            "last_event_severity": "LOW",
+                            "presence_detected": presence_detected,
+                            "target_count": len(event_payload.get('trackerTargets', [])) if presence_detected else 0,
+                            "model": sensor.get('model'),
+                            "firmware_version": sensor.get('firmware_version')
+                        }
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to update last state in Redis for presence: {e}")
+            
+            # PRESENCE events are NOT saved in the events collection anymore
+            # They are tracked via presence_sessions for aggregated reporting
+            logger.debug(f"Presence event from {device_id}: detected={presence_detected} (session-based tracking)")
             return
         
         # IMPORTANT: For unassigned radars, we update their status but do NOT create events
