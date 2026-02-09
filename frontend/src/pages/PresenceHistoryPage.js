@@ -98,7 +98,7 @@ export function PresenceHistoryPage() {
   const fetchSessions = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');
       const params = new URLSearchParams();
       
       if (selectedBuilding !== 'all') {
