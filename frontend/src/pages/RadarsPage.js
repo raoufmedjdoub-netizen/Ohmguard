@@ -305,6 +305,18 @@ export function RadarsPage() {
     return matchesSearch && matchesStatus && matchesAssignment && matchesType;
   });
 
+  // Pagination
+  const totalPages = Math.ceil(filteredRadars.length / itemsPerPage);
+  const paginatedRadars = filteredRadars.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedStatus, selectedAssignment, selectedType]);
+
   // Stats
   const onlineCount = radars.filter(r => r.status === 'ONLINE').length;
   const pendingCount = radars.filter(r => !r.client_id).length;
