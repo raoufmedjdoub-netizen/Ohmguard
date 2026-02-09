@@ -2080,7 +2080,7 @@ async def get_events_timeline(
     
     # Group by date - include all event types
     from collections import defaultdict
-    daily_counts = defaultdict(lambda: {"total": 0, "FALL": 0, "PRE_FALL": 0, "PRESENCE": 0, "INACTIVITY": 0, "UNKNOWN": 0})
+    daily_counts = defaultdict(lambda: {"total": 0, "FALL": 0, "SENSITIVE_FALL": 0, "PRE_FALL": 0, "BED_EXIT": 0, "PRESENCE": 0, "INACTIVITY": 0, "UNKNOWN": 0})
     
     for event in events:
         date_str = event["timestamp"][:10]  # Extract YYYY-MM-DD
@@ -2096,12 +2096,14 @@ async def get_events_timeline(
     for i in range(days):
         date = start_date + timedelta(days=i)
         date_str = date.strftime("%Y-%m-%d")
-        counts = daily_counts.get(date_str, {"total": 0, "FALL": 0, "PRE_FALL": 0, "PRESENCE": 0, "INACTIVITY": 0, "UNKNOWN": 0})
+        counts = daily_counts.get(date_str, {"total": 0, "FALL": 0, "SENSITIVE_FALL": 0, "PRE_FALL": 0, "BED_EXIT": 0, "PRESENCE": 0, "INACTIVITY": 0, "UNKNOWN": 0})
         result.append({
             "date": date_str,
             "total": counts["total"],
             "fall": counts.get("FALL", 0),
+            "sensitive_fall": counts.get("SENSITIVE_FALL", 0),
             "pre_fall": counts.get("PRE_FALL", 0),
+            "bed_exit": counts.get("BED_EXIT", 0),
             "presence": counts.get("PRESENCE", 0),
             "inactivity": counts.get("INACTIVITY", 0),
             "unknown": counts.get("UNKNOWN", 0)
