@@ -79,6 +79,7 @@ function AppRoutes() {
         <Route path="live" element={<LivePage />} />
         <Route path="live-state" element={<LiveStatePage />} />
         <Route path="history" element={<HistoryPage />} />
+        <Route path="presence-history" element={<PresenceHistoryPage />} />
         <Route path="events/:eventId" element={<EventDetailPage />} />
         
         {/* Capteurs (ex-Radars) */}
