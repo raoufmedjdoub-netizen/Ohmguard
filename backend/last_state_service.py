@@ -402,8 +402,27 @@ class LastStateService:
         """
         enriched = state.copy()
         
-        # Calculate status
-        last_seen = state.get("last_seen_at")
+        # Calculate status - check both last_seen_at and last_seen
+        last_seen = state.get("last_seen_at") or state.get("last_seen") or state.get("updated_at")
+        
+        # Also check if status is already set from MongoDB
+        existing_status = state.get("status")
+        if existing_status and existing_status.upper() in ["ONLINE", "OFFLINE"]:
+            enriched["status"] = existing_status.lower()
+            enriched["last_seen_ago"] = None
+            if last_seen:
+                try:
+                    if isinstance(last_seen, str):
+                        last_seen_dt = datetime.fromisoformat(last_seen.replace("Z", "+00:00"))
+                    else:
+                        last_seen_dt = last_seen
+                    age_seconds = (datetime.now(timezone.utc) - last_seen_dt).total_seconds()
+                    enriched["last_seen_ago"] = self._format_time_ago(age_seconds)
+                    enriched["age_seconds"] = int(age_seconds)
+                except:
+                    pass
+            return enriched
+        
         if not last_seen:
             enriched["status"] = "unknown"
             enriched["last_seen_ago"] = None
