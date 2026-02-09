@@ -490,34 +490,6 @@ export function PresenceHistoryPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* Daily Stats Chart */}
-      {dailyStats.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Statistiques des 7 derniers jours
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-7 gap-2">
-              {dailyStats.map(day => (
-                <div key={day.date} className="text-center p-3 bg-muted/50 rounded-lg">
-                  <div className="text-xs text-muted-foreground mb-1">
-                    {format(parseISO(day.date), 'EEE', { locale: fr })}
-                  </div>
-                  <div className="text-lg font-bold">{day.sessions_count}</div>
-                  <div className="text-xs text-muted-foreground">sessions</div>
-                  <div className="text-xs text-primary mt-1">
-                    {day.avg_duration_display}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
