@@ -549,33 +549,58 @@ class MQTTService:
                    f"presence={normalized.presenceDetected}, regions={normalized.activeRegions}, "
                    f"targets={normalized.targetCount}")
         
-        # Broadcast to WebSocket with enriched data
+        # Broadcast to WebSocket with throttling for PRESENCE events
         if self.broadcast_callback:
-            # Create a clean copy of event without MongoDB _id (ObjectId is not JSON serializable)
-            event_for_broadcast = {k: v for k, v in event.items() if k != '_id'}
+            import time
+            current_time = time.time()
             
-            # Send new event notification
-            await self.broadcast_callback(sensor['tenant_id'], {
-                "type": "new_radar_event",
-                "event": {
-                    **event_for_broadcast,
-                    "sensor_name": sensor.get('name'),
-                    "active_regions_display": format_active_regions_display(normalized.activeRegions),
-                    "target_count_display": format_target_count_display(normalized.targetCount),
-                    "presence_display": "Présence détectée" if normalized.presenceDetected else "Aucune présence"
-                }
-            })
-            
-            # Also send presence state update for real-time badge updates
+            # For PRESENCE events, throttle broadcasts to avoid flooding
+            should_broadcast = True
             if normalized.eventType == RadarEventType.PRESENCE:
+                last_broadcast = self._last_presence_broadcast.get(device_id, 0)
+                if current_time - last_broadcast < self._presence_broadcast_interval:
+                    should_broadcast = False
+                else:
+                    self._last_presence_broadcast[device_id] = current_time
+            
+            if should_broadcast:
+                # Create a clean copy of event without MongoDB _id
+                event_for_broadcast = {k: v for k, v in event.items() if k != '_id'}
+                
+                # Send new event notification
                 await self.broadcast_callback(sensor['tenant_id'], {
-                    "type": "presence_update",
-                    "sensor_id": sensor['id'],
-                    "device_id": device_id,
-                    "presence_detected": normalized.presenceDetected,
-                    "target_count": normalized.targetCount,
-                    "active_regions": normalized.activeRegions,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
+                    "type": "new_radar_event",
+                    "event": {
+                        **event_for_broadcast,
+                        "sensor_name": sensor.get('name'),
+                        "active_regions_display": format_active_regions_display(normalized.activeRegions),
+                        "target_count_display": format_target_count_display(normalized.targetCount),
+                        "presence_display": "Présence détectée" if normalized.presenceDetected else "Aucune présence"
+                    }
+                })
+                
+                # Also send presence state update for real-time badge updates
+                if normalized.eventType == RadarEventType.PRESENCE:
+                    await self.broadcast_callback(sensor['tenant_id'], {
+                        "type": "presence_update",
+                        "sensor_id": sensor['id'],
+                        "device_id": device_id,
+                        "presence_detected": normalized.presenceDetected,
+                        "target_count": normalized.targetCount,
+                        "active_regions": normalized.activeRegions,
+                        "timestamp": datetime.now(timezone.utc).isoformat()
+                    })
+            
+            # Always broadcast HIGH severity events (FALL, SENSITIVE_FALL) immediately
+            if normalized.severity == EventSeverity.HIGH and not should_broadcast:
+                event_for_broadcast = {k: v for k, v in event.items() if k != '_id'}
+                await self.broadcast_callback(sensor['tenant_id'], {
+                    "type": "new_radar_event",
+                    "event": {
+                        **event_for_broadcast,
+                        "sensor_name": sensor.get('name'),
+                        "urgent": True
+                    }
                 })
         
         # Trigger alert rules for HIGH severity events (FALL, SENSITIVE_FALL)
