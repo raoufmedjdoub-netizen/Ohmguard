@@ -14,20 +14,33 @@ import uuid
 
 class RadarEventType(str, Enum):
     """Radar event type mapping from Vayyar type codes"""
-    FALL = "FALL"
-    PRE_FALL = "PRE_FALL"
-    INACTIVITY = "INACTIVITY"
-    PRESENCE = "PRESENCE"
+    PRESENCE = "PRESENCE"           # Code 4 - Person detected in room
+    FALL = "FALL"                   # Code 5 - Standard fall detected
+    SENSITIVE_FALL = "SENSITIVE_FALL"  # Code 8 - Suspected fall (confidence-based)
+    BED_EXIT = "BED_EXIT"           # Code 10 - Person exiting bed
+    INACTIVITY = "INACTIVITY"       # Legacy support
+    PRE_FALL = "PRE_FALL"           # Legacy support
     UNKNOWN = "UNKNOWN"
     
     @classmethod
     def from_code(cls, code: int) -> "RadarEventType":
-        """Map Vayyar type code to RadarEventType"""
+        """Map Vayyar type code to RadarEventType
+        
+        Vayyar Code Mapping:
+        ┌─────────────┬────────────────┬──────────┐
+        │ Vayyar Code │   Event Type   │ Severity │
+        ├─────────────┼────────────────┼──────────┤
+        │ 4           │ PRESENCE       │ LOW      │
+        │ 5           │ FALL           │ HIGH     │
+        │ 8           │ SENSITIVE_FALL │ HIGH     │
+        │ 10          │ BED_EXIT       │ MED      │
+        └─────────────┴────────────────┴──────────┘
+        """
         mapping = {
-            1: cls.FALL,
-            2: cls.PRE_FALL,
-            3: cls.INACTIVITY,
-            4: cls.PRESENCE,
+            4: cls.PRESENCE,        # Person detected in room
+            5: cls.FALL,            # Standard fall detected
+            8: cls.SENSITIVE_FALL,  # Suspected fall (confidence-based)
+            10: cls.BED_EXIT,       # Person exiting bed
         }
         return mapping.get(code, cls.UNKNOWN)
 
