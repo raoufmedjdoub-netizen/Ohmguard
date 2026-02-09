@@ -2567,6 +2567,10 @@ async def get_last_state_sensors(
         raise HTTPException(status_code=400, detail="building_id or floor_id is required")
     
     # Determine tenant_id from building or floor
+    tenant_id = None
+    building = None
+    floor = None
+    
     if building_id:
         building = await db.buildings.find_one({"id": building_id}, {"_id": 0})
         if not building:
@@ -2574,7 +2578,7 @@ async def get_last_state_sensors(
         
         # Get tenant from client
         client = await db.clients.find_one({"id": building.get("client_id")}, {"_id": 0})
-        tenant_id = client.get("tenant_id") if client else building.get("tenant_id") or current_user.tenant_id
+        tenant_id = (client.get("tenant_id") if client else None) or building.get("tenant_id") or current_user.tenant_id
     else:
         floor = await db.floors.find_one({"id": floor_id}, {"_id": 0})
         if not floor:
@@ -2584,21 +2588,22 @@ async def get_last_state_sensors(
         building = await db.buildings.find_one({"id": floor.get("building_id")}, {"_id": 0})
         if building:
             client = await db.clients.find_one({"id": building.get("client_id")}, {"_id": 0})
-            tenant_id = client.get("tenant_id") if client else floor.get("tenant_id") or current_user.tenant_id
+            tenant_id = (client.get("tenant_id") if client else None) or floor.get("tenant_id") or current_user.tenant_id
         else:
             tenant_id = floor.get("tenant_id") or current_user.tenant_id
     
-    # Fallback to user's tenant
+    # Final fallback to user's tenant or a default
     if not tenant_id:
-        tenant_id = current_user.tenant_id
+        tenant_id = current_user.tenant_id or "default"
     
-    # Check access
-    if building_id:
-        if not await check_building_access(current_user, building_id):
-            raise HTTPException(status_code=403, detail="Access denied to this building")
-    elif floor_id:
-        if not await check_floor_access(current_user, floor_id):
-            raise HTTPException(status_code=403, detail="Access denied to this floor")
+    # Check access - skip for SUPER_ADMIN
+    if current_user.role != "SUPER_ADMIN":
+        if building_id:
+            if not await check_building_access(current_user, building_id):
+                raise HTTPException(status_code=403, detail="Access denied to this building")
+        elif floor_id:
+            if not await check_floor_access(current_user, floor_id):
+                raise HTTPException(status_code=403, detail="Access denied to this floor")
     
     # Get last states
     last_state_service = get_last_state_service()
@@ -2606,9 +2611,6 @@ async def get_last_state_sensors(
     if building_id:
         states = await last_state_service.get_building_sensors_state(tenant_id, building_id)
         stats = await last_state_service.get_building_stats(tenant_id, building_id)
-        
-        # Get building info
-        building = await db.buildings.find_one({"id": building_id}, {"_id": 0})
         
         return {
             "building_id": building_id,
