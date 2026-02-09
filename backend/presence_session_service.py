@@ -368,7 +368,7 @@ class PresenceSessionService:
     
     async def get_daily_stats(
         self,
-        tenant_id: str,
+        tenant_id: Optional[str],
         building_id: Optional[str] = None,
         days: int = 7
     ) -> List[Dict[str, Any]]:
@@ -376,8 +376,10 @@ class PresenceSessionService:
         if self._db is None:
             return []
         
-        # Build match stage
-        match_stage = {"tenant_id": tenant_id, "status": "COMPLETED"}
+        # Build match stage - tenant_id is optional for SUPER_ADMIN
+        match_stage = {"status": "COMPLETED"}
+        if tenant_id is not None:
+            match_stage["tenant_id"] = tenant_id
         if building_id:
             match_stage["building_id"] = building_id
         
