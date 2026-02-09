@@ -347,83 +347,23 @@ export function PresenceHistoryPage() {
         </CardContent>
       </Card>
 
-      {/* Active Sessions */}
-      {activeSessions.length > 0 && (
-        <Card className="border-green-200 bg-green-50/50">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-green-700">
-              <Activity className="h-5 w-5" />
-              Sessions en cours ({activeSessions.length})
-            </CardTitle>
-            <CardDescription>
-              Présence actuellement détectée
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {activeSessions.map(session => (
-                <div 
-                  key={session.id}
-                  className="p-4 bg-white rounded-lg border border-green-200 shadow-sm"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                      <Radar className="h-4 w-4 text-green-600" />
-                      <span className="font-medium text-sm">
-                        {session.sensor_name || 'Capteur'}
-                      </span>
-                    </div>
-                    <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
-                      En cours
-                    </Badge>
-                  </div>
-                  
-                  <div className="mt-3 space-y-1 text-sm text-muted-foreground">
-                    {session.room_name && (
-                      <div className="flex items-center gap-1">
-                        <Building2 className="h-3 w-3" />
-                        <span>{session.room_name}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      <span>Début: {formatDateTime(session.start_at)}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-green-600 font-medium">
-                      <Timer className="h-3 w-3" />
-                      <span>Durée: {session.current_duration_display || session.duration_display}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Sessions List */}
+      {/* Sessions List - Combined Active and Historical */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
             <History className="h-5 w-5" />
-            Historique des sessions
+            Sessions de présence
           </CardTitle>
-          <CardDescription>
-            Liste des sessions de présence terminées
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : sessions.length === 0 ? (
+          ) : (activeSessions.length === 0 && sessions.length === 0) ? (
             <div className="text-center py-12 text-muted-foreground">
               <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>Aucune session de présence trouvée</p>
-              <p className="text-sm mt-1">
-                Les sessions apparaîtront ici lorsque les capteurs détecteront de la présence
-              </p>
             </div>
           ) : (
             <div className="space-y-4">
