@@ -129,7 +129,7 @@ export function PresenceHistoryPage() {
   // Fetch active sessions
   const fetchActiveSessions = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');
       const params = new URLSearchParams();
       if (selectedBuilding !== 'all') {
         params.append('building_id', selectedBuilding);
