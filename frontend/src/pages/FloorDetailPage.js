@@ -315,8 +315,10 @@ export function FloorDetailPage() {
                           <DoorOpen className="h-4 w-4 text-green-500" />
                         </div>
                         <div>
-                          <p className="font-medium">Ch. {room.room_number}</p>
-                          {room.name && (
+                          <p className="font-medium">
+                            {room.room_number ? `Ch. ${room.room_number}` : room.name || 'Chambre'}
+                          </p>
+                          {room.room_number && room.name && (
                             <p className="text-xs text-muted-foreground">{room.name}</p>
                           )}
                           {room.occupant_name && (
