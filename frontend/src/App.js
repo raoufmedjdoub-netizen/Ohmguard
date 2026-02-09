@@ -13,6 +13,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { LoginPage } from '@/pages/LoginPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { LivePage } from '@/pages/LivePage';
+import { LiveStatePage } from '@/pages/LiveStatePage';
 import { HistoryPage } from '@/pages/HistoryPage';
 import { EventDetailPage } from '@/pages/EventDetailPage';
 import { RadarsPage } from '@/pages/RadarsPage';
