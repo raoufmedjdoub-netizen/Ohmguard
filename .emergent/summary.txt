@@ -1,189 +1,133 @@
 <analysis>**original_problem_statement:**
-L'utilisateur souhaite compléter le module de configuration du radar Vayyar en implémentant toutes les options disponibles dans une documentation API fournie (). La tâche principale consiste à enrichir la page de configuration existante pour inclure toutes les commandes (ex: Reboot, UpdateBaseUrl) et tous les paramètres de configuration (, ). Au cours du développement, l'utilisateur a fourni des clarifications cruciales et des corrections sur les formats de payload MQTT, qui diffèrent de la documentation initiale, devenant ainsi le principal point de développement et de débogage. L'utilisateur a également demandé des analyses sur les formats d'événements MQTT (presence, fall) et a fourni une version modifiée de  pour examen.
+The user initiated a series of feature requests and bug fixes to enhance an IoT sensor monitoring platform. The core objectives were:
+1.  **Optimize Radar Event Processing:** Improve the handling of Vayyar radar payloads, specifically for fall detection, by providing an optimized script and clarifying the correct event code mappings.
+2.  **Enhance Sensor Import:** Overhaul the sensor import functionality by replacing the CSV file upload with an interactive, table-based UI. The user also requested the template format be changed to a formatted Excel (.xlsx) file and to remove the Model and Firmware columns, as this data should be derived from MQTT messages.
+3.  **Improve Platform Performance:** Address significant slowness on the platform, particularly on the Capteurs (Sensors) page, which was caused by a high volume of sensors and real-time events. This involved database indexing, WebSocket event throttling, and implementing a Redis cache.
+4.  **Implement Real-Time State Monitoring:** Introduce a Last State module using Redis to store and serve the current status of each sensor, powering a new État en direct (Live State) page. This was based on a detailed PRD provided by the user.
+5.  **Architectural Change for Presence Events:** A major architectural change was requested to stop storing raw presence events () in the database. Instead, the platform should only show presence in real-time and store aggregated Presence Sessions (capturing start time, end time, and duration) in a new database collection. All other critical alerts (e.g., , ) should continue to be saved.
 
-**PRODUCT REQUIREMENTS:**
-1.  **Intégration Complète de l'API Vayyar** : Implémenter toutes les commandes et tous les paramètres de configuration de l'API Vayyar dans la page de configuration du radar.
-2.  **Commandes MQTT** : Envoyer des commandes telles que Reboot, Cancel Alarm, Update Base URL, etc., via MQTT avec le format de payload correct.
-3.  **Configuration MQTT** : Envoyer la configuration complète ( et ) via MQTT avec le format de payload correct.
-4.  **Interface Utilisateur** : Mettre à jour la page  pour inclure des onglets, des champs de formulaire, des sélecteurs et des boutons pour toutes les options de configuration et commandes.
-5.  **Analyse d'Événements** : Comprendre et potentiellement intégrer le traitement des événements MQTT entrants comme Fall et Presence.
-
-**User's preferred language**: Français
+**User's preferred language**: French. The next agent MUST respond in French.
 
 **what currently exists?**
-L'application dispose d'une infrastructure backend et frontend pour la configuration des radars Vayyar. Une page de configuration () a été entièrement construite avec des onglets et des boutons pour 9 commandes MQTT distinctes (Reboot, Update Base URL, Config WiFi, etc.). Le backend (, ) a été mis à jour pour gérer ces commandes et paramètres. Cependant, l'implémentation a souffert d'itérations multiples pour corriger les formats de payload MQTT, suite aux retours de l'utilisateur. La version actuelle envoie les commandes avec un payload de type string (ex: ), ce qui a été validé par l'utilisateur pour la commande Reboot. Le format du payload de configuration est encore incorrect et provoque des erreurs de validation côté backend et des crashs côté frontend. L'agent était en train d'analyser la logique de traitement des événements MQTT à la demande de l'utilisateur.
+The project is a full-stack web application for monitoring IoT sensors. It consists of a React frontend and a Python (FastAPI) backend. It uses MongoDB for data persistence, Redis for caching and real-time state management, and communicates with sensors via an MQTT broker. Real-time updates are pushed to the frontend using WebSockets (Socket.IO). The application supports multi-tenancy and has a role-based access control (RBAC) system. A Live State page powered by Redis shows the real-time status of all sensors.
 
 **Last working item**:
--   **Last item agent was working:** L'agent a analysé un fichier  fourni par l'utilisateur pour la gestion des alertes radar. Constatant que la logique de parsing des événements MQTT entrants (comme les chutes) n'était pas présente dans ce fichier, l'agent s'apprêtait à examiner  pour trouver cette logique, suite à la confirmation de l'utilisateur.
+-   **Last item agent was working:** The agent was in the middle of a major architectural refactor to change how presence events are handled. Instead of saving every presence event to the database, the new architecture will only track them in Redis for real-time UI updates and save aggregated presence sessions (start time, end time, duration) to a new MongoDB collection. The agent had created a new  and was modifying the  to use it and stop saving raw presence events.
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** backend testing agent
+-   **Which testing method agent to use?** both. The backend testing agent should be used to send MQTT payloads ( followed by ) and verify that a  document is correctly created in MongoDB and that no  event is saved in the  collection. The frontend testing agent should be used to test the new Presence History page once it's created.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Incohérence majeure du payload de configuration Vayyar (Priorité : CRITIQUE - P0)**
--   **Issue 2: Erreur d'exécution frontend sur la page de configuration (Priorité : HAUTE - P1)**
--   **Issue 3: Problème de variables d'environnement Redis en production (Priorité : HAUTE - P1)**
--   **Issue 4: WebSocket bloqué en mode polling en production (Priorité : MOYENNE - P2)**
--   **Issue 5: L'application mobile ne démarre pas (Priorité : MOYENNE - P2)**
-
-**Issues Detail:**
--   **Issue 1: Incohérence majeure du payload de configuration Vayyar**
-    -   **Attempted fixes:** L'agent a oscillé entre l'envoi d'énumérations sous forme de nombres (ex: ) et de chaînes de caractères (ex: ). La dernière tentative a consisté à rendre le schéma backend flexible pour accepter les deux formats, ce qui a entraîné des erreurs de validation () car les données de la base de données semblent être au format chaîne. L'utilisateur a fourni un payload de configuration complet qui confirme que toutes les énumérations doivent être des **chaînes de caractères** (strings).
-    -   **Next debug checklist:**
-        1.  Simplifier le schéma Pydantic  pour qu'il attende **strictement des chaînes de caractères** pour toutes les valeurs d'énumération (, , etc.), en se basant sur le dernier exemple de configuration fourni par l'utilisateur. Supprimer les validateurs de conversion complexes.
-        2.  Mettre à jour le schéma Zod frontend  pour qu'il utilise également des chaînes de caractères comme valeurs pour les champs de sélection ().
-        3.  Modifier la page  pour s'assurer que les  envoient les valeurs en tant que chaînes de caractères.
-    -   **Why fix this issue and what will be achieved with the fix?** La fonctionnalité principale de configuration des radars Vayyar est actuellement inutilisable. La correction permettra d'enregistrer et d'envoyer des configurations valides.
-    -   **Status:** IN PROGRESS
+-   **Issue 1: Frontend login script flakiness (Priority: P2)**
+    -   **Description:** The automated testing scripts for logging into the frontend are unreliable and sometimes fail, requiring manual intervention or alternative methods. This slows down development and testing cycles.
+    -   **Status:** NOT STARTED
     -   **Is recurring issue?** Y
-    -   **Should Test frontend/backend/both after fix?** both
-    -   **Blocked on other issue:** None
-
--   **Issue 2: Erreur d'exécution frontend sur la page de configuration**
-    -   **Attempted fixes:** L'agent a ajouté des définitions d'énumérations manquantes () dans  pour corriger une erreur .
-    -   **Next debug checklist:**
-        1.  Vérifier si le crash persiste après la correction du **problème de payload (Issue 1)**, car ils sont probablement liés.
-        2.  Si l'erreur est toujours présente, inspecter  pour identifier quel composant  reçoit une prop  indéfinie.
-    -   **Why fix this issue and what will be achieved with the fix?** La page de configuration est inaccessible à cause de ce crash.
-    -   **Status:** USER VERIFICATION PENDING
-    -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** frontend
-    -   **Blocked on other issue:** Issue 1
-
--   **Issue 3: Problème de variables d'environnement Redis en production**
-    -   **Status:** USER VERIFICATION PENDING (depuis un fork précédent).
-
--   **Issue 4: WebSocket bloqué en mode polling en production**
-    -   **Status:** USER VERIFICATION PENDING (depuis un fork précédent).
-
--   **Issue 5: L'application mobile ne démarre pas**
-    -   **Status:** NOT STARTED (depuis un fork précédent).
 
 **In progress Task List**:
--   **Task 1: Finaliser le module de configuration Vayyar (P0)**
-    -   **Where to resume:** L'agent doit d'abord examiner  comme demandé par l'utilisateur pour comprendre le traitement des événements. Ensuite, il doit immédiatement s'attaquer à l'**Issue 1** en corrigeant le format du payload de configuration pour utiliser exclusivement des chaînes de caractères pour les énumérations.
-    -   **What will be achieved with this?** Un module de configuration Vayyar pleinement fonctionnel, capable d'envoyer des commandes et des configurations correctes, et une base de code prête à gérer les événements entrants.
+-   **Task 1: Complete the Presence Session Architecture Implementation (Priority: P0)**
+    -   **Where to resume:** The agent has created  and has started modifying . The next step is to complete the logic in  to differentiate event types. For  events, it should call the  to start or end a session. For all other critical events (, , etc.), it should continue to save them to the  collection.
+    -   **What will be achieved with this?** This will significantly reduce the number of writes to the  collection, decreasing database load and storage costs. It will also provide a more valuable, aggregated view of presence history instead of raw, noisy event data.
     -   **Status:** IN PROGRESS
     -   **Should Test frontend/backend/both after fix?** both
-    -   **Blocked on something:** None
+    -   **Blocked on something:** No.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    -   **P1:** Améliorer l'historique des importations CSV (avec rapports d'erreurs téléchargeables).
-    -   **P2:** Améliorer la page Live avec plus de détails pour les événements IA (ex: lien vidéo).
-    -   **P2:** Afficher un historique des affectations pour chaque capteur.
--   **Future Tasks:**
-    -   Permettre la sauvegarde des filtres sur les pages Événements et Capteurs.
-    -   Ajouter des statistiques par zone, caméra et type d'alerte.
-    -   Implémenter un mode maintenance pour les capteurs.
-    -   Mettre en place un journal d'audit complet (Audit Logging).
-    -   Implémenter des webhooks sortants pour les événements.
-    -   Refactoriser le composant .
+    -   **(P0) Implement  Logic:** Implement the methods in  to manage session state. This includes creating a new session in Redis upon a  event and closing the session (writing it to the  MongoDB collection and removing it from Redis) upon a  event.
+    -   **(P0) Create API for Presence Sessions:** Develop new API endpoints (e.g., ) in  to allow the frontend to query the historical presence sessions with filters (by date, building, etc.).
+    -   **(P0) Create Presence History UI:** Build a new frontend page () to display the aggregated presence sessions retrieved from the new API. This page should include filtering and pagination controls.
+    -   **(P1) Data Migration - Delete Old Presence Events:** Create and execute a one-time script to delete all existing events of type  or  from the  collection in MongoDB, as requested by the user. This should only be done after the new session logic is fully tested and verified.
 
 **Completed work in this session**
--   **Implémentation UI de la Configuration Vayyar** : Création d'une interface complète dans  avec 7 onglets et des boutons pour 9 commandes MQTT distinctes (, , , etc.).
--   **Ajout de Dialogues Interactifs** : Implémentation de modales pour les commandes nécessitant une saisie utilisateur (URL, version, SSID, mot de passe).
--   **Mise à jour du Backend** : Modification des fichiers ,  et  pour prendre en charge les nouvelles commandes et paramètres.
--   **Correction Itérative des Payloads MQTT** : Le format des payloads de commande a été corrigé pour utiliser des chaînes de caractères (ex: ), ce qui a été validé par l'utilisateur.
--   **Changement de Broker MQTT** : Le broker MQTT pour les radars Vayyar a été modifié pour pointer vers  dans le fichier .
--   **Analyse des formats d'événements** : Analyse des formats JSON pour les événements Fall et Presence fournis par l'utilisateur.
-
-**Earlier issues found/mentioned but not fixed**
--   Les trois problèmes listés (Redis, WebSocket, Mobile app) proviennent de forks précédents et sont toujours en attente de validation par l'utilisateur.
-
-**Known issue recurrence from previous fork**
--   **Issue recurrence in previous fork**: Problème de variables d'environnement Redis en production, L'application mobile ne démarre pas.
--   **Recurrence count**: 2+
--   **Status**: USER VERIFICATION PENDING / NOT STARTED
+-   **Radar Event Mapping & Validation:** Corrected the Vayyar event code mapping in  and updated Pydantic models in  to correctly process , , , and  events.
+-   **Frontend Event Labels:** Added missing labels and translations for new event types (, ) in the frontend so they display correctly.
+-   **Sensor Import Overhaul:**
+    -   Replaced the CSV upload with an interactive table UI in .
+    -   Changed the template download to provide a formatted Excel (.xlsx) file, implementing generation logic in the backend and parsing in the frontend.
+    -   Removed the Model and Firmware columns from the import process.
+    -   Fixed a bug during import caused by a non-optional  in the  model.
+-   **Performance Optimizations:**
+    -   **Backend:** Added crucial MongoDB indexes on the  collection, implemented WebSocket throttling for high-frequency events, and integrated Redis caching for key API endpoints like .
+    -   **Frontend:** Fixed a major performance issue on the  by removing redundant data fetching on WebSocket events and adding pagination to the sensors list.
+-   **Last State Module & Live State Page:**
+    -   Designed and implemented a Redis-based  () to maintain the real-time status of all sensors, per the user's PRD.
+    -   Created corresponding API endpoints () to serve this data.
+    -   Built a new État en direct (Live State) page () to provide a real-time dashboard of sensor statuses.
+    -   Debugged and fixed an error on the Live State page that occurred for clients/buildings with a  .
+-   **Configuration Change:** Updated the MQTT broker address in .
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Incohérence des formats de Payload MQTT** : La principale difficulté de la session a été de déchiffrer le format correct des payloads JSON, avec une confusion persistante entre les valeurs numériques et les chaînes de caractères pour les énumérations, qui varie entre les commandes et la configuration.
--   **Source de vérité de l'API** : L'utilisateur, et non la documentation initiale, est la source de vérité pour les formats de payload. Les exemples concrets fournis par l'utilisateur sont la référence à suivre.
--   **Validation Backend Flexible (Anti-pattern)** : L'utilisation de  et de validateurs Pydantic pour accepter plusieurs types de données a ajouté de la complexité et masqué le problème de fond au lieu de le résoudre.
+-   **Frontend:** React, Material-UI (MUI), i18next (for internationalization), Socket.IO client,  library.
+-   **Backend:** Python with FastAPI, Pydantic for data validation.
+-   **Databases:**
+    -   **MongoDB:** Primary persistent storage for events (excluding presence), sensors, locations, users, and soon, .
+    -   **Redis:** Used as a cache for API responses and as the primary store for the Last State module, holding the real-time status of every sensor.
+-   **Real-time Communication:** MQTT for data ingestion from sensors and WebSockets (Socket.IO) to push live updates from the backend to the React frontend.
+-   **Architecture:** Multi-tenant application with Role-Based Access Control (RBAC). Recent changes are moving towards a more scalable event processing model by separating real-time state (Redis) from historical aggregated data (MongoDB).
 
 **key DB schema**
--   Aucun changement de schéma de base de données n'a été effectué.
+-   : { , , , ,  } - Will no longer store 'PRESENCE' type events.
+-   : { uid=0(root) gid=0(root) groups=0(root), , , ,  }
+-   , , , : Hierarchical location data.  and  are used for tenancy.
+-    (NEW): { uid=0(root) gid=0(root) groups=0(root), , , , , ,  }
+-   : { , , ,  (Optional[str]) }
 
 **changes in tech stack**
--   Aucun changement.
+-   **Redis** was introduced as a core component for caching and real-time state management.
+-   The  library was added to the frontend and backend to support Excel file generation and parsing for the sensor import feature.
 
 **All files of reference**
--   : Logique d'envoi des commandes et configurations MQTT Vayyar.
--   : Schémas Pydantic définissant la structure des configurations Vayyar.
--   : Composant React principal pour l'interface de configuration.
--   : Schéma Zod et constantes d'énumération pour le frontend.
--   : Fichier de configuration contenant l'adresse du broker MQTT.
-
-**Areas that need refactoring**:
--   **** : Doit être simplifié pour n'accepter que des chaînes de caractères pour les énumérations de configuration, conformément au dernier payload fonctionnel fourni par l'utilisateur. Les validateurs de conversion doivent être supprimés.
--   **** : La fonction  crée une nouvelle connexion MQTT à chaque appel, ce qui est inefficace. Elle devrait réutiliser une connexion existante gérée par le service principal.
--   **** : Le fichier est devenu très grand et complexe. Il devrait être décomposé en sous-composants plus petits (par exemple, un par onglet, un pour la grille de commandes).
+-   : **New service** to manage the lifecycle of presence sessions.
+-   : **Modified** to integrate the new session service and stop saving raw presence events.
+-   : **New service** that implements the Redis-based real-time state store.
+-   : **Modified** to add  endpoints and fix RBAC issues.
+-   : **New page** for displaying real-time sensor status.
+-   : **Modified** to add pagination and fix performance bottlenecks.
+-   : **Heavily modified** to provide a rich, table-based import experience with Excel support.
 
 **key api endpoints**
--   : Pour envoyer la configuration complète du radar.
--   : Pour envoyer une commande simple au radar.
--   : Pour récupérer la configuration actuelle du radar.
+-   : Ingests radar events from devices.
+-   : Executes the sensor import from the interactive table.
+-   : Downloads the formatted Excel template for sensor import.
+-   : **(New)** Returns the real-time state of all sensors in a building from Redis.
+-   : Lists buildings for a client.
+-   : **(To be created)** Will list historical presence sessions.
 
 **Critical Info for New Agent**
--   **Source de Vérité pour l'API** : Fiez-vous **uniquement** aux exemples concrets de payloads JSON fournis par l'utilisateur. La documentation HTML initiale est obsolète ou incorrecte.
--   **Format des Commandes** :
-    -   Topic : 
-    -   Payload : JSON avec une **chaîne de caractères**, ex: .
--   **Format de la Configuration** :
-    -   Topic : 
-    -   Payload : Gros objet JSON (). **Toutes les valeurs d'énumération DOIVENT être des chaînes de caractères** (ex: , PAS ). C'est le point de blocage principal à résoudre.
--   **Prochaine Étape Immédiate** : Votre première action doit être d'ouvrir et d'analyser  pour comprendre comment les événements sont traités, comme demandé par l'utilisateur. Ensuite, corrigez immédiatement le format du payload de configuration (Issue #1).
-
-**documents and test reports created in this job**
--    (mis à jour)
+-   The highest priority is to complete the Presence Session architecture. The key is to **stop saving  type events** to the  collection and instead use the  to create aggregated session documents.
+-   The Last State module (powered by Redis) is now the single source of truth for the *current* state of any sensor. The UI relies on this for real-time status.
+-   The user has approved the deletion of old presence data from MongoDB. Plan for this migration, but only execute it after the new system is confirmed to be working correctly.
+-   Be mindful of tenancy. Several bugs were fixed related to entities (like buildings or clients) having a  . The code should handle this gracefully.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User**: Demande à analyser un payload de configuration général. (Message #284)
-2.  **User**: Confirme que la commande  avec le payload  fonctionne parfaitement. (Message #282)
-3.  **User**: Demande de changer uniquement le payload de la commande Reboot pour utiliser . (Message #276)
-4.  **User**: Exprime sa frustration sur les erreurs de payload et demande la meilleure façon d'expliquer l'API. (Message #274)
-5.  **User**: Clarifie que les commandes vont sur le topic  et la configuration sur le topic . (Message #262)
-6.  **User**: Confirme que les messages de configuration doivent aller sur . (Message #254)
-7.  **User**: Signale via MQTT Explorer que le message de configuration n'est pas envoyé lors du clic sur le bouton. (Message #242)
-8.  **User**: Signale que les messages MQTT ne sont pas envoyés. (Message #237)
-9.  **User**: Demande de changer le serveur MQTT Vayyar pour . (Message #229)
-10. **User**: Signale une nouvelle erreur de validation () après une correction de l'agent. (Message #211)
-
-**Pending:**
--   **User**: oui (Message #296) - L'utilisateur attend que l'agent examine le fichier .
+1.  **User:** Requests a major architecture change to stop saving raw presence events and instead save aggregated presence sessions.
+2.  **Agent:** Provides a detailed technical proposal for the new architecture.
+3.  **User:** Approves the proposal with clarifications: no session timeout,  is Chute Suspectée, delete old presence data, and create a new UI page for history.
+4.  **Agent:** Confirms understanding and begins implementation.
+5.  **User:** Reports erreur de chargement (loading error) on the Live State page with a screenshot.
+6.  **Agent:** Investigates the error, identifying it's specific to the LAB building.
+7.  **Agent:** Traces the error to a bug in  ( check) and a related RBAC logic issue when a client's  is .
+8.  **Agent:** Fixes the backend code and confirms the API now works for the LAB building.
+9.  **Agent:** Confirms with a screenshot that the LAB building now loads correctly on the frontend.
+10. **User:** (Final request leading to current task) Re-iterates the request to change the event architecture to use presence sessions instead of raw events.
 
 **Project Health Check:**
--   **Broken:**
-    -   La fonctionnalité de configuration Vayyar est non fonctionnelle en raison de formats de payload incorrects et d'un crash frontend.
-    -   L'application mobile est toujours non fonctionnelle.
--   **Mocked:**
-    -   Aucun.
--   **User Verification Pending:**
-    -   Le crash frontend ().
-    -   Les problèmes de production (Redis, WebSocket).
+-   **Broken:** The presence event handling is in a transitional state. Raw presence events are still being saved until the new  is fully integrated.
+-   **Mocked:** The  function was mentioned as a mock webhook in early development. Its current status is unknown.
 
 **3rd Party Integrations**
--    (Client MQTT, avec deux instances actives)
--    /  (WebSockets)
--    (Application mobile, non fonctionnelle)
--    (Cache backend)
--    (Internationalisation)
+-   **Vayyar Radars:** IoT devices providing data via MQTT. No specific version information.
+-   No LLM integrations are present.
 
 **Testing status**
 -   **Testing agent used after significant changes:** NO
 -   **Troubleshoot agent used after agent stuck in loop:** NO
--   **Test files created:** None
--   **Known regressions:** L'application mobile est une régression connue. La page de configuration Vayyar est dans un état instable après les modifications de cette session.
-
-**Credentials to test flow:**
--   **Email:** 
--   **Password:** 
+-   **Test files created:** None. Testing has been ad-hoc via  and manual UI interaction.
+-   **Known regressions:** A loading error on the Live State page was introduced and subsequently fixed during development.
 
 **What agent forgot to execute**
--   L'agent s'est retrouvé piégé dans un cycle de corrections de payload sans prendre le recul nécessaire pour stabiliser l'implémentation en se basant sur le dernier exemple fonctionnel fourni par l'utilisateur.
--   Les tâches de refactoring identifiées (, ) n'ont pas été effectuées.
--   Les problèmes en suspens des forks précédents (Redis, WebSocket, Mobile) n'ont pas été traités.</analysis>
+-   The agent is actively working on the user's latest and most critical request (Presence Session architecture). The sub-tasks related to it (data migration, new UI page) are part of the plan and have not been forgotten, but are pending completion of the backend logic.</analysis>

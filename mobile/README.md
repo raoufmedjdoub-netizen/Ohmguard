@@ -58,7 +58,7 @@ L'URL de l'API est configurée dans `app.json` :
 {
   "expo": {
     "extra": {
-      "apiUrl": "https://device-config-hub.preview.emergentagent.com/api"
+      "apiUrl": "https://radar-event-hub.preview.emergentagent.com/api"
     }
   }
 }
