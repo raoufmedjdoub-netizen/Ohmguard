@@ -19,7 +19,6 @@ import { EventDetailPage } from '@/pages/EventDetailPage';
 import { RadarsPage } from '@/pages/RadarsPage';
 import { RadarConfigPage } from '@/pages/RadarConfigPage';
 import { AISensorsPage } from '@/pages/AISensorsPage';
-import { RulesPage } from '@/pages/RulesPage';
 import UsersPage from '@/pages/UsersPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { StatisticsPage } from '@/pages/StatisticsPage';
