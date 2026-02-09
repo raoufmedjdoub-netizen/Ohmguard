@@ -633,10 +633,19 @@ class SensorImportService:
                     else:
                         space_id = str(uuid.uuid4())
                         now = datetime.now(timezone.utc).isoformat()
+                        
+                        # Déterminer le type d'espace basé sur le préfixe du nom du radar
+                        # CHB = Chambre à coucher (BEDROOM), SDB = Salle de bain (BATHROOM)
+                        space_type = "OTHER"
+                        if name.upper().startswith("CHB"):
+                            space_type = "BEDROOM"
+                        elif name.upper().startswith("SDB"):
+                            space_type = "BATHROOM"
+                        
                         new_space = {
                             "id": space_id,
                             "name": espace,
-                            "space_type": "BED",
+                            "space_type": space_type,
                             "status": "ACTIVE",
                             "radar_id": None,
                             "created_at": now
