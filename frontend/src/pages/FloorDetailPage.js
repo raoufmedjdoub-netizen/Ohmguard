@@ -289,7 +289,7 @@ export function FloorDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rooms.sort((a, b) => a.room_number.localeCompare(b.room_number)).map((room) => (
+                {rooms.sort((a, b) => (a.room_number || '').localeCompare(b.room_number || '')).map((room) => (
                   <TableRow 
                     key={room.id}
                     className="cursor-pointer hover:bg-accent/50"
