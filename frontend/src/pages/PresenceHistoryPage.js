@@ -330,130 +330,55 @@ export function PresenceHistoryPage() {
                     </tr>
                   </thead>
                   <tbody>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Toutes les sessions" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes</SelectItem>
-                <SelectItem value="ACTIVE">En cours</SelectItem>
-                <SelectItem value="COMPLETED">Terminées</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Sessions List - Combined Active and Historical */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2">
-            <History className="h-5 w-5" />
-            Sessions de présence
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : (activeSessions.length === 0 && sessions.length === 0) ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Aucune session de présence trouvée</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Sessions Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-2 font-medium">Capteur</th>
-                      <th className="text-left py-3 px-2 font-medium">Emplacement</th>
-                      <th className="text-left py-3 px-2 font-medium">Début</th>
-                      <th className="text-left py-3 px-2 font-medium">Fin</th>
-                      <th className="text-left py-3 px-2 font-medium">Durée</th>
-                      <th className="text-left py-3 px-2 font-medium">Statut</th>
-                    </tr>
-                  </thead>
-                  <tbody>
                     {/* Sessions actives en premier */}
                     {activeSessions.map(session => (
                       <tr key={session.id} className="border-b hover:bg-green-50/50 bg-green-50/30">
-                        <td className="py-3 px-2">
+                        <td className="py-2 px-3">
                           <div className="flex items-center gap-2">
                             <Radar className="h-4 w-4 text-green-600" />
                             <span className="font-medium">{session.sensor_name || 'Capteur'}</span>
                           </div>
                         </td>
-                        <td className="py-3 px-2 text-muted-foreground">
+                        <td className="py-2 px-3 text-muted-foreground">
                           {session.room_name || session.space_name || '-'}
                         </td>
-                        <td className="py-3 px-2">
-                          <div>
-                            <div>{formatDateTime(session.start_at)}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {formatTimeAgo(session.start_at)}
-                            </div>
-                          </div>
+                        <td className="py-2 px-3 text-sm">
+                          {formatDateTime(session.start_at)}
                         </td>
-                        <td className="py-3 px-2 text-muted-foreground">-</td>
-                        <td className="py-3 px-2">
+                        <td className="py-2 px-3 text-muted-foreground">-</td>
+                        <td className="py-2 px-3">
                           <span className="font-medium text-green-600">
                             {session.current_duration_display || session.duration_display || '-'}
                           </span>
                         </td>
-                        <td className="py-3 px-2">
-                          <Badge className="bg-green-100 text-green-700">
-                            En cours
-                          </Badge>
+                        <td className="py-2 px-3">
+                          <Badge className="bg-green-100 text-green-700 text-xs">En cours</Badge>
                         </td>
                       </tr>
                     ))}
                     {/* Sessions historiques */}
                     {sessions.map(session => (
                       <tr key={session.id} className="border-b hover:bg-muted/50">
-                        <td className="py-3 px-2">
+                        <td className="py-2 px-3">
                           <div className="flex items-center gap-2">
                             <Radar className="h-4 w-4 text-muted-foreground" />
                             <span className="font-medium">{session.sensor_name || 'Capteur'}</span>
                           </div>
                         </td>
-                        <td className="py-3 px-2 text-muted-foreground">
+                        <td className="py-2 px-3 text-muted-foreground">
                           {session.room_name || session.space_name || '-'}
                         </td>
-                        <td className="py-3 px-2">
-                          <div>
-                            <div>{formatDateTime(session.start_at)}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {formatTimeAgo(session.start_at)}
-                            </div>
-                          </div>
+                        <td className="py-2 px-3 text-sm">
+                          {formatDateTime(session.start_at)}
                         </td>
-                        <td className="py-3 px-2">
-                          {session.end_at ? (
-                            <div>
-                              <div>{formatDateTime(session.end_at)}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {formatTimeAgo(session.end_at)}
-                              </div>
-                            </div>
-                          ) : '-'}
+                        <td className="py-2 px-3 text-sm">
+                          {session.end_at ? formatDateTime(session.end_at) : '-'}
                         </td>
-                        <td className="py-3 px-2">
-                          <span className="font-medium">
-                            {session.duration_display || '-'}
-                          </span>
+                        <td className="py-2 px-3 font-medium">
+                          {session.duration_display || '-'}
                         </td>
-                        <td className="py-3 px-2">
-                          <Badge variant="secondary">
-                            Terminée
-                          </Badge>
+                        <td className="py-2 px-3">
+                          <Badge variant="secondary" className="text-xs">Terminée</Badge>
                         </td>
                       </tr>
                     ))}
