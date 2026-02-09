@@ -478,7 +478,7 @@ def check_permission(user: UserInDB, required_roles: List[RoleType]):
             detail="Insufficient permissions"
         )
 
-async def log_audit(user_id: str, tenant_id: Optional[str], action: str, resource_type: str, resource_id: str, details: dict = {}):
+async def log_audit(user_id: str, tenant_id: Optional[str], action: str, resource_type: str, resource_id: Optional[str], details: dict = {}):
     audit = AuditLog(
         user_id=user_id,
         tenant_id=tenant_id,
