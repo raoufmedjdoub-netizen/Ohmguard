@@ -30,9 +30,9 @@ CSV_COLUMNS = [
     "espace"              # Required - Nom de l'espace
 ]
 
-CSV_TEMPLATE = """serial_number,name,model,firmware,organisation,batiment,etage,chambre,espace
-VPRD-0001-0001,Radar Chambre 101,VCZ-3000,1.2.3,OHMCARE LAB,LAB,RDC,Ch 101,Lit Principal
-VPRD-0001-0002,Radar Chambre 102,VCZ-3000,1.2.3,OHMCARE LAB,LAB,RDC,Ch 102,Lit 1"""
+CSV_TEMPLATE = """serial_number,name,organisation,batiment,etage,chambre,espace
+VPRD-0001-0001,Radar Chambre 101,OHMCARE LAB,Bâtiment A,RDC,Ch 101,Lit Principal
+VPRD-0001-0002,Radar Chambre 102,OHMCARE LAB,Bâtiment A,RDC,Ch 102,Lit 1"""
 
 
 class ImportResult:
