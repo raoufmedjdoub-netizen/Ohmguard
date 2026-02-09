@@ -24,17 +24,12 @@ from radar_event_models import (
 
 logger = logging.getLogger(__name__)
 
-# Vayyar event type mapping (for legacy support)
+# Vayyar event type mapping (updated based on actual Vayyar API)
 VAYYAR_EVENT_TYPES = {
-    0: "PRESENCE",      # Presence detection  
-    1: "FALL",          # Fall detected
-    2: "PRE_FALL",      # Pre-fall detected
-    3: "INACTIVITY",    # Inactivity detected
-    4: "PRESENCE",      # Presence event
-    5: "LYING",         # Person lying down
-    6: "SITTING",       # Person sitting
-    7: "STANDING",      # Person standing
-    8: "WALKING",       # Person walking
+    4: "PRESENCE",      # Person detected in room (LOW)
+    5: "FALL",          # Standard fall detected (HIGH)
+    8: "SENSITIVE_FALL", # Suspected fall - confidence based (HIGH)
+    10: "BED_EXIT",     # Person exiting bed (MED)
 }
 
 # Posture mapping from trackerTargets
