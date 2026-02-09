@@ -156,12 +156,22 @@ def epoch_ms_to_iso(epoch_ms: int) -> str:
 
 
 def determine_severity_from_event(event_type: RadarEventType, payload: RadarEventPayload) -> EventSeverity:
-    """Determine event severity based on type and payload"""
-    # FALL events are always HIGH
-    if event_type == RadarEventType.FALL:
+    """Determine event severity based on type and payload
+    
+    Severity Mapping:
+    - FALL, SENSITIVE_FALL → HIGH (immediate alert needed)
+    - BED_EXIT → MED (monitor situation)
+    - PRESENCE, others → LOW (normal monitoring)
+    """
+    # FALL and SENSITIVE_FALL are always HIGH severity
+    if event_type in [RadarEventType.FALL, RadarEventType.SENSITIVE_FALL]:
         return EventSeverity.HIGH
     
-    # PRE_FALL is MED
+    # BED_EXIT is MED severity
+    if event_type == RadarEventType.BED_EXIT:
+        return EventSeverity.MED
+    
+    # PRE_FALL is MED (legacy support)
     if event_type == RadarEventType.PRE_FALL:
         return EventSeverity.MED
     
@@ -169,7 +179,7 @@ def determine_severity_from_event(event_type: RadarEventType, payload: RadarEven
     if event_type == RadarEventType.INACTIVITY:
         return EventSeverity.MED
     
-    # PRESENCE is LOW by default
+    # PRESENCE and others are LOW by default
     return EventSeverity.LOW
 
 
