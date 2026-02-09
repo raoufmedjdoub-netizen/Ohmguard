@@ -335,7 +335,7 @@ class LastStateService:
         Rebuild Redis cache from MongoDB.
         Called on cache miss or manual refresh.
         """
-        if not self._db:
+        if self._db is None:
             logger.warning("No MongoDB reference for rehydration")
             return
         
@@ -451,7 +451,7 @@ class LastStateService:
     
     async def _fallback_get_sensor(self, sensor_id: str, tenant_id: str) -> Optional[Dict[str, Any]]:
         """Fallback to MongoDB for single sensor"""
-        if not self._db:
+        if self._db is None:
             return None
         
         try:
@@ -487,7 +487,7 @@ class LastStateService:
     
     async def _fallback_get_building_sensors(self, tenant_id: str, building_id: str) -> List[Dict[str, Any]]:
         """Fallback to MongoDB for building sensors"""
-        if not self._db:
+        if self._db is None:
             return []
         
         try:
@@ -525,7 +525,7 @@ class LastStateService:
     
     async def _fallback_get_floor_sensors(self, tenant_id: str, floor_id: str) -> List[Dict[str, Any]]:
         """Fallback to MongoDB for floor sensors"""
-        if not self._db:
+        if self._db is None:
             return []
         
         try:
