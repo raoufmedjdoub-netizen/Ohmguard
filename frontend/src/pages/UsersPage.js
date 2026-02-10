@@ -234,23 +234,8 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6" data-testid="users-page">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Users className="h-6 w-6 text-primary" />
-            Gestion des Utilisateurs
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Gérez les accès et les permissions des utilisateurs
-          </p>
-        </div>
-        
-        <Button onClick={() => setShowCreateDialog(true)} data-testid="create-user-btn">
-          <UserPlus className="h-4 w-4 mr-2" />
-          Nouvel utilisateur
-        </Button>
-      </div>
+      {/* Header actions in SubNavbar */}
+      <PageActionsInjector onClick={() => setShowCreateDialog(true)} />
 
       {/* Filters */}
       <Card>
