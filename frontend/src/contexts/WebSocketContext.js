@@ -16,6 +16,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export function WebSocketProvider({ children }) {
   const { user, isAuthenticated } = useAuth();
   const [connected, setConnected] = useState(false);
+  const [rooms, setRooms] = useState([]);
   const [lastEvent, setLastEvent] = useState(null);
   const socketRef = useRef(null);
   const listenersRef = useRef(new Map());
