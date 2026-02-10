@@ -7,6 +7,7 @@ import ssl
 import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formatdate, make_msgid
 from typing import Optional, Dict, List
 from datetime import datetime, timezone
 
