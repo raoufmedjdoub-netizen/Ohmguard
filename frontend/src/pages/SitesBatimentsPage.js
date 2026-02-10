@@ -326,14 +326,6 @@ export function SitesBatimentsPage() {
     }
   };
   
-  if (loading && organisations.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-  
   // Inject actions into SubNavbar
   usePageActions(
     useMemo(() => (
@@ -359,6 +351,14 @@ export function SitesBatimentsPage() {
       </div>
     ), [selectedOrg, organisations, loading, handleRefresh])
   );
+
+  if (loading && organisations.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-6">
