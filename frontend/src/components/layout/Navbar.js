@@ -202,23 +202,72 @@ export function Navbar({ onMenuClick, showMenuButton }) {
           {/* Séparateur */}
           <div className="h-6 w-px bg-white/20 mx-1" />
 
-          {/* Info utilisateur + Déconnexion */}
+          {/* Info utilisateur + Scope + Déconnexion */}
           <div className="flex items-center gap-2">
-            {user && (
-              <span className="hidden md:block text-xs text-white/60 max-w-[150px] truncate">
-                {user.email}
-              </span>
+            {/* Scope indicator */}
+            {connected && getScopeLabel() && (
+              <div 
+                className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 text-xs text-white/70"
+                data-testid="navbar-scope-badge"
+              >
+                <Building2 className="h-3 w-3" />
+                <span className="max-w-[180px] truncate">{getScopeLabel()}</span>
+              </div>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="h-9 px-3 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-              data-testid="navbar-logout-btn"
-            >
-              <LogOut className="h-4 w-4 mr-1.5" />
-              <span className="hidden sm:inline">{t('auth.logout')}</span>
-            </Button>
+
+            {/* Nom + rôle de l'utilisateur */}
+            {user && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="h-9 px-2.5 text-white/80 hover:text-white hover:bg-white/10 gap-2"
+                    data-testid="navbar-user-menu"
+                  >
+                    <div className="h-7 w-7 rounded-full bg-[#06B6D4]/30 flex items-center justify-center text-[#06B6D4] text-xs font-semibold">
+                      {(user.full_name || user.email || '?').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="hidden md:flex flex-col items-start leading-none">
+                      <span className="text-xs font-medium text-white">
+                        {user.full_name || user.email}
+                      </span>
+                      <span className="text-[10px] text-white/50">
+                        {user.role?.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <ChevronDown className="h-3 w-3 opacity-50 hidden md:block" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col gap-1">
+                      <p className="text-sm font-medium">{user.full_name || 'Utilisateur'}</p>
+                      <p className="text-xs text-muted-foreground">{user.email}</p>
+                      <Badge variant="outline" className="w-fit text-[10px]">{user.role?.replace('_', ' ')}</Badge>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {connected && getScopeLabel() && (
+                    <>
+                      <DropdownMenuLabel className="text-xs text-muted-foreground font-normal flex items-center gap-1.5">
+                        <Building2 className="h-3 w-3" />
+                        Surveillance : {getScopeLabel()}
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="text-red-600 cursor-pointer"
+                    data-testid="navbar-logout-btn"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    {t('auth.logout')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
       </div>
