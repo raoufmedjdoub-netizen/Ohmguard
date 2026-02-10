@@ -12,6 +12,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from './Navbar';
 import { SubNavbar } from './SubNavbar';
 import { Sidebar } from './Sidebar';
+import { PageActionsProvider } from '@/contexts/PageActionsContext';
 import { cn } from '@/lib/utils';
 
 export function MainLayout() {
