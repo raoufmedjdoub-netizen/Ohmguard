@@ -10,7 +10,7 @@
  * - View effective access summary
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Plus, Search, Shield, MapPin, Eye, 
   Check, X, UserPlus, Trash2, RefreshCw, Key
@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { usePageActions } from '../contexts/PageActionsContext';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
