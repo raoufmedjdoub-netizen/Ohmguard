@@ -28,6 +28,7 @@ import {
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { usePageActions } from '@/contexts/PageActionsContext';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
