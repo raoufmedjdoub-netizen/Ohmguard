@@ -889,55 +889,29 @@ export function FloorPlanPage() {
   const onlineCount = sensors.filter(s => s.status === 'ONLINE').length;
   const alertCount = sensors.filter(s => s.status === 'ALERT' || s.status === 'FALL_DETECTED').length;
 
+  // Inject actions into SubNavbar
+  usePageActions(
+    useMemo(() => (
+      <div className="flex items-center gap-3">
+        <div className={cn(
+          'flex items-center gap-2 px-3 py-1.5 rounded-full text-xs',
+          wsConnected ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'
+        )}>
+          <span className={cn('w-2 h-2 rounded-full', wsConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500')} />
+          {wsConnected ? 'Temps réel actif' : 'Hors ligne'}
+        </div>
+        {planData && sensors.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Label htmlFor="edit-mode" className="text-xs">Mode édition</Label>
+            <Switch id="edit-mode" checked={isEditMode} onCheckedChange={setIsEditMode} />
+          </div>
+        )}
+      </div>
+    ), [wsConnected, planData, sensors.length, isEditMode])
+  );
+
   return (
     <div data-testid="floor-plan-page" className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-primary/10">
-            <Map className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Carte Interactive</h1>
-            <p className="text-muted-foreground">
-              Visualisez les plans d'étage et la position des capteurs en temps réel
-            </p>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          {/* WebSocket status */}
-          <div className={cn(
-            'flex items-center gap-2 px-3 py-1.5 rounded-full text-sm',
-            wsConnected ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'
-          )}>
-            {wsConnected ? (
-              <>
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                Temps réel actif
-              </>
-            ) : (
-              <>
-                <span className="w-2 h-2 rounded-full bg-red-500" />
-                Hors ligne
-              </>
-            )}
-          </div>
-          
-          {/* Edit mode toggle */}
-          {planData && sensors.length > 0 && (
-            <div className="flex items-center gap-3">
-              <Label htmlFor="edit-mode" className="text-sm">Mode édition</Label>
-              <Switch
-                id="edit-mode"
-                checked={isEditMode}
-                onCheckedChange={setIsEditMode}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Selectors */}
       <Card>
         <CardContent className="p-4">
