@@ -1,7 +1,7 @@
 /**
  * AISensorsPage - Page for managing AI camera sensors (Seedoo)
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Camera, Wifi, WifiOff, RefreshCw, Plus, Settings2, Trash2, 
