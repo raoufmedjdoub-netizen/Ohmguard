@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie,
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, BarChart3, TrendingUp, PieChartIcon, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
+import { usePageActions } from '@/contexts/PageActionsContext';
 
 // Color palette
 const COLORS = {
