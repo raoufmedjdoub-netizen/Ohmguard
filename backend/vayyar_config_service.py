@@ -359,6 +359,108 @@ class VayyarConfigService:
             )
             raise
     
+    async def send_bulk_commands(
+        self,
+        sensor_ids: list,
+        command_type: int,
+        params: dict = None,
+        tenant_id: str = None
+    ) -> dict:
+        """
+        Send a command to multiple devices using a SINGLE MQTT connection.
+        Returns dict with 'success' and 'failed' lists.
+        """
+        results = {"success": [], "failed": []}
+
+        # Map command type number to string name
+        COMMAND_TYPE_NAMES = {
+            CommandType.UPLOAD_APP_LOGS.value: "UploadAppLogs",
+            CommandType.UPLOAD_DEV_LOGS.value: "UploadDevLogs",
+            CommandType.REBOOT_DEVICE.value: "Reboot",
+            CommandType.CANCEL_ALARM.value: "CancelAlarm",
+            CommandType.REBOOT_UPLOAD_LOG.value: "RebootUploadLog",
+            CommandType.CANCEL_FALL.value: "CancelFall",
+            CommandType.UPDATE_BASE_URL.value: "UpdateBaseUrl",
+            CommandType.DOWNLOAD_FIRMWARE.value: "DownloadFirmware",
+            CommandType.UPDATE_WIFI_CREDENTIALS.value: "UpdateWifiCredentials"
+        }
+
+        command_payload = {"type": COMMAND_TYPE_NAMES.get(command_type, f"Command{command_type}")}
+        now = datetime.now(timezone.utc).isoformat()
+
+        # Look up all sensors first
+        sensors = []
+        for sid in sensor_ids:
+            sensor = await self.db.sensors.find_one({"id": sid}, {"_id": 0})
+            if not sensor:
+                results["failed"].append({
+                    "device_id": sid,
+                    "status": "failed",
+                    "error": f"Sensor {sid} not found"
+                })
+            else:
+                sensors.append(sensor)
+
+        if not sensors:
+            return results
+
+        # Open a SINGLE MQTT connection for ALL commands
+        try:
+            async with aiomqtt.Client(
+                hostname=self.broker_host,
+                port=self.broker_port,
+                username=self.username,
+                password=self.password
+            ) as client:
+                for sensor in sensors:
+                    mqtt_device_id = sensor.get("device_id") or sensor["id"]
+                    cmd_topic = self._get_cmd_topic(mqtt_device_id)
+                    try:
+                        await client.publish(
+                            cmd_topic,
+                            json.dumps(command_payload).encode("utf-8"),
+                            qos=1
+                        )
+                        # Log command
+                        command_log = {
+                            "id": str(uuid.uuid4()),
+                            "sensorId": sensor["id"],
+                            "deviceId": mqtt_device_id,
+                            "commandType": command_type,
+                            "commandName": COMMAND_TYPES.get(command_type, {}).get("name", f"Command {command_type}"),
+                            "payload": command_payload,
+                            "topic": cmd_topic,
+                            "tenantId": tenant_id,
+                            "sentAt": now,
+                            "status": "SENT"
+                        }
+                        await self.db.command_logs.insert_one(command_log)
+                        results["success"].append({
+                            "device_id": mqtt_device_id,
+                            "sensor_id": sensor["id"],
+                            "status": "sent"
+                        })
+                        logger.info(f"Bulk cmd sent to {cmd_topic}")
+                    except Exception as e:
+                        logger.error(f"Failed to publish to {mqtt_device_id}: {e}")
+                        results["failed"].append({
+                            "device_id": mqtt_device_id,
+                            "status": "failed",
+                            "error": str(e)
+                        })
+        except Exception as e:
+            # If the MQTT connection itself fails, mark all remaining as failed
+            logger.error(f"MQTT connection failed for bulk command: {e}")
+            for sensor in sensors:
+                if not any(r["device_id"] == (sensor.get("device_id") or sensor["id"]) for r in results["success"]):
+                    results["failed"].append({
+                        "device_id": sensor.get("device_id") or sensor["id"],
+                        "status": "failed",
+                        "error": str(e)
+                    })
+
+        return results
+
     async def get_command_history(
         self,
         sensor_id: str,
