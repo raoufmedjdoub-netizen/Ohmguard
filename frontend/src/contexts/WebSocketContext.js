@@ -89,9 +89,10 @@ export function WebSocketProvider({ children }) {
       setConnected(false);
     });
 
-    // Confirmation of joining tenant room
+    // Confirmation of joining rooms
     socket.on('joined', (data) => {
-      console.log('Joined tenant room:', data);
+      console.log('Joined rooms:', data.rooms, 'role:', data.role);
+      setRooms(data.rooms || []);
     });
 
     // Listen for new events
