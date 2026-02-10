@@ -112,34 +112,30 @@ export function SensorsPage() {
 
   const getSiteZones = (siteId) => zones.filter(z => z.site_id === siteId);
 
+  // Inject actions into SubNavbar
+  usePageActions(
+    useMemo(() => (
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={fetchData} data-testid="refresh-sensors">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          {t('refresh')}
+        </Button>
+        {canManageSensors && (
+          <Button size="sm" onClick={() => setDialogOpen(true)} data-testid="add-sensor-btn">
+            <Plus className="h-4 w-4 mr-2" />
+            {t('add')}
+          </Button>
+        )}
+      </div>
+    ), [fetchData, canManageSensors, t])
+  );
+
   return (
     <div data-testid="sensors-page" className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Cpu className="h-6 w-6 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">{t('sensors.title')}</h1>
-            <p className="text-muted-foreground">
-              {sensors.filter(s => s.status === 'ONLINE').length} / {sensors.length} {t('sensors.status_online').toLowerCase()}
-            </p>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchData} data-testid="refresh-sensors">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            {t('refresh')}
-          </Button>
-          
-          {canManageSensors && (
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button data-testid="add-sensor-btn">
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t('add')} {t('sensors.title')}
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
+      {/* Add Sensor Dialog */}
+      {canManageSensors && (
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent>
                 <DialogHeader>
                   <DialogTitle>{t('add')} {t('sensors.title')}</DialogTitle>
                 </DialogHeader>
