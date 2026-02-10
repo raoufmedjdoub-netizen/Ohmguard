@@ -437,26 +437,24 @@ export function RadarsPage() {
   const pendingCount = radars.filter(r => !r.client_id).length;
   const assignedCount = radars.filter(r => r.client_id).length;
 
+  // Inject actions into SubNavbar
+  usePageActions(
+    useMemo(() => (
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)}>
+          <Upload className="h-4 w-4 mr-2" />
+          Import CSV
+        </Button>
+        <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Actualiser
+        </Button>
+      </div>
+    ), [loading, fetchData])
+  );
+
   return (
     <div className="space-y-6" data-testid="radars-page">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">{t('radars.title')}</h1>
-          <p className="text-muted-foreground">{t('radars.subtitle')}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-            <Upload className="h-4 w-4 mr-2" />
-            Import CSV
-          </Button>
-          <Button variant="outline" onClick={fetchData} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Actualiser
-          </Button>
-        </div>
-      </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* MQTT Status */}
