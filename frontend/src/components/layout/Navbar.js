@@ -6,18 +6,21 @@
  * - Logo à gauche
  * - Sélecteur de langue, mode nuit, déconnexion à droite
  */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { 
@@ -29,8 +32,11 @@ import {
   ChevronDown,
   Wifi,
   WifiOff,
-  Menu
+  Menu,
+  Building2,
+  User
 } from 'lucide-react';
+import api from '@/lib/api';
 
 // Langues disponibles
 const LANGUAGES = [
