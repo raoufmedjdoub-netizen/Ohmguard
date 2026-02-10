@@ -292,10 +292,30 @@ class MQTTService:
         sensor = await self._get_sensor_by_device_id(device_id)
         
         if not sensor:
-            # Auto-register the sensor
-            sensor = await self._auto_register_sensor(device_id, payload)
+            # Before auto-registering, try to match by serialProduct from payload
+            serial_product = payload.get("serialProduct", "")
+            if serial_product:
+                sensor = await self.db.sensors.find_one(
+                    {"serial_product": serial_product},
+                    {"_id": 0}
+                )
+                if sensor:
+                    # Link imported sensor to this MQTT device_id
+                    await self.db.sensors.update_one(
+                        {"id": sensor["id"]},
+                        {"$set": {"device_id": device_id}}
+                    )
+                    sensor["device_id"] = device_id
+                    # Update cache
+                    self._device_sensor_cache[device_id] = sensor
+                    self._cache_timestamp[device_id] = datetime.now(timezone.utc)
+                    logger.info(f"Linked imported sensor {sensor['name']} (serial: {serial_product}) to MQTT device {device_id}")
+            
             if not sensor:
-                return
+                # Auto-register the sensor
+                sensor = await self._auto_register_sensor(device_id, payload)
+                if not sensor:
+                    return
         
         # Update sensor status
         status = payload.get("status", "monitoring")
