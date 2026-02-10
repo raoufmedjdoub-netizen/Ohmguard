@@ -334,40 +334,34 @@ export function SitesBatimentsPage() {
     );
   }
   
+  // Inject actions into SubNavbar
+  usePageActions(
+    useMemo(() => (
+      <div className="flex items-center gap-2">
+        <Select value={selectedOrg || ''} onValueChange={setSelectedOrg}>
+          <SelectTrigger className="w-[220px] h-8">
+            <SelectValue placeholder="Sélectionner une organisation" />
+          </SelectTrigger>
+          <SelectContent>
+            {organisations.map(org => (
+              <SelectItem key={org.id} value={org.id}>
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  {org.name}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleRefresh}>
+          <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+        </Button>
+      </div>
+    ), [selectedOrg, organisations, loading, handleRefresh])
+  );
+  
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Sites & Bâtiments</h1>
-          <p className="text-muted-foreground">
-            Gérez la structure hiérarchique de vos installations
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Select value={selectedOrg || ''} onValueChange={setSelectedOrg}>
-            <SelectTrigger className="w-[250px]">
-              <SelectValue placeholder="Sélectionner une organisation" />
-            </SelectTrigger>
-            <SelectContent>
-              {organisations.map(org => (
-                <SelectItem key={org.id} value={org.id}>
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    {org.name}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          <Button variant="outline" size="icon" onClick={handleRefresh}>
-            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-          </Button>
-        </div>
-      </div>
-      
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
