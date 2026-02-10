@@ -231,32 +231,18 @@ export function PresenceHistoryPage() {
     }
   };
 
-  return (
-    <div className="p-4 lg:p-6 space-y-4 h-full">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">
-            Historique de Présence
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            Sessions de présence agrégées
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handleRefresh}
-            disabled={loading}
-          >
-            <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
-            Actualiser
-          </Button>
-        </div>
-      </div>
+  // Inject actions into SubNavbar
+  usePageActions(
+    useMemo(() => (
+      <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+        <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
+        Actualiser
+      </Button>
+    ), [loading, handleRefresh])
+  );
 
+  return (
+    <div className="space-y-4 h-full">
       {/* Stats + Filters Row */}
       <div className="flex flex-wrap items-center gap-3">
         {/* Stats inline */}
