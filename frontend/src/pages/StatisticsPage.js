@@ -132,30 +132,24 @@ export function StatisticsPage() {
   const totalEvents = eventsByStatus.reduce((acc, curr) => acc + curr.count, 0);
   const totalSensors = sensorsStatus.reduce((acc, curr) => acc + curr.count, 0);
 
+  // Inject actions into SubNavbar
+  usePageActions(
+    useMemo(() => (
+      <Select value={timeRange} onValueChange={setTimeRange}>
+        <SelectTrigger className="w-40 h-8" data-testid="time-range-select">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="7">7 derniers jours</SelectItem>
+          <SelectItem value="14">14 derniers jours</SelectItem>
+          <SelectItem value="30">30 derniers jours</SelectItem>
+        </SelectContent>
+      </Select>
+    ), [timeRange])
+  );
+
   return (
     <div data-testid="statistics-page" className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <BarChart3 className="h-6 w-6 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Statistiques</h1>
-            <p className="text-muted-foreground">Analyse des données et tendances</p>
-          </div>
-        </div>
-        
-        <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-40" data-testid="time-range-select">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7">7 derniers jours</SelectItem>
-            <SelectItem value="14">14 derniers jours</SelectItem>
-            <SelectItem value="30">30 derniers jours</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
