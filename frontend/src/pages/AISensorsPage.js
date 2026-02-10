@@ -24,6 +24,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import api, { aiSensorsAPI, aiEventsAPI } from '@/lib/api';
 import { useWebSocket } from '@/contexts/WebSocketContext';
+import { usePageActions } from '@/contexts/PageActionsContext';
 
 // Warning types for AI detection
 const WARNING_TYPES = [
