@@ -225,29 +225,24 @@ export function AISensorsPage() {
     return true;
   });
 
+  // Inject actions into SubNavbar
+  usePageActions(
+    useMemo(() => (
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Actualiser
+        </Button>
+        <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Ajouter
+        </Button>
+      </div>
+    ), [loading, fetchData])
+  );
+
   return (
     <div data-testid="ai-sensors-page" className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Camera className="h-6 w-6 text-primary" />
-            Capteurs IA
-          </h1>
-          <p className="text-muted-foreground">Gestion des caméras intelligentes Seedoo</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchData} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Actualiser
-          </Button>
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Ajouter
-          </Button>
-        </div>
-      </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
