@@ -146,3 +146,9 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - **Added**: Page size selector on RadarsPage (20, 50, 100, 500, 1000 per page)
 - **Added**: "Tous les filtrés" quick select button to select all filtered radars across all pages
 - **Files modified**: `RadarsPage.js`
+
+### 2026-02-10 - Fix Imported vs Auto-Registered Sensor Duplicates
+- **Root cause**: Imported sensors had `device_id` = serial number, MQTT auto-registration created duplicates with real MQTT device_id
+- **Code fix**: `_handle_device_state` and `_handle_device_event` now check `serialProduct` from MQTT payload to link existing imported sensors before auto-registering
+- **Data cleanup**: Merged 24 duplicate pairs (updated imported sensor's device_id, deleted auto-registered duplicates)
+- **Files modified**: `mqtt_service.py`
