@@ -234,9 +234,6 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6" data-testid="users-page">
-      {/* Header actions in SubNavbar */}
-      <PageActionsInjector onClick={() => setShowCreateDialog(true)} />
-
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
