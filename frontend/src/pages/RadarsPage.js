@@ -615,6 +615,10 @@ export function RadarsPage() {
           <CheckSquare className="h-4 w-4 mr-1" />
           Page actuelle ({paginatedRadars.length})
         </Button>
+        <Button variant="outline" size="sm" onClick={selectAllFiltered} className="border-primary text-primary">
+          <CheckSquare className="h-4 w-4 mr-1" />
+          Tous les filtrés ({filteredRadars.length})
+        </Button>
         {clients.map(client => (
           client.buildings?.map(building => (
             <Button 
