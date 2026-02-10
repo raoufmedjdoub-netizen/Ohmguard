@@ -511,7 +511,9 @@ class MQTTService:
                                 "type": "presence_session_completed",
                                 "session": completed_session,
                                 "sensor_id": sensor['id'],
-                                "sensor_name": sensor.get('name')
+                                "sensor_name": sensor.get('name'),
+                                "building_id": sensor.get('building_id'),
+                                "floor_id": sensor.get('floor_id')
                             })
                     
                 except Exception as e:
@@ -525,6 +527,8 @@ class MQTTService:
                         "device_id": device_id,
                         "presence_detected": presence_detected,
                         "target_count": len(event_payload.get('trackerTargets', [])) if presence_detected else 0,
+                        "building_id": sensor.get('building_id'),
+                        "floor_id": sensor.get('floor_id'),
                         "timestamp": datetime.now(timezone.utc).isoformat()
                     })
                 
