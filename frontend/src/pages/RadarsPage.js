@@ -19,6 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import api, { sensorsAPI } from '@/lib/api';
 import { useWebSocket } from '@/contexts/WebSocketContext';
+import { usePageActions } from '@/contexts/PageActionsContext';
 import SensorImportModal from '@/components/SensorImportModal';
 
 export function RadarsPage() {
