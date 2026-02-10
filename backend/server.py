@@ -2340,6 +2340,99 @@ async def websocket_health(current_user: UserInDB = Depends(get_current_user)):
     }
 
 
+# ==================== SMTP / Email Settings ====================
+
+class SmtpConfig(BaseModel):
+    host: str = ""
+    port: int = 587
+    username: str = ""
+    password: str = ""
+    from_email: str = ""
+    from_name: str = "OhmGuard Alerts"
+    use_tls: bool = True
+    enabled: bool = False
+
+@api_router.get("/settings/smtp")
+async def get_smtp_config(current_user: UserInDB = Depends(get_current_user)):
+    """Get SMTP configuration (admin only). Password is masked."""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    email_svc = get_email_service()
+    if not email_svc:
+        raise HTTPException(status_code=503, detail="Email service not available")
+    config = await email_svc.get_smtp_config()
+    if config:
+        # Mask password
+        if config.get("password"):
+            config["password"] = "••••••••"
+        return config
+    return {"host": "", "port": 587, "username": "", "password": "", "from_email": "", "from_name": "OhmGuard Alerts", "use_tls": True, "enabled": False}
+
+@api_router.put("/settings/smtp")
+async def update_smtp_config(config: SmtpConfig, current_user: UserInDB = Depends(get_current_user)):
+    """Update SMTP configuration (admin only)."""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    email_svc = get_email_service()
+    if not email_svc:
+        raise HTTPException(status_code=503, detail="Email service not available")
+    
+    config_dict = config.model_dump()
+    
+    # If password is masked, keep the existing one
+    if config_dict.get("password") == "••••••••":
+        existing = await email_svc.get_smtp_config()
+        if existing:
+            config_dict["password"] = existing.get("password", "")
+    
+    await email_svc.save_smtp_config(config_dict)
+    return {"success": True, "message": "Configuration SMTP enregistrée"}
+
+@api_router.post("/settings/smtp/test")
+async def test_smtp_config(config: SmtpConfig, current_user: UserInDB = Depends(get_current_user)):
+    """Test SMTP connection by sending a test email."""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    email_svc = get_email_service()
+    if not email_svc:
+        raise HTTPException(status_code=503, detail="Email service not available")
+    
+    config_dict = config.model_dump()
+    
+    # If password is masked, use existing
+    if config_dict.get("password") == "••••••••":
+        existing = await email_svc.get_smtp_config()
+        if existing:
+            config_dict["password"] = existing.get("password", "")
+    
+    result = await email_svc.test_connection(config_dict)
+    if result["success"]:
+        return result
+    raise HTTPException(status_code=400, detail=result["error"])
+
+# ==================== User Email Notification Preferences ====================
+
+@api_router.put("/users/me/notifications")
+async def update_notification_preferences(
+    prefs: dict,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Update current user's email notification preferences."""
+    email_notifications = prefs.get("email_notifications", False)
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$set": {"email_notifications": email_notifications}}
+    )
+    return {"success": True, "email_notifications": email_notifications}
+
+@api_router.get("/users/me/notifications")
+async def get_notification_preferences(current_user: UserInDB = Depends(get_current_user)):
+    """Get current user's email notification preferences."""
+    user = await db.users.find_one({"id": current_user.id}, {"_id": 0, "email_notifications": 1, "email": 1})
+    return {
+        "email_notifications": user.get("email_notifications", False) if user else False,
+        "email": user.get("email", "") if user else ""
+    }
+
+
+
 @api_router.get("/health/debug")
 async def health_debug():
     """
