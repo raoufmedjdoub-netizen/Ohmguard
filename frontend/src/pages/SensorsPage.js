@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sensorsAPI, sitesAPI, zonesAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { cn, formatRelativeTime, getSensorStatusColor } from '@/lib/utils';
 import { toast } from 'sonner';
+import { usePageActions } from '@/contexts/PageActionsContext';
 import {
   Cpu,
   Plus,
