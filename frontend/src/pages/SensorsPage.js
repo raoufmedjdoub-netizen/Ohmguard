@@ -236,8 +236,6 @@ export function SensorsPage() {
               </DialogContent>
             </Dialog>
           )}
-        </div>
-      </div>
 
       <Card>
         <CardContent className="p-4">
