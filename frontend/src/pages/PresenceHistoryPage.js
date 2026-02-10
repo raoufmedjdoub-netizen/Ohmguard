@@ -4,7 +4,7 @@
  * Affiche l'historique des sessions de présence agrégées (et non les événements bruts).
  * Une session = période continue de présence détectée (début, fin, durée).
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
