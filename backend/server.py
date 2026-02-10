@@ -93,6 +93,10 @@ from vayyar_config_schema import (
     get_default_config_dict
 )
 
+# Email Service
+from email_service import init_email_service, get_email_service
+
+
 # Clients & Buildings imports
 from clients_buildings_service import init_clients_buildings_service, get_clients_buildings_service
 from clients_buildings_routes import create_clients_buildings_router
