@@ -396,10 +396,30 @@ class MQTTService:
         sensor = await self._get_sensor_by_device_id(device_id)
         
         if not sensor:
-            logger.warning(f"Unknown device {device_id} sent event, attempting auto-registration")
-            sensor = await self._auto_register_sensor(device_id, {})
+            # Try to find by serial from event payload before auto-registering
+            event_payload = payload.get("payload", {})
+            if isinstance(event_payload, dict):
+                serial_product = event_payload.get("serialProduct", "")
+                if serial_product:
+                    sensor = await self.db.sensors.find_one(
+                        {"serial_product": serial_product},
+                        {"_id": 0}
+                    )
+                    if sensor:
+                        await self.db.sensors.update_one(
+                            {"id": sensor["id"]},
+                            {"$set": {"device_id": device_id}}
+                        )
+                        sensor["device_id"] = device_id
+                        self._device_sensor_cache[device_id] = sensor
+                        self._cache_timestamp[device_id] = datetime.now(timezone.utc)
+                        logger.info(f"Linked sensor {sensor['name']} to MQTT device {device_id} via event")
+            
             if not sensor:
-                return
+                logger.warning(f"Unknown device {device_id} sent event, attempting auto-registration")
+                sensor = await self._auto_register_sensor(device_id, {})
+                if not sensor:
+                    return
         
         # CHECK: Only record events for ASSIGNED radars (those with a room location)
         # Radars without assignment will still update their status but won't create events
