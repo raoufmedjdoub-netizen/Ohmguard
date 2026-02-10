@@ -152,3 +152,10 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - **Code fix**: `_handle_device_state` and `_handle_device_event` now check `serialProduct` from MQTT payload to link existing imported sensors before auto-registering
 - **Data cleanup**: Merged 24 duplicate pairs (updated imported sensor's device_id, deleted auto-registered duplicates)
 - **Files modified**: `mqtt_service.py`
+
+### 2026-02-10 - SubNavbar Actions Integration (UI Refactoring)
+- **Removed duplicate page headers**: Created `PageActionsContext` to allow pages to inject their action buttons into the SubNavbar
+- **Pages updated**: RadarsPage, LiveStatePage, PresenceHistoryPage, UsersPage, ClientsPage, StatisticsPage, AISensorsPage, SettingsPage, SitesBatimentsPage, FloorPlanPage, SensorsPage
+- **Architecture**: Ref-based context (no re-render cascade) with subscriber pattern for SubNavbar only
+- **Files created**: `contexts/PageActionsContext.js`
+- **Files modified**: `MainLayout.js`, `SubNavbar.js`, all pages above
