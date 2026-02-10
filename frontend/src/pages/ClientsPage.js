@@ -122,14 +122,6 @@ export function ClientsPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   // Inject actions into SubNavbar
   usePageActions(
     useMemo(() => (
@@ -139,6 +131,14 @@ export function ClientsPage() {
       </Button>
     ), [])
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div data-testid="clients-page" className="space-y-6">
