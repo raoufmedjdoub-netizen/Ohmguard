@@ -2325,6 +2325,17 @@ async def health_redis():
     return check_redis_health()
 
 
+@api_router.get("/health/websocket")
+async def websocket_health(current_user: UserInDB = Depends(get_current_user)):
+    """Get WebSocket connection info with room assignments (admin only)."""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    clients = get_connected_clients_info()
+    return {
+        "total_connected": len(clients),
+        "clients": clients
+    }
+
+
 @api_router.get("/health/debug")
 async def health_debug():
     """
