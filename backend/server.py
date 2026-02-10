@@ -2396,11 +2396,11 @@ async def test_smtp_config(config: SmtpConfig, current_user: UserInDB = Depends(
     
     config_dict = config.model_dump()
     
-    # If password is masked, use existing
-    if config_dict.get("password") == "••••••••":
-        existing = await email_svc.get_smtp_config()
-        if existing:
-            config_dict["password"] = existing.get("password", "")
+    # Always use stored password unless user typed a new one (not masked bullets)
+    existing = await email_svc.get_smtp_config()
+    pwd = config_dict.get("password", "")
+    if existing and (not pwd or all(c == '\u2022' for c in pwd) or pwd == existing.get("password")):
+        config_dict["password"] = existing.get("password", "")
     
     result = await email_svc.test_connection(config_dict)
     if result["success"]:
