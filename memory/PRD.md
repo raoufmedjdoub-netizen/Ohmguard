@@ -159,3 +159,16 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - **Architecture**: Ref-based context (no re-render cascade) with subscriber pattern for SubNavbar only
 - **Files created**: `contexts/PageActionsContext.js`
 - **Files modified**: `MainLayout.js`, `SubNavbar.js`, all pages above
+
+### 2026-02-10 - WebSocket Room-Based Routing
+- **Architecture**: Room-based broadcasting filtered by role and location scopes
+  - `admin_all`: SUPER_ADMIN receives ALL events
+  - `tenant_{id}`: TENANT_ADMIN receives all events for their tenant
+  - `building_{id}`: Scoped users receive events only for their assigned buildings
+  - `floor_{id}`: Fine-grained filtering by floor
+  - Fallback: Users without location_scopes see all events in their tenant
+- **Backend**: Complete rewrite of `socketio_service.py` with JWT-based room assignment
+- **Backend**: All MQTT broadcasts now include `building_id` and `floor_id` for routing
+- **Endpoint**: `GET /api/health/websocket` for admin to monitor connected clients and rooms
+- **Frontend**: `WebSocketContext.js` updated to expose `rooms` state
+- **Files modified**: `socketio_service.py`, `mqtt_service.py`, `server.py`, `WebSocketContext.js`
