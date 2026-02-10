@@ -388,6 +388,8 @@ class VayyarConfigService:
         }
 
         command_payload = {"type": COMMAND_TYPE_NAMES.get(command_type, f"Command{command_type}")}
+        if params:
+            command_payload.update(params)
         now = datetime.now(timezone.utc).isoformat()
 
         # Look up all sensors first
