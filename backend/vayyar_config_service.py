@@ -309,6 +309,8 @@ class VayyarConfigService:
         
         # Build command payload: {"type": "CommandName"}
         command_payload = {"type": COMMAND_TYPE_NAMES.get(command_type, f"Command{command_type}")}
+        if params:
+            command_payload.update(params)
         now = datetime.now(timezone.utc).isoformat()
         
         # Log command to database
