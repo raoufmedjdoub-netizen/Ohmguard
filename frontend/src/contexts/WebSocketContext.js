@@ -179,6 +179,7 @@ export function WebSocketProvider({ children }) {
   return (
     <WebSocketContext.Provider value={{ 
       connected, 
+      rooms,
       lastEvent, 
       subscribe,
       forceRefresh,
