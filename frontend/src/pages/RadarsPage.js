@@ -421,10 +421,10 @@ export function RadarsPage() {
     currentPage * itemsPerPage
   );
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 when filters or page size change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedStatus, selectedAssignment, selectedType]);
+  }, [searchQuery, selectedStatus, selectedAssignment, selectedType, itemsPerPage]);
 
   // Stats
   const onlineCount = radars.filter(r => r.status === 'ONLINE').length;
