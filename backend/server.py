@@ -298,6 +298,7 @@ class SensorBase(BaseModel):
     type: SensorType
     model: Optional[str] = None
     firmware: Optional[str] = None
+    firmware_version: Optional[str] = None
     # Legacy location fields (deprecated - use new hierarchy)
     zone_id: Optional[str] = None
     site_id: Optional[str] = None
