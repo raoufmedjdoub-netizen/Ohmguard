@@ -105,22 +105,6 @@ export function StatisticsPage() {
     fetchStats();
   }, [timeRange]);
 
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-card border border-border rounded-lg shadow-lg p-3">
-          <p className="font-medium text-sm">{label}</p>
-          {payload.map((entry, index) => (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {entry.value}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
-
   // Inject actions into SubNavbar
   usePageActions(
     useMemo(() => (
@@ -136,6 +120,22 @@ export function StatisticsPage() {
       </Select>
     ), [timeRange])
   );
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-card border border-border rounded-lg shadow-lg p-3">
+          <p className="font-medium text-sm">{label}</p>
+          {payload.map((entry, index) => (
+            <p key={index} className="text-sm" style={{ color: entry.color }}>
+              {entry.name}: {entry.value}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
 
   if (loading) {
     return (
