@@ -3773,13 +3773,12 @@ async def startup_event():
     
     # Socket.IO broadcast callback for MQTT service
     async def socketio_broadcast(tenant_id: str, message: dict):
-        """Broadcast message via Socket.IO instead of WebSocket"""
+        """Broadcast message via Socket.IO with room-based routing"""
         msg_type = message.get('type', '')
         
         if msg_type == 'new_radar_event' or msg_type == 'new_event':
             await broadcast_new_event(tenant_id, message.get('event', message))
         elif msg_type == 'new_ai_event':
-            # Broadcast AI camera events to all clients
             await broadcast_new_event(tenant_id, message.get('event', message))
         elif msg_type == 'presence_update':
             await broadcast_presence_update(tenant_id, message)
@@ -3788,12 +3787,13 @@ async def startup_event():
                 tenant_id,
                 message.get('sensor_id', ''),
                 message.get('status', ''),
-                message.get('last_seen', '')
+                message.get('last_seen', ''),
+                building_id=message.get('building_id'),
+                floor_id=message.get('floor_id')
             )
         elif msg_type == 'sensor_registered':
             await broadcast_sensor_registered(tenant_id, message.get('sensor', message))
         else:
-            # Fallback: broadcast as generic event
             await broadcast_new_event(tenant_id, message)
     
     if MQTT_ENABLED:
