@@ -141,3 +141,8 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - **Solution**: Frontend now sends platform sensor IDs; new `send_bulk_commands()` method uses a single MQTT connection for all commands
 - **Files modified**: `vayyar_config_service.py`, `server.py`, `RadarsPage.js`
 - **Verified**: 20/20 radars updated successfully via curl test
+
+### 2026-02-10 - Pagination Size Selector
+- **Added**: Page size selector on RadarsPage (20, 50, 100, 500, 1000 per page)
+- **Added**: "Tous les filtrés" quick select button to select all filtered radars across all pages
+- **Files modified**: `RadarsPage.js`
