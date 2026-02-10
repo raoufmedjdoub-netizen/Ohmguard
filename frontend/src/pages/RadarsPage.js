@@ -275,19 +275,19 @@ export function RadarsPage() {
     setBulkOperationLoading(true);
     
     try {
-      // Get device_ids for selected radars
-      const deviceIds = radars
+      // Get platform sensor IDs for selected radars
+      const sensorIds = radars
         .filter(r => selectedRadars.has(r.id))
-        .map(r => r.device_id)
+        .map(r => r.id)
         .filter(Boolean);
       
-      if (deviceIds.length === 0) {
-        toast.error('Aucun radar sélectionné n\'a de device_id');
+      if (sensorIds.length === 0) {
+        toast.error('Aucun radar sélectionné');
         return;
       }
       
       const response = await api.post('/devices/bulk-command', {
-        device_ids: deviceIds,
+        device_ids: sensorIds,
         command_type: 8, // UpdateBaseUrl
         params: { baseUrl: newBaseUrl.trim() }
       });
