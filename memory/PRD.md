@@ -134,3 +134,10 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 ## Known Issues
 1. **Mobile app** - Not starting (React Native/Expo issue)
 2. **RadarConfigPage** - Large file, needs refactoring
+
+### 2026-02-10 - Bulk UpdateBaseUrl Fix
+- **Fixed**: Frontend was sending MQTT `device_id` but backend looked up by platform `id` → "Sensor not found" for 19/20 radars
+- **Fixed**: Each command opened a separate MQTT connection → connection instability
+- **Solution**: Frontend now sends platform sensor IDs; new `send_bulk_commands()` method uses a single MQTT connection for all commands
+- **Files modified**: `vayyar_config_service.py`, `server.py`, `RadarsPage.js`
+- **Verified**: 20/20 radars updated successfully via curl test
