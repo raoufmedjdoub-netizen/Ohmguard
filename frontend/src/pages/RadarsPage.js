@@ -35,7 +35,7 @@ export function RadarsPage() {
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   
   // Selection for bulk operations
   const [selectedRadars, setSelectedRadars] = useState(new Set());
