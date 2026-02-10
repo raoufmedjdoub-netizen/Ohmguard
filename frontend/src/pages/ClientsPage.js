@@ -130,26 +130,18 @@ export function ClientsPage() {
     );
   }
 
+  // Inject actions into SubNavbar
+  usePageActions(
+    useMemo(() => (
+      <Button onClick={() => setShowCreateModal(true)} size="sm" data-testid="create-client-btn">
+        <Plus className="h-4 w-4 mr-2" />
+        Nouvelle Organisation
+      </Button>
+    ), [])
+  );
+
   return (
     <div data-testid="clients-page" className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Building2 className="h-6 w-6 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Organisations</h1>
-            <p className="text-muted-foreground">
-              {clients.length} organisation{clients.length > 1 ? 's' : ''} enregistrée{clients.length > 1 ? 's' : ''}
-            </p>
-          </div>
-        </div>
-        
-        <Button onClick={() => setShowCreateModal(true)} data-testid="create-client-btn">
-          <Plus className="h-4 w-4 mr-2" />
-          Nouvelle Organisation
-        </Button>
-      </div>
-
       {/* Search */}
       <Card>
         <CardContent className="p-4">
