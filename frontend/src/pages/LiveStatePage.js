@@ -167,44 +167,25 @@ export function LiveStatePage() {
   const selectedBuildingName = buildings.find(b => b.id === selectedBuilding)?.name;
   const selectedFloorName = floors.find(f => f.id === selectedFloor)?.name;
 
+  // Inject actions into SubNavbar
+  usePageActions(
+    useMemo(() => (
+      <div className="flex items-center gap-3">
+        {lastUpdated && (
+          <span className="text-xs text-muted-foreground">
+            Mis à jour: {lastUpdated.toLocaleTimeString()}
+          </span>
+        )}
+        <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Actualiser
+        </Button>
+      </div>
+    ), [lastUpdated, loading, refresh])
+  );
+
   return (
     <div className="space-y-6" data-testid="live-state-page">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink href="/">Accueil</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>État en direct</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-          <h1 className="text-2xl font-bold mt-2 flex items-center gap-2">
-            <Activity className="h-6 w-6 text-primary" />
-            État en direct
-          </h1>
-          <p className="text-muted-foreground">
-            Surveillance en temps réel de vos capteurs
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          {lastUpdated && (
-            <span className="text-xs text-muted-foreground">
-              Mis à jour: {lastUpdated.toLocaleTimeString()}
-            </span>
-          )}
-          <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Actualiser
-          </Button>
-        </div>
-      </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="border-l-4 border-l-primary">
