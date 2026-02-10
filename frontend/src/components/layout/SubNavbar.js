@@ -289,9 +289,9 @@ export function SubNavbar() {
           </div>
 
           {/* Actions spécifiques à la page */}
-          {actions && (
+          {contextActions && (
             <div className="flex items-center gap-2" data-testid="page-actions">
-              {actions}
+              {contextActions}
             </div>
           )}
         </div>
