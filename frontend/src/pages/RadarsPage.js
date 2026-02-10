@@ -729,7 +729,7 @@ export function RadarsPage() {
                     </TableCell>
                     <TableCell>
                       <span className="text-xs font-mono text-muted-foreground">
-                        {radar.firmware || '—'}
+                        {radar.firmware_version || radar.firmware || '—'}
                       </span>
                     </TableCell>
                     <TableCell>
