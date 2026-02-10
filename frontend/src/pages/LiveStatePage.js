@@ -2,7 +2,7 @@
  * LiveStatePage - Real-time sensor state monitoring
  * Shows live status of all sensors with online/offline indicators
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   Wifi, WifiOff, RefreshCw, Building2, Layers, 
