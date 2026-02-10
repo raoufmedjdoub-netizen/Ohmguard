@@ -94,18 +94,21 @@ class EmailService:
         msg["Subject"] = subject
         msg["From"] = f"{from_name} <{from_email}>"
         msg["To"] = to_email
+        msg["Date"] = formatdate(localtime=True)
+        msg["Message-ID"] = make_msgid(domain=from_email.split("@")[-1] if "@" in from_email else "ohmguard.fr")
         msg.attach(MIMEText(html_body, "html"))
 
         try:
             if port == 465:
                 # Port 465 = implicit SSL (SMTPS)
                 server = smtplib.SMTP_SSL(host, port, timeout=15, context=ssl.create_default_context())
+                server.ehlo(from_email.split("@")[-1] if "@" in from_email else "ohmguard.fr")
             elif use_tls:
                 # Port 587 = STARTTLS
                 server = smtplib.SMTP(host, port, timeout=15)
-                server.ehlo()
+                server.ehlo(from_email.split("@")[-1] if "@" in from_email else "ohmguard.fr")
                 server.starttls(context=ssl.create_default_context())
-                server.ehlo()
+                server.ehlo(from_email.split("@")[-1] if "@" in from_email else "ohmguard.fr")
             else:
                 # Plain SMTP (no encryption)
                 server = smtplib.SMTP(host, port, timeout=15)
