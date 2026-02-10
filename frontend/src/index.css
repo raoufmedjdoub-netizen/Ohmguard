@@ -6,13 +6,13 @@
 
 @layer base {
   :root {
-    /* Light Theme - OhmGuard Blue */
-    /* Blanc : Fond des écrans et cartes */
-    --background: 0 0% 100%;
+    /* Light Theme - OhmGuard Satin Grey (anti-éblouissement) */
+    /* Gris satiné au lieu du blanc pur */
+    --background: 220 14% 96%;
     --foreground: 210 50% 20%;
-    --card: 0 0% 100%;
+    --card: 220 16% 99%;
     --card-foreground: 210 50% 20%;
-    --popover: 0 0% 100%;
+    --popover: 220 16% 99%;
     --popover-foreground: 210 50% 20%;
     
     /* Bleu (#2563EB) : Couleur primaire, liens */
@@ -27,7 +27,7 @@
     --accent: 210 52% 25%;
     --accent-foreground: 0 0% 100%;
     
-    --muted: 210 40% 96%;
+    --muted: 220 14% 92%;
     --muted-foreground: 210 25% 45%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -35,8 +35,8 @@
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 0%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
+    --border: 220 16% 88%;
+    --input: 220 16% 90%;
     --ring: 217 91% 60%;
     --radius: 0.5rem;
     
