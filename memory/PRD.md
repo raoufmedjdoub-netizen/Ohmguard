@@ -172,3 +172,11 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - **Endpoint**: `GET /api/health/websocket` for admin to monitor connected clients and rooms
 - **Frontend**: `WebSocketContext.js` updated to expose `rooms` state
 - **Files modified**: `socketio_service.py`, `mqtt_service.py`, `server.py`, `WebSocketContext.js`
+
+### 2026-02-10 - Email Notifications for FALL Events
+- **Backend**: `email_service.py` - SMTP email service with configurable settings stored in MongoDB
+- **Endpoints**: `GET/PUT /api/settings/smtp`, `POST /api/settings/smtp/test`, `GET/PUT /api/users/me/notifications`
+- **Flow**: MQTT FALL event → check SMTP enabled → query users with email_notifications=true → send HTML alert email
+- **Frontend**: SettingsPage updated with SMTP config form (admin only) + test button + per-user notification toggle
+- **Files created**: `email_service.py`
+- **Files modified**: `server.py`, `mqtt_service.py`, `SettingsPage.js`
