@@ -3782,6 +3782,10 @@ async def startup_event():
     init_clients_buildings_service(db)
     logger.info("Clients & Buildings service initialized")
     
+    # Initialize Email service
+    init_email_service(db)
+    logger.info("Email service initialized")
+    
     # Initialize RBAC service
     rbac_service = init_rbac_service(db)
     await rbac_service.init_permissions_catalog()
