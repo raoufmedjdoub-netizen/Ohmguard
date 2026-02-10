@@ -207,9 +207,10 @@ const DEFAULT_DESCRIPTIONS = {
   '/settings': 'Paramètres système',
 };
 
-export function SubNavbar({ actions }) {
+export function SubNavbar() {
   const { t } = useTranslation();
   const location = useLocation();
+  const contextActions = usePageActionsValue();
   
   // Trouver la config de la page courante
   const currentPath = location.pathname;
