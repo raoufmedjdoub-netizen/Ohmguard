@@ -37,6 +37,7 @@ import {
 } from '@/components/SensorStatusBadge';
 import api from '@/lib/api';
 import { toast } from 'sonner';
+import { usePageActions } from '@/contexts/PageActionsContext';
 
 export function LiveStatePage() {
   const { t } = useTranslation();
