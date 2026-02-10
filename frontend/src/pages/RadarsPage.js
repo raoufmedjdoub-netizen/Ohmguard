@@ -728,6 +728,11 @@ export function RadarsPage() {
                       {getStatusBadge(radar.status)}
                     </TableCell>
                     <TableCell>
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {radar.firmware || '—'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <Clock className="h-3 w-3" />
                         {formatLastSeen(radar.last_seen)}
