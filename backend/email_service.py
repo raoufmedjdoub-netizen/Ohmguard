@@ -96,16 +96,18 @@ class EmailService:
         msg.attach(MIMEText(html_body, "html"))
 
         try:
-            if use_tls:
-                server = smtplib.SMTP(host, port, timeout=10)
+            if port == 465:
+                # Port 465 = implicit SSL (SMTPS)
+                server = smtplib.SMTP_SSL(host, port, timeout=15, context=ssl.create_default_context())
+            elif use_tls:
+                # Port 587 = STARTTLS
+                server = smtplib.SMTP(host, port, timeout=15)
                 server.ehlo()
                 server.starttls(context=ssl.create_default_context())
                 server.ehlo()
             else:
-                if port == 465:
-                    server = smtplib.SMTP_SSL(host, port, timeout=10, context=ssl.create_default_context())
-                else:
-                    server = smtplib.SMTP(host, port, timeout=10)
+                # Plain SMTP (no encryption)
+                server = smtplib.SMTP(host, port, timeout=15)
 
             server.login(username, password)
             server.sendmail(from_email, to_email, msg.as_string())
@@ -113,8 +115,8 @@ class EmailService:
             return {"success": True, "message": f"Email envoyé à {to_email}"}
         except smtplib.SMTPAuthenticationError:
             return {"success": False, "error": "Identifiants SMTP incorrects"}
-        except smtplib.SMTPConnectError:
-            return {"success": False, "error": f"Impossible de se connecter à {host}:{port}"}
+        except smtplib.SMTPConnectError as e:
+            return {"success": False, "error": f"Impossible de se connecter à {host}:{port} - {e}"}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
