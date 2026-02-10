@@ -321,10 +321,19 @@ class MQTTService:
         status = payload.get("status", "monitoring")
         new_status = DEVICE_STATUS_MAP.get(status, "ONLINE")
         
+        # Extract clean version from versionName (e.g. "walabot-home-vblu-0x...-v0.38.42" -> "v0.38.42")
+        version_name = payload.get("versionName", "")
+        firmware_version = sensor.get("firmware_version", "")
+        if version_name:
+            import re
+            match = re.search(r'v\d+\.\d+\.\d+', version_name)
+            firmware_version = match.group(0) if match else version_name
+        
         update_data = {
             "status": new_status,
             "last_seen": datetime.now(timezone.utc).isoformat(),
-            "firmware": payload.get("versionName", sensor.get("firmware")),
+            "firmware": version_name or sensor.get("firmware"),
+            "firmware_version": firmware_version,
         }
         
         # Extract serialProduct from state payload - this is the real serial number
