@@ -79,7 +79,8 @@ from mqtt_service import init_mqtt_service, stop_mqtt_service
 from socketio_service import (
     sio, socket_app,
     broadcast_new_event, broadcast_presence_update,
-    broadcast_sensor_status, broadcast_sensor_registered
+    broadcast_sensor_status, broadcast_sensor_registered,
+    get_connected_clients_info
 )
 
 # Vayyar Config Service import
