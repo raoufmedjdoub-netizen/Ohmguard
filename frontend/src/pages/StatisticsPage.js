@@ -121,17 +121,6 @@ export function StatisticsPage() {
     return null;
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  const totalEvents = eventsByStatus.reduce((acc, curr) => acc + curr.count, 0);
-  const totalSensors = sensorsStatus.reduce((acc, curr) => acc + curr.count, 0);
-
   // Inject actions into SubNavbar
   usePageActions(
     useMemo(() => (
@@ -147,6 +136,17 @@ export function StatisticsPage() {
       </Select>
     ), [timeRange])
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const totalEvents = eventsByStatus.reduce((acc, curr) => acc + curr.count, 0);
+  const totalSensors = sensorsStatus.reduce((acc, curr) => acc + curr.count, 0);
 
   return (
     <div data-testid="statistics-page" className="space-y-6">
