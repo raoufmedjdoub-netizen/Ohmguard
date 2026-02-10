@@ -37,6 +37,7 @@ import {
   LayoutGrid
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePageActions } from '@/contexts/PageActionsContext';
 
 // Tree Node Component
 function TreeNode({ node, level = 0, onSelect, selectedId }) {
