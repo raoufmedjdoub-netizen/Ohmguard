@@ -38,6 +38,7 @@ export function MainLayout() {
   }, []);
 
   return (
+    <PageActionsProvider>
     <div className="min-h-screen bg-background">
       {/* Navbar principale - fixe en haut */}
       <Navbar 
@@ -82,6 +83,7 @@ export function MainLayout() {
         </div>
       </main>
     </div>
+    </PageActionsProvider>
   );
 }
 
