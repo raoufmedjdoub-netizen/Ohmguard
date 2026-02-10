@@ -48,9 +48,40 @@ export function Navbar({ onMenuClick, showMenuButton }) {
   const { t, i18n } = useTranslation();
   const { logout, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { connected } = useWebSocket();
+  const { connected, rooms } = useWebSocket();
+  const [buildingNames, setBuildingNames] = useState([]);
 
   const currentLang = LANGUAGES.find(l => l.code === i18n.language) || LANGUAGES[0];
+
+  // Resolve building room IDs to names
+  useEffect(() => {
+    const buildingRooms = (rooms || []).filter(r => r.startsWith('building_'));
+    if (buildingRooms.length === 0) {
+      setBuildingNames([]);
+      return;
+    }
+    const ids = buildingRooms.map(r => r.replace('building_', ''));
+    api.get('/buildings')
+      .then(res => {
+        const all = res.data || [];
+        const names = ids.map(id => {
+          const b = all.find(b => b.id === id);
+          return b ? b.name : id.slice(0, 8);
+        });
+        setBuildingNames(names);
+      })
+      .catch(() => setBuildingNames(ids.map(id => id.slice(0, 8))));
+  }, [rooms]);
+
+  // Determine scope label for the badge
+  const getScopeLabel = () => {
+    if (!rooms || rooms.length === 0) return null;
+    if (rooms.includes('admin_all')) return 'Tous les sites';
+    const tenantRoom = rooms.find(r => r.startsWith('tenant_'));
+    if (tenantRoom && !buildingNames.length) return 'Tout le tenant';
+    if (buildingNames.length > 0) return buildingNames.join(', ');
+    return null;
+  };
 
   const handleLanguageChange = (langCode) => {
     i18n.changeLanguage(langCode);
