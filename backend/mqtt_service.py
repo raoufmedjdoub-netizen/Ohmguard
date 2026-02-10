@@ -385,6 +385,9 @@ class MQTTService:
                 "device_id": device_id,
                 "serial_product": update_data.get("serial_product", sensor.get("serial_product")),
                 "status": new_status,
+                "last_seen": update_data.get("last_seen", ""),
+                "building_id": sensor.get('building_id'),
+                "floor_id": sensor.get('floor_id'),
                 "timestamp": datetime.now(timezone.utc).isoformat()
             })
         
