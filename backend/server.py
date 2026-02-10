@@ -2377,11 +2377,11 @@ async def update_smtp_config(config: SmtpConfig, current_user: UserInDB = Depend
     
     config_dict = config.model_dump()
     
-    # If password is masked, keep the existing one
-    if config_dict.get("password") == "••••••••":
-        existing = await email_svc.get_smtp_config()
-        if existing:
-            config_dict["password"] = existing.get("password", "")
+    # Keep existing password if user didn't change it (masked bullets)
+    existing = await email_svc.get_smtp_config()
+    pwd = config_dict.get("password", "")
+    if existing and (not pwd or all(c == '\u2022' for c in pwd)):
+        config_dict["password"] = existing.get("password", "")
     
     await email_svc.save_smtp_config(config_dict)
     return {"success": True, "message": "Configuration SMTP enregistrée"}
