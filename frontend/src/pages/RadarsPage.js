@@ -662,6 +662,7 @@ export function RadarsPage() {
                 <TableHead>Localisation</TableHead>
                 <TableHead>Affectation</TableHead>
                 <TableHead>Statut</TableHead>
+                <TableHead>Firmware</TableHead>
                 <TableHead>Dernière activité</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
