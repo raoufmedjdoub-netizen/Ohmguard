@@ -3553,10 +3553,8 @@ async def send_bulk_device_command(
     current_user: UserInDB = Depends(get_current_user)
 ):
     """
-    Send a command to multiple Vayyar radar devices.
-    
-    Useful for bulk operations like updating base URL on all selected devices.
-    Returns results for each device.
+    Send a command to multiple Vayyar radar devices using a single MQTT connection.
+    device_ids should be platform sensor IDs (not MQTT device IDs).
     """
     check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN", "SUPERVISOR"])
     
@@ -3565,37 +3563,20 @@ async def send_bulk_device_command(
     if not vayyar_config_service:
         raise HTTPException(status_code=503, detail="Config service not available")
     
-    results = {
-        "success": [],
-        "failed": [],
-        "total": len(request.device_ids)
+    bulk_results = await vayyar_config_service.send_bulk_commands(
+        sensor_ids=request.device_ids,
+        command_type=request.command_type,
+        params=request.params,
+        tenant_id=current_user.tenant_id
+    )
+    
+    return {
+        "success": bulk_results["success"],
+        "failed": bulk_results["failed"],
+        "total": len(request.device_ids),
+        "success_count": len(bulk_results["success"]),
+        "failed_count": len(bulk_results["failed"])
     }
-    
-    for device_id in request.device_ids:
-        try:
-            result = await vayyar_config_service.send_command(
-                sensor_id=device_id,
-                command_type=request.command_type,
-                params=request.params,
-                tenant_id=current_user.tenant_id
-            )
-            results["success"].append({
-                "device_id": device_id,
-                "status": "sent",
-                "result": result.model_dump() if hasattr(result, 'model_dump') else str(result)
-            })
-        except Exception as e:
-            logger.error(f"Failed to send command to {device_id}: {e}")
-            results["failed"].append({
-                "device_id": device_id,
-                "status": "failed",
-                "error": str(e)
-            })
-    
-    results["success_count"] = len(results["success"])
-    results["failed_count"] = len(results["failed"])
-    
-    return results
 
 
 @api_router.get("/devices/{device_id}/commands/history")
