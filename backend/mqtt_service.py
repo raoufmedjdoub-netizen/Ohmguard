@@ -996,6 +996,38 @@ class MQTTService:
             if rule.get('webhook_url'):
                 logger.info(f"[MOCK] Webhook to {rule['webhook_url']}: {event}")
     
+
+    async def _send_fall_email(self, event: Dict, sensor: Dict):
+        """Send email notification for FALL events to users with email_notifications enabled."""
+        try:
+            from email_service import get_email_service
+            email_svc = get_email_service()
+            if not email_svc:
+                return
+            
+            config = await email_svc.get_smtp_config()
+            if not config or not config.get("enabled"):
+                return
+            
+            tenant_id = sensor.get('tenant_id')
+            
+            # Get users with email_notifications enabled for this tenant
+            query = {"email_notifications": True}
+            if tenant_id:
+                query["$or"] = [{"tenant_id": tenant_id}, {"role": "SUPER_ADMIN"}]
+            else:
+                query["role"] = "SUPER_ADMIN"
+            
+            users_cursor = self.db.users.find(query, {"_id": 0, "email": 1})
+            recipients = [u["email"] async for u in users_cursor]
+            
+            if recipients:
+                await email_svc.send_fall_alert(event, sensor, recipients)
+                logger.info(f"Fall email sent to {len(recipients)} recipients for sensor {sensor.get('name')}")
+        except Exception as e:
+            logger.error(f"Failed to send fall email notification: {e}")
+
+
     async def _send_fall_push_notification(self, event: Dict, sensor: Dict, event_type: str):
         """Send push notification for FALL and SENSITIVE_FALL events"""
         try:
