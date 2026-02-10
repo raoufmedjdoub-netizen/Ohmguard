@@ -232,6 +232,16 @@ export default function UsersPage() {
 
   const selectedClientName = clients.find(c => c.id === selectedClient)?.name || '';
 
+  // Inject actions into SubNavbar
+  usePageActions(
+    useMemo(() => (
+      <Button onClick={() => setShowCreateDialog(true)} size="sm" data-testid="create-user-btn">
+        <UserPlus className="h-4 w-4 mr-2" />
+        Nouvel utilisateur
+      </Button>
+    ), [])
+  );
+
   return (
     <div className="space-y-6" data-testid="users-page">
       {/* Filters */}
