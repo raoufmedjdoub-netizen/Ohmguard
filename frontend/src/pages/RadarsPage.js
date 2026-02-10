@@ -260,6 +260,11 @@ export function RadarsPage() {
     });
   };
 
+  const selectAllFiltered = () => {
+    const allFilteredIds = filteredRadars.map(r => r.id);
+    setSelectedRadars(new Set(allFilteredIds));
+  };
+
   // Bulk UpdateBaseUrl command
   const handleBulkUpdateBaseUrl = async () => {
     if (selectedRadars.size === 0) {
