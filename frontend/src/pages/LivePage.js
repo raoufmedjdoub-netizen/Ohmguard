@@ -20,13 +20,26 @@ if (typeof document !== 'undefined' && !document.getElementById('alert-blink-css
   const style = document.createElement('style');
   style.id = 'alert-blink-css';
   style.textContent = `
-    @keyframes alert-blink {
-      0%, 100% { opacity: 1; border-color: inherit; }
-      50% { opacity: 0.7; border-color: transparent; }
+    @keyframes blink-red {
+      0%, 100% { background-color: #fee2e2; }
+      50% { background-color: #fff; }
     }
-    .animate-alert-blink {
-      animation: alert-blink 1.2s ease-in-out infinite;
+    @keyframes blink-rose {
+      0%, 100% { background-color: #ffe4e6; }
+      50% { background-color: #fff; }
     }
+    @keyframes blink-green {
+      0%, 100% { background-color: #dcfce7; }
+      50% { background-color: #fff; }
+    }
+    @keyframes blink-violet {
+      0%, 100% { background-color: #ede9fe; }
+      50% { background-color: #fff; }
+    }
+    .animate-blink-red { animation: blink-red 1.4s ease-in-out infinite; }
+    .animate-blink-rose { animation: blink-rose 1.4s ease-in-out infinite; }
+    .animate-blink-green { animation: blink-green 1.4s ease-in-out infinite; }
+    .animate-blink-violet { animation: blink-violet 1.4s ease-in-out infinite; }
   `;
   document.head.appendChild(style);
 }
@@ -104,19 +117,22 @@ function AlertFeedItem({ alert, onAction, onView }) {
   const fallStatus = alert.fall_status ? FALL_STATUS_LABELS[alert.fall_status] : null;
   const confidence = isAI && alert.confidence ? Math.round(alert.confidence * 100) : null;
 
-  // Color mapping for blinking border
-  const blinkColor = isAI
-    ? (aiConfig?.border || 'border-violet-500')
-    : (radarConfig?.borderColor || 'border-red-500');
+  // Background blink class by alert type
+  const blinkClass = isAI
+    ? 'animate-blink-violet'
+    : alert.type === 'FALL' ? 'animate-blink-red'
+    : alert.type === 'SENSITIVE_FALL' ? 'animate-blink-rose'
+    : alert.type === 'BED_EXIT' ? 'animate-blink-green'
+    : 'animate-blink-red';
 
   return (
     <div
       data-testid={`alert-feed-${alert.id}`}
       className={cn(
-        'rounded-lg border-2 px-5 py-3.5 mb-2.5 transition-all',
+        'rounded-lg border px-5 py-3.5 mb-2.5 transition-all',
         isAcked
           ? 'border-gray-200 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-900/30 opacity-60'
-          : `${blinkColor} bg-white dark:bg-gray-950 shadow-md animate-alert-blink`
+          : `border-gray-200 shadow-md ${blinkClass}`
       )}
     >
       <div className="flex items-center gap-2.5 min-w-0">
