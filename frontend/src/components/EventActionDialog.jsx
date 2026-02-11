@@ -120,7 +120,16 @@ export function EventActionDialog({ open, onOpenChange, eventId, action, eventIn
         payload.cc_admin = true;
       }
 
-      const res = await api.patch(`/events/${eventId}`, payload);
+      let res;
+      if (eventInfo?.isAI) {
+        // AI events use a different endpoint
+        const aiStatus = action === 'ACK' ? 'ACKNOWLEDGED' : action;
+        res = await api.patch(`/ai-events/${eventId}/status?status=${aiStatus}`);
+        // Return a normalized object for onSuccess
+        res = { data: { id: eventId, status: aiStatus, ...payload } };
+      } else {
+        res = await api.patch(`/events/${eventId}`, payload);
+      }
       toast.success(action === 'ASSIGN' ? 'Alerte assignee' : `Alerte ${config.buttonLabel.toLowerCase()}`);
       onSuccess?.(res.data);
       onOpenChange(false);
