@@ -80,7 +80,7 @@ from socketio_service import (
     sio, socket_app,
     broadcast_new_event, broadcast_presence_update,
     broadcast_sensor_status, broadcast_sensor_registered,
-    broadcast_fall_event_update,
+    broadcast_fall_event_update, broadcast_ai_event,
     get_connected_clients_info
 )
 
