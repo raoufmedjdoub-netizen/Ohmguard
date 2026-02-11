@@ -287,6 +287,18 @@ def create_rbac_routes(get_current_user, check_permission, db):
             )
             await db.rbac_audit_logs.insert_one(log.model_dump())
         
+        # Update contact fields on the user document
+        contact_updates = {}
+        for field in ["full_name", "phone", "job_title", "department", "notes"]:
+            val = getattr(request, field, None)
+            if val is not None:
+                contact_updates[field] = val
+        if contact_updates:
+            await db.users.update_one(
+                {"id": client_user["user_id"]},
+                {"$set": contact_updates}
+            )
+        
         return await rbac.get_client_user_by_id(client_user_id)
     
     @router.delete("/client-users/{client_user_id}")
