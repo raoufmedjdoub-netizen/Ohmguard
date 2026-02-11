@@ -1357,33 +1357,7 @@ export function RadarsPage() {
                       size="sm"
                       onClick={() => {
                         // Create from default config
-                        handleCreateTemplate({
-                          appConfig: {
-                            silentMode: false,
-                            ledMode: 0,
-                            volume: 50,
-                            confirmedToAlertTimeoutSec: 40,
-                            callingDurationSec: 30
-                          },
-                          walabotConfig: {
-                            xMin: -1.8,
-                            xMax: 1.8,
-                            yMin: 0.3,
-                            yMax: 3.5,
-                            zMin: 0,
-                            zMax: 1.8,
-                            sensorHeight: 2.5,
-                            sensorMounting: 3,
-                            fallingSensitivity: 1,
-                            enterDuration: 120,
-                            exitDuration: 120
-                          },
-                          rfProfile: {
-                            rfRegulationZone: "WW",
-                            rfBandWidth: "BW500"
-                          },
-                          productType: "Falling"
-                        });
+                        handleCreateTemplate(DEFAULT_CONFIG);
                       }}
                       disabled={!newTemplateName.trim()}
                     >
