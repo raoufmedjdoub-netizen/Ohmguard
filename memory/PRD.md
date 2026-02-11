@@ -227,3 +227,23 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - **flexNum()**: Fixed to handle NaN values by returning default instead of failing
 - **Files modified**: `frontend/src/lib/vayyarConfigSchema.js`
 
+### 2026-02-11 - Fall Events Implementation (MAJOR)
+- **Backend**: Added `FallEventPayload`, `FallEventStatus` models in `radar_event_models.py`
+- **Backend**: Added `normalize_fall_event()` function for Vayyar fall payload transformation
+- **Backend**: Added `_handle_fall_event()` method in `mqtt_service.py` with lifecycle tracking
+  - Fall events with same `timestamp` are part of same fall flow (UPDATE existing event)
+  - Tracks fall_status lifecycle: fall_detected → fall_confirmed → calling → on_call → finished/fall_exit/canceled
+  - Stores fall location (X, Y, Z in cm), tarHeightEst, isSimulated, exitReason
+  - Appends to `fall_status_history` array on each status update
+- **Backend**: Updated `Event` model in `server.py` with fall-specific fields
+- **Frontend**: Rewrote `EventDetailPage.js` with fall-specific components:
+  - `FallLocationCard`: Shows X, Y, Z coordinates and estimated height
+  - `FallStatusTimeline`: Shows chronological fall lifecycle with colored badges
+  - Simulated/Learning/Silent indicator badges
+- **Frontend**: Updated `HistoryPage.js`:
+  - Added "Statut chute" column with `FallStatusBadge` component
+  - Added SENSITIVE_FALL and BED_EXIT filter options
+  - Updated CSV export with fall-specific columns
+- **Testing**: 100% pass rate (14/14 backend, 12/12 frontend)
+- **Files modified**: `radar_event_models.py`, `mqtt_service.py`, `server.py`, `EventDetailPage.js`, `HistoryPage.js`
+
