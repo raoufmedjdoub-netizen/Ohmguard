@@ -432,8 +432,31 @@ export function EventDetailPage() {
               </p>
             </CardContent>
           </Card>
+
+          {/* Assignment info */}
+          {event.assigned_to_name && (
+            <Card data-testid="assignment-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  Assigne a
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                    <User className="h-4 w-4 text-purple-600" />
+                  </div>
+                  <span className="font-medium">{event.assigned_to_name}</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
+
+      {/* Comments history */}
+      <CommentsSection comments={event.comments} />
 
       {/* Raw Payload */}
       <Card>
@@ -449,6 +472,20 @@ export function EventDetailPage() {
           </pre>
         </CardContent>
       </Card>
+
+      {/* Action Dialog */}
+      <EventActionDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        eventId={eventId}
+        action={dialogAction}
+        eventInfo={{
+          type: event.type,
+          location: event.location_path,
+          sensor: event.radar_name || event.device_id
+        }}
+        onSuccess={handleActionSuccess}
+      />
     </div>
   );
 }
