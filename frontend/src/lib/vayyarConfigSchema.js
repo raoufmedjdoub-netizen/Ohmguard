@@ -378,7 +378,7 @@ export const DEFAULT_CONFIG = {
     bedExitEnabled: true,
     bedExitPredictionThreshold: 0.9,
     bedExitNFramesToReset: 100,
-    bedExitWallSide: 0,
+    bedExitWallSide: "Left",
     enableBedExitTelemetry: false,
     enableBedExitStateTelemetry: false,
     enableTrackerTargetTelemetry: true,
