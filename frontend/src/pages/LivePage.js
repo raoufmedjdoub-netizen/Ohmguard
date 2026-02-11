@@ -74,7 +74,7 @@ function ElapsedTimer({ since }) {
   return <span className="font-mono">{elapsed}</span>;
 }
 
-function ActiveAlertCard({ alert, onAck, onResolve, onFalseAlarm, onView }) {
+function ActiveAlertCard({ alert, onAction, onView }) {
   const config = EVENT_TYPE_CONFIG[alert.type] || EVENT_TYPE_CONFIG.FALL;
   const fallConfig = FALL_STATUS_LABELS[alert.fall_status];
   const isAcked = alert.status === 'ACK';
@@ -106,6 +106,9 @@ function ActiveAlertCard({ alert, onAck, onResolve, onFalseAlarm, onView }) {
             {isAcked && (
               <Badge variant="outline" className="text-xs border-blue-400 text-blue-600">Acquitte</Badge>
             )}
+            {alert.assigned_to_name && (
+              <Badge variant="outline" className="text-xs border-purple-400 text-purple-600">{alert.assigned_to_name}</Badge>
+            )}
           </div>
 
           {/* Location */}
@@ -135,17 +138,21 @@ function ActiveAlertCard({ alert, onAck, onResolve, onFalseAlarm, onView }) {
         {/* Actions */}
         <div className="flex flex-col gap-1 flex-shrink-0">
           {!isAcked && (
-            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onAck(alert.id)}>
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onAction(alert, 'ACK')}>
               Acquitter
             </Button>
           )}
-          <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => onResolve(alert.id)}>
+          <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => onAction(alert, 'RESOLVED')}>
             <CheckCircle className="h-3 w-3 mr-1" />
             Resoudre
           </Button>
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onFalseAlarm(alert.id)}>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onAction(alert, 'FALSE_ALARM')}>
             <XCircle className="h-3 w-3 mr-1" />
             Faux
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onAction(alert, 'ASSIGN')}>
+            <UserPlus className="h-3 w-3 mr-1" />
+            Assigner
           </Button>
           <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onView(alert.id)}>
             <Eye className="h-3 w-3 mr-1" />
