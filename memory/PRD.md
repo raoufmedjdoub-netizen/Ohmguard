@@ -319,3 +319,14 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - **Tests**: 100% backend (12/12), 100% frontend (17/17)
 - **Files modified**: `SettingsPage.js` (rewrite), `Sidebar.js`, `App.js`, `rbac_routes.py`, `rbac_service.py`
 
+### 2026-02-11 - Intégration SENSITIVE_FALL (type 8)
+- **Backend**: Modèle `SensitiveFallEventPayload` + `normalize_sensitive_fall_event()` dans `radar_event_models.py`
+- **Backend**: Handler MQTT `_handle_sensitive_fall_event()` avec lifecycle tracking (fall_suspected → calling → finished/fall_exit) dans `mqtt_service.py`
+- **Backend**: Endpoint test `POST /api/create-sensitive-fall-event` dans `server.py`
+- **Frontend**: Labels FR ("Chute suspecte") via `getEventTypeLabel()` dans `utils.js`, utilisé sur Dashboard + History
+- **Frontend**: Page détail affiche indicateurs de confiance (confidence_level, suspected_events_counter, last_event_confidence)
+- **Frontend**: AlertContext charge FALL + SENSITIVE_FALL + BED_EXIT au démarrage
+- **Frontend**: FALL_STATUS_CONFIG inclut `fall_suspected` pour la timeline
+- **Tests**: 100% backend (8/8), 100% frontend (20/20)
+- **Files modified**: `radar_event_models.py`, `mqtt_service.py`, `server.py`, `utils.js`, `AlertContext.js`, `EventDetailPage.js`, `DashboardPage.js`, `HistoryPage.js`
+
