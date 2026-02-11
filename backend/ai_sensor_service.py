@@ -45,6 +45,10 @@ class AISensorService:
         """Get AI sensor by channel identifier"""
         return await self.db.ai_sensors.find_one({"channel": channel}, {"_id": 0})
     
+    async def get_sensor_by_channel_name(self, channel_name: str) -> Optional[Dict]:
+        """Get AI sensor by channel_name (fallback when channel from topic is unavailable)"""
+        return await self.db.ai_sensors.find_one({"channel_name": channel_name}, {"_id": 0})
+    
     async def create_sensor(self, data: Dict) -> Dict:
         """Create a new AI sensor"""
         now = datetime.now(timezone.utc).isoformat()
@@ -135,8 +139,12 @@ class AISensorService:
         """Create a new AI event from MQTT message"""
         now = datetime.now(timezone.utc).isoformat()
         
-        # Find the sensor by channel
-        sensor = await self.get_sensor_by_channel(data.get("channel", ""))
+        # Find the sensor by channel, fallback to channel_name
+        channel = data.get("channel", "")
+        channel_name = data.get("channel_name", "")
+        sensor = await self.get_sensor_by_channel(channel) if channel else None
+        if not sensor and channel_name:
+            sensor = await self.get_sensor_by_channel_name(channel_name)
         
         # Determine severity based on warning type
         warning_type = data.get("warning_type", "Unknown")
@@ -150,14 +158,19 @@ class AISensorService:
         else:
             severity = "LOW"
         
+        # warning_id is integer per Seedoo schema
+        raw_warning_id = data.get("warning_id")
+        warning_id = int(raw_warning_id) if raw_warning_id is not None else None
+        
         event = {
             "id": str(uuid.uuid4()),
-            "warning_id": data.get("warning_id"),
-            "channel": data.get("channel"),
-            "channel_name": data.get("channel_name"),
+            "warning_id": warning_id,
+            "channel": channel or None,
+            "channel_name": channel_name or None,
             "model_id": data.get("model_id"),
             "model_name": data.get("model_name"),
             "timestamp": data.get("timestamp"),
+            "seedoo_created_at": data.get("created_at"),
             "warning_type": warning_type,
             "warning_text": data.get("warning_text"),
             "confidence": data.get("confidence", 0),
