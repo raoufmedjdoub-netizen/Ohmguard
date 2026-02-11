@@ -27,6 +27,21 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
+const FALL_STATUS_LABELS = {
+  fall_detected: { label: 'Detectee', color: 'bg-red-600 text-white' },
+  fall_confirmed: { label: 'Confirmee', color: 'bg-red-700 text-white' },
+  calling: { label: 'Appel', color: 'bg-orange-500 text-white' },
+  on_call: { label: 'En comm.', color: 'bg-yellow-500 text-black' },
+  finished: { label: 'Termine', color: 'bg-green-600 text-white' },
+  fall_exit: { label: 'Sortie', color: 'bg-blue-500 text-white' },
+  canceled: { label: 'Annule', color: 'bg-gray-500 text-white' },
+};
+
+function FallStatusBadge({ status }) {
+  const config = FALL_STATUS_LABELS[status] || { label: status, color: 'bg-gray-400 text-white' };
+  return <Badge className={cn('text-xs', config.color)}>{config.label}</Badge>;
+}
+
 export function HistoryPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
