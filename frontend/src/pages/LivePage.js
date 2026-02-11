@@ -182,39 +182,70 @@ function ActiveAlertCard({ alert, onAction, onView }) {
 }
 
 function ActiveAlertsSection() {
-  const { activeAlerts, acknowledgeAlert, resolveAlert, markFalseAlarm } = useAlerts();
+  const { activeAlerts, updateAlert, dismissAlert } = useAlerts();
   const navigate = useNavigate();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogAction, setDialogAction] = useState('ACK');
+  const [dialogEvent, setDialogEvent] = useState(null);
+
+  const handleAction = (alert, action) => {
+    setDialogEvent(alert);
+    setDialogAction(action);
+    setDialogOpen(true);
+  };
+
+  const handleActionSuccess = (updatedEvent) => {
+    if (!updatedEvent) return;
+    if (updatedEvent.status === 'RESOLVED' || updatedEvent.status === 'FALSE_ALARM') {
+      dismissAlert(updatedEvent.id);
+    } else {
+      updateAlert(updatedEvent.id, updatedEvent);
+    }
+  };
 
   if (activeAlerts.length === 0) return null;
 
   const unackedCount = activeAlerts.filter(a => a.status !== 'ACK').length;
 
   return (
-    <Card className="border-red-500/50 shadow-lg" data-testid="active-alerts-section">
-      <CardHeader className="border-b border-red-500/20 py-2 px-4 bg-red-50 dark:bg-red-950/30">
-        <CardTitle className="flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-400">
-          <AlertTriangle className="h-4 w-4 animate-pulse" />
-          Alertes actives ({activeAlerts.length})
-          {unackedCount > 0 && (
-            <Badge className="bg-red-600 text-white text-xs ml-1">{unackedCount} non acquittee{unackedCount > 1 ? 's' : ''}</Badge>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-3">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {activeAlerts.map(alert => (
-            <ActiveAlertCard
-              key={alert.id}
-              alert={alert}
-              onAck={acknowledgeAlert}
-              onResolve={resolveAlert}
-              onFalseAlarm={markFalseAlarm}
-              onView={(id) => navigate(`/events/${id}`)}
-            />
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+    <>
+      <Card className="border-red-500/50 shadow-lg" data-testid="active-alerts-section">
+        <CardHeader className="border-b border-red-500/20 py-2 px-4 bg-red-50 dark:bg-red-950/30">
+          <CardTitle className="flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-400">
+            <AlertTriangle className="h-4 w-4 animate-pulse" />
+            Alertes actives ({activeAlerts.length})
+            {unackedCount > 0 && (
+              <Badge className="bg-red-600 text-white text-xs ml-1">{unackedCount} non acquittee{unackedCount > 1 ? 's' : ''}</Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {activeAlerts.map(alert => (
+              <ActiveAlertCard
+                key={alert.id}
+                alert={alert}
+                onAction={handleAction}
+                onView={(id) => navigate(`/events/${id}`)}
+              />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <EventActionDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        eventId={dialogEvent?.id}
+        action={dialogAction}
+        eventInfo={dialogEvent ? {
+          type: dialogEvent.type,
+          location: dialogEvent.location_path || dialogEvent.sensor_name,
+          sensor: dialogEvent.radar_name || dialogEvent.device_id
+        } : null}
+        onSuccess={handleActionSuccess}
+      />
+    </>
   );
 }
 
