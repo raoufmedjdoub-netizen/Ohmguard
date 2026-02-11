@@ -181,10 +181,14 @@ def create_rbac_routes(get_current_user, check_permission, db):
                 "email": request.email,
                 "full_name": request.full_name,
                 "hashed_password": hashed_pw,
-                "role": "VIEWER",  # Default system role
+                "role": "VIEWER",
                 "tenant_id": client_id,
                 "language": "fr",
                 "is_active": True,
+                "phone": request.phone,
+                "job_title": request.job_title,
+                "department": request.department,
+                "notes": request.notes,
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             await db.users.insert_one(new_user)
