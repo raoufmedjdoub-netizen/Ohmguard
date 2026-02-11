@@ -158,7 +158,7 @@ function ActiveAlertCard({ alert, onAck, onResolve, onFalseAlarm, onView }) {
       {alert.fall_status_history && alert.fall_status_history.length > 1 && (
         <div className="mt-3 pt-2 border-t border-border/50">
           <div className="flex items-center gap-1.5 flex-wrap">
-            {alert.fall_status_history.map((entry, idx) => {
+            {alert.fall_status_history.slice(-4).map((entry, idx) => {
               const c = FALL_STATUS_LABELS[entry.status] || { label: entry.status, color: 'bg-gray-400 text-white' };
               return (
                 <React.Fragment key={idx}>
