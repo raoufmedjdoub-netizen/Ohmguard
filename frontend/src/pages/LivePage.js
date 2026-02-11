@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 
 import { RadarStatusCard } from '@/components/live';
+import { EventActionDialog } from '@/components/EventActionDialog';
 import { useNavigate } from 'react-router-dom';
 
 const FALL_STATUS_LABELS = {
