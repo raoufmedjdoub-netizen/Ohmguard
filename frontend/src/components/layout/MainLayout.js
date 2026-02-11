@@ -75,6 +75,9 @@ export function MainLayout() {
           'ml-0'
         )}
       >
+        {/* Bandeau d'alertes global - incrusté dans le flux */}
+        <GlobalAlertBanner />
+        
         {/* Sous-navbar contextuelle */}
         <SubNavbar />
         
