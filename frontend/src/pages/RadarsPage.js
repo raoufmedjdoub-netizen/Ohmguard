@@ -44,6 +44,18 @@ export function RadarsPage() {
   const [newBaseUrl, setNewBaseUrl] = useState('http://auth.ohmguard.fr:5051');
   const [bulkOperationLoading, setBulkOperationLoading] = useState(false);
   
+  // Bulk Config Dialog
+  const [bulkConfigDialogOpen, setBulkConfigDialogOpen] = useState(false);
+  const [templates, setTemplates] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  
+  // Template Management Dialog
+  const [templateManageDialogOpen, setTemplateManageDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [newTemplateName, setNewTemplateName] = useState('');
+  const [newTemplateDescription, setNewTemplateDescription] = useState('');
+  
   // Dialog states
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
