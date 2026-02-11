@@ -214,7 +214,7 @@ export function EventDetailPage() {
     );
   }
 
-  const isFallEvent = event.type === 'FALL' && event.fall_status;
+  const isFallEvent = (event.type === 'FALL' || event.type === 'SENSITIVE_FALL') && event.fall_status;
   const fallStatusConfig = FALL_STATUS_CONFIG[event.fall_status] || null;
 
   return (
