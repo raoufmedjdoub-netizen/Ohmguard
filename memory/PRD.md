@@ -247,3 +247,25 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - **Testing**: 100% pass rate (14/14 backend, 12/12 frontend)
 - **Files modified**: `radar_event_models.py`, `mqtt_service.py`, `server.py`, `EventDetailPage.js`, `HistoryPage.js`
 
+### 2026-02-11 - Real-time Fall Alert UI (MAJOR)
+- **AlertContext**: New global context managing active alerts across all pages
+  - Loads existing unresolved FALL events from API on mount
+  - Subscribes to WebSocket for real-time `new_radar_event` and `fall_event_update`
+  - Provides acknowledge, resolve, false alarm, dismiss actions
+  - Alert sound on new critical events
+- **GlobalAlertBanner**: Fixed red banner at top of all pages
+  - Shows all active alerts simultaneously with count and unacknowledged badge
+  - Each alert: type badge (CHUTE), status (Detectee/Confirmee), location, elapsed timer
+  - Action buttons: Acquitter, Resoudre, Faux, View, Dismiss
+  - Sound toggle and collapse toggle
+  - TEST badge for simulated events
+- **LivePage ActiveAlertsSection**: Detailed alert cards grid
+  - Fall location coordinates (X, Y, Z in cm) + height estimate
+  - Fall status timeline (last 4 entries with arrows)
+  - Per-card action buttons
+- **Backend**: Added `broadcast_fall_event_update` to socketio_service.py
+- **Backend**: Added `fall_event_update` handler in socketio_broadcast
+- **Testing**: 100% pass rate (18/18 frontend tests)
+- **Files created**: `AlertContext.js`, `GlobalAlertBanner.jsx`
+- **Files modified**: `App.js`, `MainLayout.js`, `LivePage.js`, `WebSocketContext.js`, `socketio_service.py`, `server.py`
+
