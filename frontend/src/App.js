@@ -5,6 +5,7 @@ import '@/lib/i18n';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { WebSocketProvider } from '@/contexts/WebSocketContext';
+import { AlertProvider } from '@/contexts/AlertContext';
 
 // Layout
 import { MainLayout } from '@/components/layout/MainLayout';
