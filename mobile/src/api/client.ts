@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 
 // URL de l'API - directement configurée pour le preview
 // En production, remplacer par l'URL du serveur déployé
-const API_URL = 'https://template-manager-hub.preview.emergentagent.com/api';
+const API_URL = 'https://embedded-alert-ui.preview.emergentagent.com/api';
 
 // Log pour debug
 console.log('[API] Using URL:', API_URL);
