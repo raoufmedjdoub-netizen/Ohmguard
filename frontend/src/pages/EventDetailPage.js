@@ -406,6 +406,35 @@ export function EventDetailPage() {
           {/* Fall timeline */}
           {isFallEvent && <FallStatusTimeline history={event.fall_status_history} />}
 
+          {/* Sensitive Fall specific info */}
+          {event.type === 'SENSITIVE_FALL' && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Indicateurs de confiance</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Niveau de confiance</span>
+                  <span className="text-lg font-bold text-primary">
+                    {((event.confidence_level || event.confidence || 0) * 100).toFixed(0)}%
+                  </span>
+                </div>
+                {event.last_event_confidence != null && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Confiance dernier evt</span>
+                    <span className="font-medium">{(event.last_event_confidence * 100).toFixed(0)}%</span>
+                  </div>
+                )}
+                {event.suspected_events_counter != null && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Evts consecutifs</span>
+                    <span className="font-medium">{event.suspected_events_counter}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Quick stats (non-fall) */}
           {!isFallEvent && (
             <Card>
