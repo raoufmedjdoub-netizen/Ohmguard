@@ -821,18 +821,15 @@ async def create_sensitive_fall_event(current_user: UserInDB = Depends(get_curre
     await db.events.insert_one(event)
     
     # Broadcast via WebSocket
-    from socketio_service import get_socketio_service
-    sio_service = get_socketio_service()
-    if sio_service:
-        event_for_broadcast = {k: v for k, v in event.items() if k != '_id'}
-        await sio_service.broadcast_to_tenant(current_user.tenant_id, {
-            "type": "new_radar_event",
-            "event": {
-                **event_for_broadcast,
-                "sensor_name": sensor.get('name') if sensor else None,
-                "urgent": True
-            }
-        })
+    event_for_broadcast = {k: v for k, v in event.items() if k != '_id'}
+    await manager.broadcast_to_tenant(current_user.tenant_id, {
+        "type": "new_radar_event",
+        "event": {
+            **event_for_broadcast,
+            "sensor_name": sensor.get('name') if sensor else None,
+            "urgent": True
+        }
+    })
     
     logger.info(f"[Test] Sensitive Fall event created: {event['id']}")
     return {
