@@ -339,22 +339,11 @@ export function HistoryPage() {
                   <TableHead>{t('events.event_type')}</TableHead>
                   <TableHead>{t('events.severity')}</TableHead>
                   <TableHead>{t('status')}</TableHead>
+                  <TableHead>Statut chute</TableHead>
                   <TableHead>
                     <div className="flex items-center gap-1">
                       <Building2 className="h-4 w-4" />
                       {t('events.location')}
-                    </div>
-                  </TableHead>
-                  <TableHead>
-                    <div className="flex items-center gap-1">
-                      <User className="h-4 w-4" />
-                      {t('events.presence')}
-                    </div>
-                  </TableHead>
-                  <TableHead>
-                    <div className="flex items-center gap-1">
-                      <Target className="h-4 w-4" />
-                      {t('events.target_count')}
                     </div>
                   </TableHead>
                   <TableHead>{t('events.timestamp')}</TableHead>
@@ -363,10 +352,8 @@ export function HistoryPage() {
               </TableHeader>
               <TableBody>
                 {events.map((event) => {
-                  const activeRegions = event.active_regions || [];
-                  const targetCount = event.target_count || 0;
-                  const presenceDetected = event.presence_detected;
                   const locationPath = event.location_path;
+                  const fallStatus = event.fall_status;
                   
                   return (
                     <TableRow 
