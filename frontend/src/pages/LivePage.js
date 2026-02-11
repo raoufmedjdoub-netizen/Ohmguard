@@ -232,7 +232,7 @@ function ActiveAlertsSection() {
               <Badge
                 data-testid="filter-pending"
                 className={cn(
-                  'text-[11px] cursor-pointer transition-all select-none',
+                  'text-xs cursor-pointer transition-all select-none py-0.5 px-2',
                   filter === 'pending'
                     ? 'bg-red-600 text-white ring-2 ring-red-400 ring-offset-1'
                     : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300'
@@ -246,7 +246,7 @@ function ActiveAlertsSection() {
               <Badge
                 data-testid="filter-radar"
                 className={cn(
-                  'text-[11px] cursor-pointer transition-all select-none',
+                  'text-xs cursor-pointer transition-all select-none py-0.5 px-2',
                   filter === 'radar'
                     ? 'bg-red-600 text-white ring-2 ring-red-400 ring-offset-1'
                     : 'bg-transparent border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30'
@@ -260,7 +260,7 @@ function ActiveAlertsSection() {
               <Badge
                 data-testid="filter-ai"
                 className={cn(
-                  'text-[11px] cursor-pointer transition-all select-none',
+                  'text-xs cursor-pointer transition-all select-none py-0.5 px-2',
                   filter === 'ai'
                     ? 'bg-violet-600 text-white ring-2 ring-violet-400 ring-offset-1'
                     : 'bg-transparent border border-violet-300 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30'
@@ -281,7 +281,7 @@ function ActiveAlertsSection() {
                   key={type}
                   data-testid={`filter-${type}`}
                   className={cn(
-                    'text-[11px] cursor-pointer transition-all select-none',
+                    'text-xs cursor-pointer transition-all select-none py-0.5 px-2',
                     isActive
                       ? cn('text-white ring-2 ring-offset-1', radarCfg?.color || aiCfg?.color || 'bg-gray-600', radarCfg ? 'ring-red-400' : 'ring-violet-400')
                       : 'bg-transparent border border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-900'
@@ -295,7 +295,7 @@ function ActiveAlertsSection() {
             {filter !== 'all' && (
               <Badge
                 data-testid="filter-clear"
-                className="text-[11px] cursor-pointer bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-400 select-none"
+                className="text-xs cursor-pointer bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-400 select-none py-0.5 px-2"
                 onClick={() => setFilter('all')}
               >
                 <X className="h-3 w-3 mr-0.5" />Tout
