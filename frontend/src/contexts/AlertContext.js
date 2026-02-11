@@ -36,6 +36,13 @@ export function AlertProvider({ children }) {
     };
   }, []);
 
+  // Listen for banner toggle from Settings page
+  useEffect(() => {
+    const handler = (e) => setBannerEnabled(e.detail);
+    window.addEventListener('banner-toggle', handler);
+    return () => window.removeEventListener('banner-toggle', handler);
+  }, []);
+
   // Load existing unresolved alerts + user preferences on mount
   useEffect(() => {
     if (!isAuthenticated || loadedRef.current) return;
