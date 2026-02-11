@@ -309,3 +309,13 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - **Pages modifiées**: DashboardPage, HistoryPage, LivePage, EventDetailPage, LiveEventCard, GlobalAlertBanner, ReportsPage, FloorPlanPage
 - **Files modified**: `DashboardPage.js`, `HistoryPage.js`, `LivePage.js`, `EventDetailPage.js`, `LiveEventCard.jsx`, `GlobalAlertBanner.jsx`, `ReportsPage.js`, `FloorPlanPage.js`
 
+### 2026-02-11 - Page Utilisateurs intégrée dans Paramètres + Formulaire Fiche de Contact
+- **Feature**: Fusionné la page /users dans la page /settings sous l'onglet "Utilisateurs"
+- **Formulaire de création**: Fiche de contact complète avec sections Identité (nom, email, téléphone), Professionnel (fonction, service, rôle), Accès (mot de passe), Observations
+- **Validation email**: Frontend regex + backend EmailStr
+- **Fiche contact (Sheet)**: Slide panel pour consulter/modifier un utilisateur avec toutes les infos contact, gestion du rôle, réinitialisation mot de passe
+- **Backend étendu**: Modèle CreateClientUserRequest enrichi avec phone, job_title, department, notes. list_client_users enrichi avec les champs contact
+- **Sidebar**: Lien "Users" supprimé, /users redirige vers /settings
+- **Tests**: 100% backend (12/12), 100% frontend (17/17)
+- **Files modified**: `SettingsPage.js` (rewrite), `Sidebar.js`, `App.js`, `rbac_routes.py`, `rbac_service.py`
+
