@@ -144,13 +144,13 @@ function AlertFeedItem({ alert, onAction, onView }) {
   );
 }
 
-function ActiveAlertsSection() {
+function ActiveAlertsSection({ onFilterChange }) {
   const { activeAlerts, updateAlert, dismissAlert } = useAlerts();
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogAction, setDialogAction] = useState('ACK');
   const [dialogEvent, setDialogEvent] = useState(null);
-  const [filter, setFilter] = useState('all'); // 'all' | 'pending' | 'radar' | 'ai' | event type keys
+  const [filter, setFilter] = useState('all');
 
   const handleAction = (alert, action) => {
     setDialogEvent(alert);
@@ -175,7 +175,11 @@ function ActiveAlertsSection() {
     }
   };
 
-  const toggleFilter = (f) => setFilter(prev => prev === f ? 'all' : f);
+  const toggleFilter = (f) => {
+    const next = filter === f ? 'all' : f;
+    setFilter(next);
+    onFilterChange?.(next);
+  };
 
   if (activeAlerts.length === 0) return null;
 
