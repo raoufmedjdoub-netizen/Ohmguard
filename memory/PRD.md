@@ -78,6 +78,7 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - [x] Seedoo schema alignment (warning_id int, seedoo_created_at, channel_name fallback)
 - [x] Alertes Seedoo IA dans GlobalAlertBanner + LivePage
 - [x] Toggle banner d'alertes par utilisateur dans Paramètres
+- [x] LivePage simplifiée : sections "Radars en présence" et "Événements IA" supprimées, seul le "Fil d'alertes" unifié reste
 - [ ] Test SENSITIVE_FALL and BED_EXIT events in production
 - [ ] WebSocket rooms by building/floor for push updates
 
