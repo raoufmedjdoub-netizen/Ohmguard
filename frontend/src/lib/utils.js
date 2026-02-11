@@ -46,6 +46,21 @@ export function getEventTypeColor(type) {
   }
 }
 
+const EVENT_TYPE_LABELS = {
+  FALL: 'Chute',
+  SENSITIVE_FALL: 'Chute suspecte',
+  PRE_FALL: 'Pré-chute',
+  BED_EXIT: 'Sortie de lit',
+  PRESENCE: 'Présence',
+  INACTIVITY: 'Inactivité',
+  STATUS_ONLINE: 'En ligne',
+  STATUS_OFFLINE: 'Hors ligne',
+};
+
+export function getEventTypeLabel(type) {
+  return EVENT_TYPE_LABELS[type] || type;
+}
+
 export function getEventTypeIcon(type) {
   switch (type) {
     case 'FALL': return '🚨';
