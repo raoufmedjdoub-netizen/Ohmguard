@@ -18,8 +18,8 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 # Import radar event models
 from radar_event_models import (
     RadarEventType, PresenceStatus, EventSeverity, EventStatus,
-    RadarEventPayload, RadarEventRequest,
-    normalize_radar_event, extract_active_regions, epoch_ms_to_iso,
+    RadarEventPayload, RadarEventRequest, FallEventPayload, FallEventStatus,
+    normalize_radar_event, normalize_fall_event, extract_active_regions, epoch_ms_to_iso,
     format_active_regions_display, format_target_count_display
 )
 
