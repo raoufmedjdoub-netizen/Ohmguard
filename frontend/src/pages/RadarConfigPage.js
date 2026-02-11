@@ -882,23 +882,27 @@ export function RadarConfigPage() {
 
                   {/* Walabot Telemetry */}
                   <div>
-                    <h4 className="font-medium mb-4">Télémétrie Walabot</h4>
+                    <h4 className="font-medium mb-4">Telemetrie Walabot</h4>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       <SwitchField control={control} name="walabotConfig.enableFallingTelemetry" label="Chute" />
                       <SwitchField control={control} name="walabotConfig.enableSensitiveFallingTelemetry" label="Chute sensible" />
-                      <SwitchField control={control} name="walabotConfig.enablePresenceTelemetry" label="Présence" />
+                      <SwitchField control={control} name="walabotConfig.enablePresenceTelemetry" label="Presence" />
                       <SwitchField control={control} name="walabotConfig.enableTrackerTargetTelemetry" label="Cibles tracker" />
                       <SwitchField control={control} name="walabotConfig.enableBedExitTelemetry" label="Sortie de lit" />
-                      <SwitchField control={control} name="walabotConfig.enableBedExitStateTelemetry" label="État lit" />
-                      <SwitchField control={control} name="walabotConfig.enableDoorEventTelemetry" label="Événements porte" />
+                      <SwitchField control={control} name="walabotConfig.enableBedExitStateTelemetry" label="Etat lit" />
+                      <SwitchField control={control} name="walabotConfig.enableDoorEventTelemetry" label="Evenements porte" />
                       <SwitchField control={control} name="walabotConfig.enablePeakTelemetry" label="Peak" />
+                      <SwitchField control={control} name="walabotConfig.enableAboveThPointTelemetry" label="Points Above Th" />
+                      <SwitchField control={control} name="walabotConfig.enableIslandPointTelemetry" label="Points Island" />
                       <SwitchField control={control} name="walabotConfig.enableHeightProfileTelemetry" label="Profil hauteur" />
                       <SwitchField control={control} name="walabotConfig.enableOtfPointTelemetry" label="Points OTF" />
                       <SwitchField control={control} name="walabotConfig.enableImageParamsTelemetry" label="Params image" />
+                      <SwitchField control={control} name="walabotConfig.enableInterfererLocHistoryTelemetry" label="Interferer Loc History" />
                       <SwitchField control={control} name="walabotConfig.enableClustersTelemetry" label="Clusters" />
-                      <SwitchField control={control} name="walabotConfig.enableSubRegionStateTelemetry" label="État sous-régions" />
-                      <SwitchField control={control} name="walabotConfig.enableReferenceTelemetry" label="Référence" />
+                      <SwitchField control={control} name="walabotConfig.enableSubRegionStateTelemetry" label="Etat sous-regions" />
+                      <SwitchField control={control} name="walabotConfig.enableReferenceTelemetry" label="Reference" />
                       <SwitchField control={control} name="walabotConfig.enableMtiParamsTelemetry" label="Params MTI" />
+                      <SwitchField control={control} name="walabotConfig.enableSuiteTelemetry" label="Suite" />
                     </div>
                   </div>
 
