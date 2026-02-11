@@ -251,6 +251,18 @@ async def broadcast_fall_event_update(tenant_id: str, data: Dict[str, Any]):
     await _broadcast_to_rooms(tenant_id, clean_data, 'fall_event_update', payload)
 
 
+async def broadcast_ai_event(event: Dict[str, Any]):
+    """Broadcast a new AI camera event to all connected clients."""
+    clean_event = sanitize_for_json(event)
+    payload = {'type': 'new_ai_event', 'event': clean_event}
+    # AI events go to all clients (no tenant scoping for now)
+    await sio.emit('new_ai_event', payload, room='admin_all')
+    # Also emit to the specific tenant room if tenant_id is available
+    tenant_id = clean_event.get('client_id')
+    if tenant_id:
+        await sio.emit('new_ai_event', payload, room=f'tenant_{tenant_id}')
+
+
 async def broadcast_to_all(event_name: str, data: Dict[str, Any]):
     """Broadcast to all connected clients (for super admin notifications)."""
     clean_data = sanitize_for_json(data)
