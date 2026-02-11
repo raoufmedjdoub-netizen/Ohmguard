@@ -190,8 +190,8 @@ export function GlobalAlertBanner() {
         action={dialogAction}
         eventInfo={dialogEvent ? {
           type: dialogEvent.type,
-          location: dialogEvent.location_path || dialogEvent.sensor_name,
-          sensor: dialogEvent.radar_name || dialogEvent.device_id
+          location: dialogEvent.location_path || dialogEvent.radar_name || 'Localisation inconnue',
+          sensor: dialogEvent.radar_name
         } : null}
         onSuccess={handleActionSuccess}
       />
