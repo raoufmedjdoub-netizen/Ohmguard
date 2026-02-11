@@ -176,6 +176,120 @@ export function RadarsPage() {
     }
   }, [assignmentData.roomId]);
 
+  // Fetch templates when bulk config dialog opens
+  const fetchTemplates = async () => {
+    setTemplatesLoading(true);
+    try {
+      const res = await api.get('/config/templates');
+      setTemplates(res.data || []);
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+      toast.error('Erreur lors du chargement des templates');
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (bulkConfigDialogOpen || templateManageDialogOpen) {
+      fetchTemplates();
+    }
+  }, [bulkConfigDialogOpen, templateManageDialogOpen]);
+
+  // Send bulk config to selected radars
+  const handleBulkSendConfig = async () => {
+    if (selectedRadars.size === 0) {
+      toast.error('Veuillez sélectionner au moins un radar');
+      return;
+    }
+    
+    if (!selectedTemplate) {
+      toast.error('Veuillez sélectionner un template de configuration');
+      return;
+    }
+    
+    setBulkOperationLoading(true);
+    
+    try {
+      const deviceIds = Array.from(selectedRadars);
+      
+      const response = await api.post('/devices/bulk-config', {
+        device_ids: deviceIds,
+        config: selectedTemplate.config,
+        mqttOptions: { qos: 1, retain: false }
+      });
+      
+      const result = response.data;
+      
+      if (result.success_count > 0) {
+        toast.success(`Configuration envoyée à ${result.success_count}/${result.total} radars`);
+      }
+      
+      if (result.failed_count > 0) {
+        toast.error(`Échec pour ${result.failed_count} radars`);
+      }
+      
+      setBulkConfigDialogOpen(false);
+      setSelectedTemplate(null);
+      
+    } catch (error) {
+      console.error('Bulk config error:', error);
+      toast.error(error.response?.data?.detail || 'Erreur lors de l\'envoi des configurations');
+    } finally {
+      setBulkOperationLoading(false);
+    }
+  };
+
+  // Create new template
+  const handleCreateTemplate = async (config) => {
+    if (!newTemplateName.trim()) {
+      toast.error('Veuillez entrer un nom pour le template');
+      return;
+    }
+    
+    try {
+      await api.post('/config/templates/create', {
+        name: newTemplateName.trim(),
+        description: newTemplateDescription.trim() || null,
+        config: config,
+        isSystem: false
+      });
+      
+      toast.success('Template créé avec succès');
+      setNewTemplateName('');
+      setNewTemplateDescription('');
+      fetchTemplates();
+    } catch (error) {
+      console.error('Error creating template:', error);
+      toast.error('Erreur lors de la création du template');
+    }
+  };
+
+  // Delete template
+  const handleDeleteTemplate = async (templateId) => {
+    try {
+      await api.delete(`/config/templates/${templateId}`);
+      toast.success('Template supprimé');
+      fetchTemplates();
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
+  // Update template
+  const handleUpdateTemplate = async (templateId, updates) => {
+    try {
+      await api.put(`/config/templates/${templateId}`, updates);
+      toast.success('Template mis à jour');
+      setEditingTemplate(null);
+      fetchTemplates();
+    } catch (error) {
+      console.error('Error updating template:', error);
+      toast.error('Erreur lors de la mise à jour');
+    }
+  };
+
   const handleAssignRadar = async () => {
     if (!selectedRadar || !assignmentData.clientId) {
       toast.error('Veuillez sélectionner au moins un client');
