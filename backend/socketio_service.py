@@ -244,6 +244,13 @@ async def broadcast_sensor_registered(tenant_id: str, sensor: Dict[str, Any]):
     await _broadcast_to_rooms(tenant_id, clean_sensor, 'sensor_registered', payload)
 
 
+async def broadcast_fall_event_update(tenant_id: str, data: Dict[str, Any]):
+    """Broadcast fall event status update to relevant rooms."""
+    clean_data = sanitize_for_json(data)
+    payload = {'type': 'fall_event_update', **clean_data}
+    await _broadcast_to_rooms(tenant_id, clean_data, 'fall_event_update', payload)
+
+
 async def broadcast_to_all(event_name: str, data: Dict[str, Any]):
     """Broadcast to all connected clients (for super admin notifications)."""
     clean_data = sanitize_for_json(data)
