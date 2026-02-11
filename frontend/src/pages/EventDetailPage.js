@@ -169,6 +169,8 @@ export function EventDetailPage() {
   const { t, i18n } = useTranslation();
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogAction, setDialogAction] = useState('ACK');
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -185,14 +187,13 @@ export function EventDetailPage() {
     fetchEvent();
   }, [eventId, t]);
 
-  const handleUpdateStatus = async (newStatus) => {
-    try {
-      await eventsAPI.update(eventId, { status: newStatus });
-      setEvent(prev => ({ ...prev, status: newStatus }));
-      toast.success(t('events.event_updated'));
-    } catch (error) {
-      toast.error(t('errors.generic'));
-    }
+  const handleAction = (action) => {
+    setDialogAction(action);
+    setDialogOpen(true);
+  };
+
+  const handleActionSuccess = (updatedEvent) => {
+    if (updatedEvent) setEvent(updatedEvent);
   };
 
   if (loading) {
