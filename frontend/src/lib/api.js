@@ -104,6 +104,7 @@ export const eventsAPI = {
   get: (id) => api.get(`/events/${id}`),
   getDetail: (id) => api.get(`/events/${id}/detail`),
   update: (id, data) => api.patch(`/events/${id}`, data),
+  getComments: (id) => api.get(`/events/${id}/comments`),
   count: (params) => api.get('/events/count', { params }),
   createRadarEvent: (data) => api.post('/events/radar', data)
 };
