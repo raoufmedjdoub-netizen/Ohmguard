@@ -1232,8 +1232,9 @@ class MQTTService:
             logger.debug(f"Ignoring disabled warning type: {warning_type}")
             return
         
-        # Create the AI event
-        event = await ai_service.create_event(payload)
+        # Create the AI event (inject channel from topic into payload)
+        event_data = {**payload, "channel": channel}
+        event = await ai_service.create_event(event_data)
         
         # Broadcast to WebSocket
         if self.broadcast_callback:
