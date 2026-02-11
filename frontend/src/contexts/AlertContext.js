@@ -41,21 +41,25 @@ export function AlertProvider({ children }) {
     
     const loadExistingAlerts = async () => {
       try {
-        const res = await api.get('/events', {
-          params: { event_type: 'FALL', status: 'NEW', limit: 20 }
-        });
-        const fallEvents = res.data || [];
-        // Also load ACK events
-        const res2 = await api.get('/events', {
-          params: { event_type: 'FALL', status: 'ACK', limit: 20 }
-        });
-        const ackedEvents = res2.data || [];
+        const typesToLoad = ['FALL', 'SENSITIVE_FALL', 'BED_EXIT'];
+        const allAlerts = [];
         
-        const allAlerts = [...fallEvents, ...ackedEvents].map(e => ({
-          ...e,
-          addedAt: new Date(e.timestamp || e.occurred_at).getTime() || Date.now(),
-          updatedAt: Date.now()
-        }));
+        for (const eventType of typesToLoad) {
+          for (const status of ['NEW', 'ACK']) {
+            try {
+              const res = await api.get('/events', {
+                params: { event_type: eventType, status, limit: 20 }
+              });
+              if (res.data?.length) {
+                allAlerts.push(...res.data.map(e => ({
+                  ...e,
+                  addedAt: new Date(e.timestamp || e.occurred_at).getTime() || Date.now(),
+                  updatedAt: Date.now()
+                })));
+              }
+            } catch {}
+          }
+        }
         
         if (allAlerts.length > 0) {
           setActiveAlerts(allAlerts);
