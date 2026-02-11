@@ -9,12 +9,13 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import api from '@/lib/api';
 import { useWebSocket } from '@/contexts/WebSocketContext';
+import { useAlerts } from '@/contexts/AlertContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
   Radio,
@@ -30,7 +31,12 @@ import {
   AlertTriangle,
   User,
   Flame,
-  Eye
+  Eye,
+  CheckCircle,
+  XCircle,
+  Crosshair,
+  Clock,
+  MapPin
 } from 'lucide-react';
 
 import { RadarStatusCard } from '@/components/live';
