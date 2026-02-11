@@ -119,7 +119,7 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - `DashboardPage.js` - Main dashboard
 - `HistoryPage.js` - Event history with filters
 - `EventDetailPage.js` - Event detail with fall timeline
-- `LivePage.js` - Real-time monitoring with active alerts
+- `LivePage.js` - Real-time monitoring with unified alert feed ("Fil d'alertes")
 - `EventActionDialog.jsx` - Shared action dialog component
 
 ## Known Issues
