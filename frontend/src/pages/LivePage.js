@@ -183,11 +183,8 @@ function ActiveAlertsSection() {
 
   const handleActionSuccess = (updatedEvent) => {
     if (!updatedEvent) return;
-    if (updatedEvent.status === 'RESOLVED' || updatedEvent.status === 'FALSE_ALARM') {
-      dismissAlert(updatedEvent.id);
-    } else {
-      updateAlert(updatedEvent.id, updatedEvent);
-    }
+    // Toute action (ACK, RESOLVED, FALSE_ALARM) retire l'alerte du fil
+    dismissAlert(updatedEvent.id);
   };
 
   const handleView = (alert) => {
