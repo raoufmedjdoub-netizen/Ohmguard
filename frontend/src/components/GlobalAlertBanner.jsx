@@ -1,10 +1,11 @@
 /**
  * GlobalAlertBanner - Fixed alert banner visible on ALL pages
- * Displays all active (unacknowledged) fall/critical alerts.
+ * Displays all active (unacknowledged) fall/critical alerts with action dialogs.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAlerts } from '@/contexts/AlertContext';
 import { useNavigate } from 'react-router-dom';
+import { EventActionDialog } from '@/components/EventActionDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -20,13 +21,13 @@ import {
   X,
   MapPin,
   Clock,
-  BedDouble
+  UserPlus
 } from 'lucide-react';
 
 const EVENT_CONFIG = {
-  FALL: { label: 'CHUTE', bg: 'bg-red-600', border: 'border-red-700', pulse: 'animate-pulse' },
-  SENSITIVE_FALL: { label: 'CHUTE SUSPECTE', bg: 'bg-orange-600', border: 'border-orange-700', pulse: 'animate-pulse' },
-  BED_EXIT: { label: 'SORTIE DE LIT', bg: 'bg-amber-600', border: 'border-amber-700', pulse: '' },
+  FALL: { label: 'CHUTE', bg: 'bg-red-600', pulse: 'animate-pulse' },
+  SENSITIVE_FALL: { label: 'CHUTE SUSPECTE', bg: 'bg-orange-600', pulse: 'animate-pulse' },
+  BED_EXIT: { label: 'SORTIE DE LIT', bg: 'bg-amber-600', pulse: '' },
 };
 
 const FALL_STATUS_LABELS = {
@@ -40,8 +41,8 @@ const FALL_STATUS_LABELS = {
 };
 
 function ElapsedTime({ since }) {
-  const [elapsed, setElapsed] = useState('');
-  useEffect(() => {
+  const [elapsed, setElapsed] = React.useState('');
+  React.useEffect(() => {
     const update = () => {
       const diff = Math.floor((Date.now() - since) / 1000);
       const mins = Math.floor(diff / 60);
@@ -55,7 +56,7 @@ function ElapsedTime({ since }) {
   return <span className="font-mono text-sm">{elapsed}</span>;
 }
 
-function AlertRow({ alert, onAck, onResolve, onFalseAlarm, onView, onDismiss }) {
+function AlertRow({ alert, onAction, onView, onDismiss }) {
   const config = EVENT_CONFIG[alert.type] || EVENT_CONFIG.FALL;
   const isAcked = alert.status === 'ACK';
   const location = alert.location_path || alert.sensor_name || alert.radar_name || 'Localisation inconnue';
@@ -71,15 +72,11 @@ function AlertRow({ alert, onAck, onResolve, onFalseAlarm, onView, onDismiss }) 
       )}
     >
       <AlertTriangle className="h-5 w-5 flex-shrink-0" />
-
       <Badge className="bg-white/20 text-white text-xs font-bold">{config.label}</Badge>
-
-      {fallStatus && (
-        <Badge className="bg-black/20 text-white text-xs">{fallStatus}</Badge>
-      )}
-
-      {alert.is_simulated && (
-        <Badge className="bg-yellow-400/30 text-yellow-100 text-xs">TEST</Badge>
+      {fallStatus && <Badge className="bg-black/20 text-white text-xs">{fallStatus}</Badge>}
+      {alert.is_simulated && <Badge className="bg-yellow-400/30 text-yellow-100 text-xs">TEST</Badge>}
+      {alert.assigned_to_name && (
+        <Badge className="bg-purple-400/30 text-purple-100 text-xs">{alert.assigned_to_name}</Badge>
       )}
 
       <div className="flex items-center gap-1 min-w-0 flex-1">
@@ -94,17 +91,20 @@ function AlertRow({ alert, onAck, onResolve, onFalseAlarm, onView, onDismiss }) 
 
       <div className="flex items-center gap-1 flex-shrink-0">
         {!isAcked && (
-          <Button size="sm" variant="ghost" className="h-7 text-white hover:bg-white/20 text-xs" onClick={() => onAck(alert.id)}>
+          <Button size="sm" variant="ghost" className="h-7 text-white hover:bg-white/20 text-xs" onClick={() => onAction(alert, 'ACK')}>
             Acquitter
           </Button>
         )}
-        <Button size="sm" variant="ghost" className="h-7 text-white hover:bg-white/20 text-xs" onClick={() => onResolve(alert.id)}>
+        <Button size="sm" variant="ghost" className="h-7 text-white hover:bg-white/20 text-xs" onClick={() => onAction(alert, 'RESOLVED')}>
           <CheckCircle className="h-3.5 w-3.5 mr-1" />
           Resoudre
         </Button>
-        <Button size="sm" variant="ghost" className="h-7 text-white hover:bg-white/20 text-xs" onClick={() => onFalseAlarm(alert.id)}>
+        <Button size="sm" variant="ghost" className="h-7 text-white hover:bg-white/20 text-xs" onClick={() => onAction(alert, 'FALSE_ALARM')}>
           <XCircle className="h-3.5 w-3.5 mr-1" />
           Faux
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7 text-white hover:bg-white/20 text-xs" onClick={() => onAction(alert, 'ASSIGN')}>
+          <UserPlus className="h-3.5 w-3.5" />
         </Button>
         <Button size="sm" variant="ghost" className="h-7 text-white hover:bg-white/20" onClick={() => onView(alert.id)}>
           <Eye className="h-3.5 w-3.5" />
@@ -118,9 +118,27 @@ function AlertRow({ alert, onAck, onResolve, onFalseAlarm, onView, onDismiss }) 
 }
 
 export function GlobalAlertBanner() {
-  const { activeAlerts, soundEnabled, setSoundEnabled, acknowledgeAlert, resolveAlert, markFalseAlarm, dismissAlert } = useAlerts();
+  const { activeAlerts, soundEnabled, setSoundEnabled, updateAlert, dismissAlert } = useAlerts();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogAction, setDialogAction] = useState('ACK');
+  const [dialogEvent, setDialogEvent] = useState(null);
+
+  const handleAction = (alert, action) => {
+    setDialogEvent(alert);
+    setDialogAction(action);
+    setDialogOpen(true);
+  };
+
+  const handleActionSuccess = (updatedEvent) => {
+    if (!updatedEvent) return;
+    if (updatedEvent.status === 'RESOLVED' || updatedEvent.status === 'FALSE_ALARM') {
+      dismissAlert(updatedEvent.id);
+    } else {
+      updateAlert(updatedEvent.id, updatedEvent);
+    }
+  };
 
   if (activeAlerts.length === 0) return null;
 
@@ -128,56 +146,55 @@ export function GlobalAlertBanner() {
   const unackedCount = activeAlerts.filter(a => a.status !== 'ACK').length;
 
   return (
-    <div data-testid="global-alert-banner" className="fixed top-14 left-0 right-0 z-40 shadow-2xl">
-      {/* Summary bar */}
-      <div className="bg-red-900 text-white px-4 py-1.5 flex items-center justify-between text-sm">
-        <div className="flex items-center gap-3">
-          <AlertTriangle className="h-4 w-4 animate-pulse" />
-          <span className="font-bold">
-            {alertCount} alerte{alertCount > 1 ? 's' : ''} active{alertCount > 1 ? 's' : ''}
-          </span>
-          {unackedCount > 0 && (
-            <Badge className="bg-white text-red-900 text-xs">{unackedCount} non acquittee{unackedCount > 1 ? 's' : ''}</Badge>
-          )}
+    <>
+      <div data-testid="global-alert-banner" className="fixed top-14 left-0 right-0 z-40 shadow-2xl">
+        <div className="bg-red-900 text-white px-4 py-1.5 flex items-center justify-between text-sm">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="h-4 w-4 animate-pulse" />
+            <span className="font-bold">
+              {alertCount} alerte{alertCount > 1 ? 's' : ''} active{alertCount > 1 ? 's' : ''}
+            </span>
+            {unackedCount > 0 && (
+              <Badge className="bg-white text-red-900 text-xs">{unackedCount} non acquittee{unackedCount > 1 ? 's' : ''}</Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="ghost" className="h-7 text-white hover:bg-white/20" onClick={() => setSoundEnabled(!soundEnabled)} data-testid="toggle-sound-btn">
+              {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 text-white hover:bg-white/20" onClick={() => setCollapsed(!collapsed)} data-testid="toggle-collapse-btn">
+              {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 text-white hover:bg-white/20"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            data-testid="toggle-sound-btn"
-          >
-            {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 text-white hover:bg-white/20"
-            onClick={() => setCollapsed(!collapsed)}
-            data-testid="toggle-collapse-btn"
-          >
-            {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-          </Button>
-        </div>
+
+        {!collapsed && (
+          <div className="max-h-48 overflow-y-auto divide-y divide-white/10">
+            {activeAlerts.map(alert => (
+              <AlertRow
+                key={alert.id}
+                alert={alert}
+                onAction={handleAction}
+                onView={(id) => navigate(`/events/${id}`)}
+                onDismiss={dismissAlert}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Alert rows */}
-      {!collapsed && (
-        <div className="max-h-48 overflow-y-auto divide-y divide-white/10">
-          {activeAlerts.map(alert => (
-            <AlertRow
-              key={alert.id}
-              alert={alert}
-              onAck={acknowledgeAlert}
-              onResolve={resolveAlert}
-              onFalseAlarm={markFalseAlarm}
-              onView={(id) => navigate(`/events/${id}`)}
-              onDismiss={dismissAlert}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+      <EventActionDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        eventId={dialogEvent?.id}
+        action={dialogAction}
+        eventInfo={dialogEvent ? {
+          type: dialogEvent.type,
+          location: dialogEvent.location_path || dialogEvent.sensor_name,
+          sensor: dialogEvent.radar_name || dialogEvent.device_id
+        } : null}
+        onSuccess={handleActionSuccess}
+      />
+    </>
   );
 }
