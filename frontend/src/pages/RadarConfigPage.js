@@ -1046,11 +1046,36 @@ export function RadarConfigPage() {
                   <div>
                     <h4 className="font-medium mb-4">Modes de fonctionnement</h4>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <SwitchField control={control} name="appConfig.demoMode" label="Mode démo" />
+                      <SwitchField control={control} name="appConfig.demoMode" label="Mode demo" />
                       <SwitchField control={control} name="appConfig.enableTestMode" label="Mode test" />
                       <SwitchField control={control} name="appConfig.offlineMode" label="Mode hors ligne" />
-                      <SwitchField control={control} name="appConfig.smartReboot" label="Redémarrage intelligent" />
+                      <SwitchField control={control} name="appConfig.smartReboot" label="Redemarrage intelligent" />
                       <SwitchField control={control} name="appConfig.enableAnalytics" label="Analytics" />
+                      <SwitchField control={control} name="appConfig.silentMode" label="Mode silencieux" />
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Timing */}
+                  <div>
+                    <h4 className="font-medium mb-4">Timing & Alertes</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <NumberField control={control} name="appConfig.confirmedToAlertTimeoutSec" label="Delai confirmation alerte" unit="sec" min={0} max={120} />
+                      <NumberField control={control} name="appConfig.callingDurationSec" label="Duree d'appel" unit="sec" min={0} max={120} />
+                      <NumberField control={control} name="appConfig.suspendDuration_sec" label="Duree de suspension" unit="sec" min={0} max={7200} />
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* MQTT Advanced */}
+                  <div>
+                    <h4 className="font-medium mb-4">MQTT Avance</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <NumberField control={control} name="appConfig.mqttMaxDisconnectionTs" label="Max deconnexion MQTT" unit="ms" min={0} max={600000} step={1000} />
+                      <NumberField control={control} name="appConfig.mqttAuthTokenExpirySec" label="Expiration token MQTT" unit="sec" min={0} max={86400} />
+                      <NumberField control={control} name="appConfig.multiPresenceAlpha" label="Multi-presence alpha" min={0} max={1} step={0.00001} />
                     </div>
                   </div>
 
