@@ -1,7 +1,7 @@
 /**
- * AlertContext - Global alert state for fall/critical events
+ * AlertContext - Global alert state for fall/critical events + AI camera alerts
  * 
- * Listens to WebSocket for new_radar_event and fall_event_update.
+ * Listens to WebSocket for new_radar_event, fall_event_update, and new_ai_event.
  * Maintains list of active (unacknowledged) alerts visible across all pages.
  * Plays alert sound on new critical events.
  */
@@ -13,14 +13,16 @@ import api from '@/lib/api';
 const AlertContext = createContext(null);
 
 const ALERT_TYPES = ['FALL', 'SENSITIVE_FALL', 'BED_EXIT'];
+const CRITICAL_AI_TYPES = ['Fall_Detected', 'Violence', 'Fire', 'Smoke', 'Intrusion'];
 
-const ALERT_SOUND_URL = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JkJONiYaDfHl5foWMk5eTjoiDfXd0dn+IkJiXkYuFf3l0c3d/iZGYmJKMhn93c3R4gYyUmpiSioR9d3N0eIGMlJqZk42Hf3lzdHiBjJWampSTjYeAenV1eYKNlpuak5CKg312dXmCjpabnJWRi4WAfHd2eoOPl5ydl5KNiIJ8d3Z7hJCYnZ2Xk46JhIF8eHd7hJGZnp6Yk4+KhoN+eXh7hZKanp+Zk4+LiIR/ent8hpObn5+ZlI+LiYWBe3t8hpOcoJ+ZlJCMiYWBfHx9h5SdoaCal5GPi4eDfn1+iJWeop+amJKQjoqGg39+f4eVnqGgnJmUkY+LiIWCgICHlZ2hnpyZlZKQjYqHhIGBh5Wdn5ybmpeTkY+NioeEgoGHlZ2fnZuamJaTkY+OjIiEgoGHlZ2enJqZmJeTkZCOjImGhIKIlZ2enJqZmJeTkZCPjouIhYOJlp2fnZuZmJeUkpGQj42KiIaEiZadn56cm5qYl5WUkpGQj42LiYeGipednp2cm5qYl5aUk5KRkI6MiomIi5eenp2cm5qZmJeWlZSTkpGQjo2LiomLl56enZybmpqZmJeWlZSTkpGQj46NjIuMl56enZybm5qZmJeXlpWUk5KRkZCPjo2NjJednjw=';
+const ALERT_SOUND_URL = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JkJONiYaDfHl5foWMk5eTjoiDfXd0dn+IkJiXkYuFf3l0c3d/iZGYmJKMhn93c3R4gYyUmpiSioR9d3N0eIGMlJqZk42Hf3lzdHiBjJWampSTjYeAenV1eYKNlpuak5CKg312dXmCjpabnJWRi4WAfHd2eoOPl5ydl5KNiIJ8d3Z7hJCYnZ2Xk46JhIF8eHd7hJGZnp6Yk4+LiIR/ent8hpObn5+ZlI+LiYWBe3t8hpOcoJ+ZlJCMiYWBfHx9h5SdoaCal5GPi4eDfn1+iJWeop+amJKQjoqGg39+f4eVnqGgnJmUkY+LiIWCgICHlZ2hnpyZlZKQjYqHhIGBh5Wdn5ybmpeTkY+NioeEgoGHlZ2fnZuamJaTkY+OjIiEgoGHlZ2enJqZmJeTkZCOjImGhIKIlZ2enJqZmJeTkZCPjouIhYOJlp2fnZuZmJeUkpGQj42KiIaEiZadn56cm5qYl5WUkpGQj42LiYeGipednp2cm5qYl5aUk5KRkI6MiomIi5eenp2cm5qZmJeWlZSTkpGQjo2LiomLl56enZybmpqZmJeWlZSTkpGQj46NjIuMl56enZybm5qZmJeXlpWUk5KRkZCPjo2NjJednjw=';
 
 export function AlertProvider({ children }) {
   const { subscribe } = useWebSocket();
   const { isAuthenticated } = useAuth();
   const [activeAlerts, setActiveAlerts] = useState([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [bannerEnabled, setBannerEnabled] = useState(true);
   const audioRef = useRef(null);
   const alertTimersRef = useRef({});
   const loadedRef = useRef(false);
@@ -34,17 +36,23 @@ export function AlertProvider({ children }) {
     };
   }, []);
 
-  // Load existing unresolved alerts from API on mount
+  // Load existing unresolved alerts + user preferences on mount
   useEffect(() => {
     if (!isAuthenticated || loadedRef.current) return;
     loadedRef.current = true;
     
     const loadExistingAlerts = async () => {
       try {
-        const typesToLoad = ['FALL', 'SENSITIVE_FALL', 'BED_EXIT'];
+        // Load user banner preference
+        try {
+          const prefsRes = await api.get('/users/me/notifications');
+          setBannerEnabled(prefsRes.data.alert_banner_enabled !== false);
+        } catch {}
+
         const allAlerts = [];
         
-        for (const eventType of typesToLoad) {
+        // Load radar alerts (FALL, SENSITIVE_FALL, BED_EXIT)
+        for (const eventType of ALERT_TYPES) {
           for (const status of ['NEW', 'ACK']) {
             try {
               const res = await api.get('/events', {
@@ -53,6 +61,7 @@ export function AlertProvider({ children }) {
               if (res.data?.length) {
                 allAlerts.push(...res.data.map(e => ({
                   ...e,
+                  alertSource: 'radar',
                   addedAt: new Date(e.timestamp || e.occurred_at).getTime() || Date.now(),
                   updatedAt: Date.now()
                 })));
@@ -60,6 +69,23 @@ export function AlertProvider({ children }) {
             } catch {}
           }
         }
+        
+        // Load critical AI alerts (NEW status only)
+        try {
+          const aiRes = await api.get('/ai-events', {
+            params: { status: 'NEW', limit: 20 }
+          });
+          if (aiRes.data?.length) {
+            const criticalAi = aiRes.data.filter(e => CRITICAL_AI_TYPES.includes(e.warning_type));
+            allAlerts.push(...criticalAi.map(e => ({
+              ...e,
+              type: 'AI_ALERT',
+              alertSource: 'ai_camera',
+              addedAt: new Date(e.timestamp || e.created_at).getTime() || Date.now(),
+              updatedAt: Date.now()
+            })));
+          }
+        } catch {}
         
         if (allAlerts.length > 0) {
           setActiveAlerts(allAlerts);
@@ -79,16 +105,17 @@ export function AlertProvider({ children }) {
   }, [soundEnabled]);
 
   const addAlert = useCallback((event) => {
-    if (!event || !ALERT_TYPES.includes(event.type)) return;
+    if (!event) return;
+    // Accept radar alerts or AI alerts
+    const isRadar = ALERT_TYPES.includes(event.type);
+    const isAI = event.alertSource === 'ai_camera' || event.type === 'AI_ALERT';
+    if (!isRadar && !isAI) return;
 
     setActiveAlerts(prev => {
-      // Check if alert already exists for this event
       const exists = prev.find(a => a.id === event.id);
       if (exists) {
-        // Update existing alert
         return prev.map(a => a.id === event.id ? { ...a, ...event, updatedAt: Date.now() } : a);
       }
-      // Add new alert
       return [{ ...event, addedAt: Date.now(), updatedAt: Date.now() }, ...prev];
     });
 
@@ -106,33 +133,55 @@ export function AlertProvider({ children }) {
   }, []);
 
   const acknowledgeAlert = useCallback(async (eventId) => {
-    // This is now handled by the EventActionDialog
-    // Kept for programmatic use (e.g., WebSocket updates)
     try {
-      await api.patch(`/events/${eventId}`, { status: 'ACK' });
-      updateAlert(eventId, { status: 'ACK' });
+      // Check if it's an AI event
+      const alert = activeAlerts?.find(a => a.id === eventId);
+      if (alert?.alertSource === 'ai_camera') {
+        await api.patch(`/ai-events/${eventId}/status?status=ACKNOWLEDGED`);
+        updateAlert(eventId, { status: 'ACKNOWLEDGED' });
+      } else {
+        await api.patch(`/events/${eventId}`, { status: 'ACK' });
+        updateAlert(eventId, { status: 'ACK' });
+      }
     } catch (e) {
       console.error('Failed to ACK alert:', e);
     }
-  }, [updateAlert]);
+  }, [updateAlert, activeAlerts]);
 
   const resolveAlert = useCallback(async (eventId) => {
     try {
-      await api.patch(`/events/${eventId}`, { status: 'RESOLVED', comment: 'Resolu' });
+      const alert = activeAlerts?.find(a => a.id === eventId);
+      if (alert?.alertSource === 'ai_camera') {
+        await api.patch(`/ai-events/${eventId}/status?status=RESOLVED`);
+      } else {
+        await api.patch(`/events/${eventId}`, { status: 'RESOLVED', comment: 'Resolu' });
+      }
       dismissAlert(eventId);
     } catch (e) {
       console.error('Failed to resolve alert:', e);
     }
-  }, [dismissAlert]);
+  }, [dismissAlert, activeAlerts]);
 
   const markFalseAlarm = useCallback(async (eventId) => {
     try {
-      await api.patch(`/events/${eventId}`, { status: 'FALSE_ALARM', comment: 'Fausse alarme' });
+      const alert = activeAlerts?.find(a => a.id === eventId);
+      if (alert?.alertSource === 'ai_camera') {
+        await api.patch(`/ai-events/${eventId}/status?status=FALSE_ALARM`);
+      } else {
+        await api.patch(`/events/${eventId}`, { status: 'FALSE_ALARM', comment: 'Fausse alarme' });
+      }
       dismissAlert(eventId);
     } catch (e) {
       console.error('Failed to mark false alarm:', e);
     }
-  }, [dismissAlert]);
+  }, [dismissAlert, activeAlerts]);
+
+  const toggleBanner = useCallback(async (val) => {
+    setBannerEnabled(val);
+    try {
+      await api.put('/users/me/notifications', { alert_banner_enabled: val });
+    } catch {}
+  }, []);
 
   // Subscribe to WebSocket events
   useEffect(() => {
@@ -142,14 +191,23 @@ export function AlertProvider({ children }) {
       if (message.type === 'new_radar_event' || message.type === 'new_event') {
         const event = message.event;
         if (event && ALERT_TYPES.includes(event.type)) {
-          addAlert(event);
+          addAlert({ ...event, alertSource: 'radar' });
+        }
+      }
+      else if (message.type === 'new_ai_event') {
+        const event = message.event;
+        if (event && CRITICAL_AI_TYPES.includes(event.warning_type)) {
+          addAlert({
+            ...event,
+            type: 'AI_ALERT',
+            alertSource: 'ai_camera',
+          });
         }
       }
       else if (message.type === 'fall_event_update') {
         const { event_id, fall_status, ...rest } = message;
         if (event_id) {
           updateAlert(event_id, { fall_status, ...rest });
-          // Play sound for critical status updates
           if (['fall_confirmed', 'calling'].includes(fall_status)) {
             playAlertSound();
           }
@@ -173,6 +231,8 @@ export function AlertProvider({ children }) {
       activeAlerts,
       soundEnabled,
       setSoundEnabled,
+      bannerEnabled,
+      toggleBanner,
       acknowledgeAlert,
       resolveAlert,
       markFalseAlarm,
