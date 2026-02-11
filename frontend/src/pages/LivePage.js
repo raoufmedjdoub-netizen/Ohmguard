@@ -40,6 +40,176 @@ import {
 } from 'lucide-react';
 
 import { RadarStatusCard } from '@/components/live';
+import { useNavigate } from 'react-router-dom';
+
+const FALL_STATUS_LABELS = {
+  fall_detected: { label: 'Detectee', color: 'bg-red-600 text-white' },
+  fall_confirmed: { label: 'Confirmee', color: 'bg-red-700 text-white' },
+  calling: { label: 'Appel en cours', color: 'bg-orange-500 text-white' },
+  on_call: { label: 'En communication', color: 'bg-yellow-500 text-black' },
+  finished: { label: 'Termine', color: 'bg-green-600 text-white' },
+  fall_exit: { label: 'Sortie', color: 'bg-blue-500 text-white' },
+  canceled: { label: 'Annule', color: 'bg-gray-500 text-white' },
+};
+
+const EVENT_TYPE_CONFIG = {
+  FALL: { label: 'CHUTE', color: 'bg-red-600', borderColor: 'border-red-500' },
+  SENSITIVE_FALL: { label: 'CHUTE SUSPECTE', color: 'bg-orange-600', borderColor: 'border-orange-500' },
+  BED_EXIT: { label: 'SORTIE DE LIT', color: 'bg-amber-600', borderColor: 'border-amber-500' },
+};
+
+function ElapsedTimer({ since }) {
+  const [elapsed, setElapsed] = useState('');
+  useEffect(() => {
+    const update = () => {
+      const diff = Math.floor((Date.now() - since) / 1000);
+      const mins = Math.floor(diff / 60);
+      const secs = diff % 60;
+      setElapsed(mins > 0 ? `${mins}m ${secs}s` : `${secs}s`);
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [since]);
+  return <span className="font-mono">{elapsed}</span>;
+}
+
+function ActiveAlertCard({ alert, onAck, onResolve, onFalseAlarm, onView }) {
+  const config = EVENT_TYPE_CONFIG[alert.type] || EVENT_TYPE_CONFIG.FALL;
+  const fallConfig = FALL_STATUS_LABELS[alert.fall_status];
+  const isAcked = alert.status === 'ACK';
+  const location = alert.location_path || alert.sensor_name || alert.radar_name || 'Localisation inconnue';
+  const hasLocation = alert.fall_loc_x_cm != null || alert.fall_loc_y_cm != null;
+
+  return (
+    <div
+      data-testid={`active-alert-${alert.id}`}
+      className={cn(
+        'rounded-lg border-2 p-4 transition-all',
+        isAcked ? 'border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50' : `${config.borderColor} bg-white dark:bg-gray-900`,
+        !isAcked && 'shadow-lg'
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0 space-y-2">
+          {/* Type + Status */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge className={cn('text-xs font-bold text-white', config.color)}>
+              {config.label}
+            </Badge>
+            {fallConfig && (
+              <Badge className={cn('text-xs', fallConfig.color)}>{fallConfig.label}</Badge>
+            )}
+            {alert.is_simulated && (
+              <Badge className="bg-yellow-400/80 text-yellow-900 text-xs">TEST</Badge>
+            )}
+            {isAcked && (
+              <Badge variant="outline" className="text-xs border-blue-400 text-blue-600">Acquitte</Badge>
+            )}
+          </div>
+
+          {/* Location */}
+          <div className="flex items-center gap-1.5 text-sm">
+            <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            <span className="font-medium truncate">{location}</span>
+          </div>
+
+          {/* Fall location coordinates */}
+          {hasLocation && (
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <Crosshair className="h-3 w-3" />
+              <span className="font-mono">X:{alert.fall_loc_x_cm} Y:{alert.fall_loc_y_cm} Z:{alert.fall_loc_z_cm}</span>
+              {alert.tar_height_est != null && (
+                <span className="font-mono">H:{alert.tar_height_est}cm</span>
+              )}
+            </div>
+          )}
+
+          {/* Timer */}
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            <ElapsedTimer since={alert.addedAt || Date.now()} />
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col gap-1 flex-shrink-0">
+          {!isAcked && (
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onAck(alert.id)}>
+              Acquitter
+            </Button>
+          )}
+          <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => onResolve(alert.id)}>
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Resoudre
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onFalseAlarm(alert.id)}>
+            <XCircle className="h-3 w-3 mr-1" />
+            Faux
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onView(alert.id)}>
+            <Eye className="h-3 w-3 mr-1" />
+            Details
+          </Button>
+        </div>
+      </div>
+
+      {/* Fall status timeline (compact) */}
+      {alert.fall_status_history && alert.fall_status_history.length > 1 && (
+        <div className="mt-3 pt-2 border-t border-border/50">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {alert.fall_status_history.map((entry, idx) => {
+              const c = FALL_STATUS_LABELS[entry.status] || { label: entry.status, color: 'bg-gray-400 text-white' };
+              return (
+                <React.Fragment key={idx}>
+                  {idx > 0 && <span className="text-muted-foreground text-xs">→</span>}
+                  <Badge className={cn('text-[10px] py-0', c.color)}>{c.label}</Badge>
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActiveAlertsSection() {
+  const { activeAlerts, acknowledgeAlert, resolveAlert, markFalseAlarm } = useAlerts();
+  const navigate = useNavigate();
+
+  if (activeAlerts.length === 0) return null;
+
+  const unackedCount = activeAlerts.filter(a => a.status !== 'ACK').length;
+
+  return (
+    <Card className="border-red-500/50 shadow-lg" data-testid="active-alerts-section">
+      <CardHeader className="border-b border-red-500/20 py-2 px-4 bg-red-50 dark:bg-red-950/30">
+        <CardTitle className="flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-400">
+          <AlertTriangle className="h-4 w-4 animate-pulse" />
+          Alertes actives ({activeAlerts.length})
+          {unackedCount > 0 && (
+            <Badge className="bg-red-600 text-white text-xs ml-1">{unackedCount} non acquittee{unackedCount > 1 ? 's' : ''}</Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {activeAlerts.map(alert => (
+            <ActiveAlertCard
+              key={alert.id}
+              alert={alert}
+              onAck={acknowledgeAlert}
+              onResolve={resolveAlert}
+              onFalseAlarm={markFalseAlarm}
+              onView={(id) => navigate(`/events/${id}`)}
+            />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function LivePage() {
   const { subscribe, connected } = useWebSocket();
