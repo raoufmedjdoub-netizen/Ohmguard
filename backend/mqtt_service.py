@@ -596,6 +596,15 @@ class MQTTService:
             await self._handle_fall_event(device_id, event_payload, sensor)
             return
         
+        # ===================================================================================
+        # SENSITIVE FALL EVENT HANDLING (type 8)
+        # Sensitive fall events have a lifecycle: fall_suspected → calling → finished / fall_exit
+        # Events with the same `timestamp` field are part of the same flow.
+        # ===================================================================================
+        if event_type_code == 8:
+            await self._handle_sensitive_fall_event(device_id, event_payload, sensor)
+            return
+        
         # Build RadarEventRequest for normalization (non-fall events)
         try:
             radar_payload = RadarEventPayload(
