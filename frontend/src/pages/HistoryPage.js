@@ -380,7 +380,7 @@ export function HistoryPage() {
                     >
                       <TableCell>
                         <Badge className={cn('font-mono', getEventTypeColor(event.type))}>
-                          {t(`events.type_${event.type?.toLowerCase() || 'unknown'}`)}
+                          {getEventTypeLabel(event.type)}
                         </Badge>
                       </TableCell>
                       <TableCell>
