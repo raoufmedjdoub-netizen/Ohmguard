@@ -885,7 +885,7 @@ export function LivePage() {
       )}
 
       {/* Section événements IA - Caméras Seedoo */}
-      {(activeView === 'all' || activeView === 'ai') && (
+      {showAI && (activeView === 'all' || activeView === 'ai') && (
       <Card>
         <CardHeader className="border-b border-border py-2 px-4">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
