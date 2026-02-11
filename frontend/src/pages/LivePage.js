@@ -421,7 +421,7 @@ export function LivePage() {
         // Alerte pour chutes
         if (newEvent.type === 'FALL') {
           toast.error('🚨 Chute détectée!', {
-            description: newEvent.radar_name || newEvent.location_path || 'Localisation inconnue',
+            description: newEvent.location_path || newEvent.radar_name || 'Localisation inconnue',
             duration: 10000
           });
         }
