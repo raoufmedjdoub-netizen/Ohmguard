@@ -277,12 +277,14 @@ export function HistoryPage() {
             
             {/* Type d'événement */}
             <Select value={selectedType} onValueChange={(v) => { setSelectedType(v); setPage(0); }}>
-              <SelectTrigger className="w-32" data-testid="filter-type">
+              <SelectTrigger className="w-40" data-testid="filter-type">
                 <SelectValue placeholder={t('events.event_type')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('all')}</SelectItem>
-                <SelectItem value="FALL">{t('events.type_fall')}</SelectItem>
+                <SelectItem value="FALL">Chute</SelectItem>
+                <SelectItem value="SENSITIVE_FALL">Chute suspectee</SelectItem>
+                <SelectItem value="BED_EXIT">Sortie de lit</SelectItem>
                 <SelectItem value="PRE_FALL">{t('events.type_pre_fall')}</SelectItem>
                 <SelectItem value="PRESENCE">{t('events.type_presence')}</SelectItem>
                 <SelectItem value="INACTIVITY">{t('events.type_inactivity')}</SelectItem>
