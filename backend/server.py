@@ -3600,6 +3600,112 @@ async def delete_template(
     raise HTTPException(status_code=404, detail="Template not found")
 
 
+class TemplateUpdatePayload(BaseModel):
+    """Payload for updating a template"""
+    name: Optional[str] = None
+    description: Optional[str] = None
+    config: Optional[dict] = None
+    isSystem: Optional[bool] = None
+
+
+@api_router.put("/config/templates/{template_id}")
+async def update_template(
+    template_id: str,
+    payload: TemplateUpdatePayload,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Update a configuration template"""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    
+    from vayyar_config_service import vayyar_config_service
+    
+    if not vayyar_config_service:
+        raise HTTPException(status_code=503, detail="Config service not available")
+    
+    result = await vayyar_config_service.update_template(
+        template_id=template_id,
+        name=payload.name,
+        description=payload.description,
+        config=payload.config,
+        is_system=payload.isSystem
+    )
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return result
+
+
+class BulkConfigPayload(BaseModel):
+    """Payload for bulk config send"""
+    device_ids: List[str] = Field(..., description="List of device IDs to send config to")
+    config: dict = Field(..., description="Configuration to send")
+    mqttOptions: Optional[dict] = None
+
+
+@api_router.post("/devices/bulk-config")
+async def send_bulk_config(
+    payload: BulkConfigPayload,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Send configuration to multiple devices"""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    
+    from vayyar_config_service import vayyar_config_service, MqttPublishOptions
+    
+    if not vayyar_config_service:
+        raise HTTPException(status_code=503, detail="Config service not available")
+    
+    if not payload.device_ids:
+        raise HTTPException(status_code=400, detail="No devices specified")
+    
+    options = MqttPublishOptions(**(payload.mqttOptions or {}))
+    
+    result = await vayyar_config_service.send_bulk_config(
+        device_ids=payload.device_ids,
+        config=payload.config,
+        options=options,
+        tenant_id=current_user.tenant_id
+    )
+    
+    return result
+
+
+class CreateTemplatePayload(BaseModel):
+    """Payload for creating a template"""
+    name: str
+    description: Optional[str] = None
+    config: dict
+    isSystem: Optional[bool] = False
+
+
+@api_router.post("/config/templates/create")
+async def create_template_v2(
+    payload: CreateTemplatePayload,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Create a configuration template (v2 with proper body)"""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    
+    from vayyar_config_service import vayyar_config_service
+    
+    if not vayyar_config_service:
+        raise HTTPException(status_code=503, detail="Config service not available")
+    
+    template = {
+        "id": str(uuid.uuid4()),
+        "name": payload.name,
+        "description": payload.description,
+        "config": payload.config,
+        "isSystem": payload.isSystem if current_user.role == "SUPER_ADMIN" else False,
+        "tenantId": None if payload.isSystem else current_user.tenant_id,
+        "createdBy": current_user.id,
+        "createdAt": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.config_templates.insert_one(template)
+    return {k: v for k, v in template.items() if k != "_id"}
+
+
 # ==================== DEVICE COMMANDS ENDPOINTS ====================
 
 class DeviceCommandRequest(BaseModel):
