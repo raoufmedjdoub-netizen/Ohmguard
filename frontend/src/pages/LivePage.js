@@ -36,7 +36,8 @@ import {
   XCircle,
   Crosshair,
   Clock,
-  MapPin
+  MapPin,
+  UserPlus
 } from 'lucide-react';
 
 import { RadarStatusCard } from '@/components/live';
