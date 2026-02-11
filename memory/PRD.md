@@ -178,5 +178,12 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - **Endpoints**: `GET/PUT /api/settings/smtp`, `POST /api/settings/smtp/test`, `GET/PUT /api/users/me/notifications`
 - **Flow**: MQTT FALL event → check SMTP enabled → query users with email_notifications=true → send HTML alert email
 - **Frontend**: SettingsPage updated with SMTP config form (admin only) + test button + per-user notification toggle
+- **Fix**: Added proper EHLO domain, Date header, Message-ID for Outlook compatibility. Fixed SSL (port 465 = SMTP_SSL)
 - **Files created**: `email_service.py`
 - **Files modified**: `server.py`, `mqtt_service.py`, `SettingsPage.js`
+
+### 2026-02-11 - RadarConfigPage Refactoring
+- **Schema updated**: `vayyarConfigSchema.js` rewritten to match exact Vayyar JSON structure with string enums, new fields (BLE, WiFi health, MQTT, NTP, telemetry triggers, RF profile, etc.)
+- **New fields added**: sensitivityLevel, suspendDuration, MQTT advanced, multiPresenceAlpha, RF profile, bed exit wall side, all walabot telemetry flags
+- **Removed deprecated fields**: bleServerType, logLevel
+- **Files modified**: `vayyarConfigSchema.js`, `RadarConfigPage.js`
