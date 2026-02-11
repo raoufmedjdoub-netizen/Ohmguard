@@ -47,111 +47,114 @@ const trackerSubRegionSchema = z.object({
 
 const appConfigSchema = z.object({
   // Modes
-  silentMode: z.boolean().default(false),
-  demoMode: z.boolean().default(false),
-  enableTestMode: z.union([z.boolean(), z.string()]).default(true),
-  offlineMode: z.boolean().default(true),
+  silentMode: flexBool(false),
+  demoMode: flexBool(false),
+  enableTestMode: flexBool(true),
+  offlineMode: flexBool(true),
 
   // LED
-  ledMode: z.number().default(0),
-  ledPolicy: z.string().default("ErrorsOnly"),
+  ledMode: flexNum(0),
+  ledPolicy: flexStr("ErrorsOnly"),
 
   // Audio
-  volume: z.number().default(0),
+  volume: flexNum(0),
 
   // Alert timing
-  confirmedToAlertTimeoutSec: z.number().default(40),
-  callingDurationSec: z.number().default(30),
+  confirmedToAlertTimeoutSec: flexNum(40),
+  callingDurationSec: flexNum(30),
 
   // Presence
-  presenceReportMinRateMills: z.number().default(60000),
-  enablePresencePeriodicReport: z.boolean().default(true),
+  presenceReportMinRateMills: flexNum(60000),
+  enablePresencePeriodicReport: flexBool(true),
 
   // Learning mode
-  learningModeStartTs: z.number().default(0),
-  learningModeEndTs: z.number().default(0),
+  learningModeStartTs: flexNum(0),
+  learningModeEndTs: flexNum(0),
 
   // DSP records
-  dspRecordsPublishPolicy: z.boolean().default(false),
-  dspRecordsPublishMaxLatencySec: z.number().default(10),
-  dspRecordsPublishMaxLatency_sec: z.number().default(10),
+  dspRecordsPublishPolicy: flexBool(false),
+  dspRecordsPublishMaxLatencySec: flexNum(10),
+  dspRecordsPublishMaxLatency_sec: flexNum(10),
 
   // Analytics
-  enableAnalytics: z.boolean().default(true),
+  enableAnalytics: flexBool(true),
 
   // Telemetry
-  telemetryPolicy: z.string().default("Off"),
-  telemetryTransport: z.string().default("MqttQos0"),
+  telemetryPolicy: flexStr("Off"),
+  telemetryTransport: flexStr("MqttQos0"),
 
   // Dry contacts
   dryContacts: dryContactsSchema.default({ primary: { mode: 0, policy: 0 }, secondary: { mode: 0, policy: 0 } }),
-  dryContactActivationDuration_sec: z.number().default(30),
+  dryContactActivationDuration_sec: flexNum(30),
 
   // Tracker debug
-  trackerTargetsDebugPolicy: z.string().default("OFF"),
+  trackerTargetsDebugPolicy: flexStr("OFF"),
 
   // Features
-  enableDoorEvents: z.boolean().default(false),
-  enableOutOfBed: z.boolean().default(false),
-  enableSensitiveMode: z.boolean().default(false),
+  enableDoorEvents: flexBool(false),
+  enableOutOfBed: flexBool(false),
+  enableSensitiveMode: flexBool(false),
 
   // Sensitivity
-  sensitivityLevel: z.number().default(0.7),
-  thMinEventsForFirstDecision: z.number().default(5),
-  thNumOfDetectionsInChain: z.number().default(4),
+  sensitivityLevel: flexNum(0.7),
+  thMinEventsForFirstDecision: flexNum(5),
+  thNumOfDetectionsInChain: flexNum(4),
 
   // Suspend
-  suspendDuration_sec: z.number().default(900),
+  suspendDuration_sec: flexNum(900),
 
   // BLE
-  enableBeaconScanner: z.boolean().default(false),
-  bleBeaconMacs: z.array(z.string()).default([]),
-  bleBeaconRssiThreshold: z.number().default(-80),
-  bleCustomDeviceName: z.string().default("VC000"),
+  enableBeaconScanner: flexBool(false),
+  bleBeaconMacs: z.preprocess(
+    (v) => (Array.isArray(v) ? v.filter(x => typeof x === 'string') : []),
+    z.array(z.string()).default([])
+  ),
+  bleBeaconRssiThreshold: flexNum(-80),
+  bleCustomDeviceName: flexStr("VC000"),
 
   // Telemetries on event during suspend
-  enableTelemetriesOnEventDuringSuspend: z.boolean().default(true),
+  enableTelemetriesOnEventDuringSuspend: flexBool(true),
 
   // RSSI monitoring
-  enableRssiMonitor: z.boolean().default(true),
-  rssiThresholdRssiMonitor: z.number().default(-70),
-  samplesNumRssiMonitor: z.number().default(30),
+  enableRssiMonitor: flexBool(true),
+  rssiThresholdRssiMonitor: flexNum(-70),
+  samplesNumRssiMonitor: flexNum(30),
 
   // WiFi health
-  enableWifiHealthMonitor: z.boolean().default(true),
-  maxDisconnetionDurationSecWifiHealthMonitor: z.number().default(240),
-  disconnectionsBurstLimitWifiHealthMonitor: z.number().default(15),
-  maxDisconnectionsPerHourAverageWifiHealthMonitor: z.number().default(15),
+  enableWifiHealthMonitor: flexBool(true),
+  maxDisconnetionDurationSecWifiHealthMonitor: flexNum(240),
+  disconnectionsBurstLimitWifiHealthMonitor: flexNum(15),
+  maxDisconnectionsPerHourAverageWifiHealthMonitor: flexNum(15),
 
   // Algo & Logging
-  algoProfile: z.string().default("TRACKING"),
-  appLogAutoLevel: z.string().default("Disable"),
-  appLogOnDemandLevel: z.string().default("Disable"),
-  legacyLogFileUpload: z.boolean().default(true),
-  smartReboot: z.boolean().default(false),
+  algoProfile: flexStr("TRACKING"),
+  appLogAutoLevel: flexStr("Disable"),
+  appLogOnDemandLevel: flexStr("Disable"),
+  legacyLogFileUpload: flexBool(true),
+  smartReboot: flexBool(false),
 
   // NTP
-  ntpPrimaryBackupServer: z.string().default("europe.pool.ntp.org"),
-  ntpSecondaryBackupServer: z.string().default("us.pool.ntp.org"),
+  ntpPrimaryBackupServer: flexStr("europe.pool.ntp.org"),
+  ntpSecondaryBackupServer: flexStr("us.pool.ntp.org"),
 
   // Telemetry triggers
-  telemAlwaysON: z.boolean().default(false),
-  telemAlwaysOn: z.boolean().default(false),
-  telemOnBedExit: z.boolean().default(true),
-  telemOnFall: z.boolean().default(true),
-  telemOnSensitiveFall: z.boolean().default(true),
-  telemOnDoorEvents: z.boolean().default(false),
-  telemOnDoorEvent: z.boolean().default(false),
-  telemOnOutOfBed: z.boolean().default(false),
+  telemAlwaysON: flexBool(false),
+  telemAlwaysOn: flexBool(false),
+  telemOnBedExit: flexBool(true),
+  telemOnFall: flexBool(true),
+  telemOnSensitiveFall: flexBool(true),
+  telemOnDoorEvents: flexBool(false),
+  telemOnDoorEvent: flexBool(false),
+  telemOnOutOfBed: flexBool(false),
 
   // MQTT
-  mqttMaxDisconnectionTs: z.number().default(300000),
-  mqttAuthTokenExpirySec: z.number().default(0),
-  multiPresenceAlpha: z.number().default(0.99885),
+  mqttMaxDisconnectionTs: flexNum(300000),
+  mqttAuthTokenExpirySec: flexNum(0),
+  multiPresenceAlpha: flexNum(0.99885),
 
   // MQTT reporting
-  reportFallsToMqtt: z.boolean().default(true),
-  reportPresenceToMqtt: z.boolean().default(true)
+  reportFallsToMqtt: flexBool(true),
+  reportPresenceToMqtt: flexBool(true)
 }).passthrough();
 
 // ==================== walabotConfig ====================
