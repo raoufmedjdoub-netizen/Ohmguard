@@ -10,6 +10,7 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 4. **Multi-tenant Architecture**: Support for multiple care facilities
 5. **Real-time Dashboard**: Live monitoring of sensor status and events
 6. **Last State Module**: Redis-based fast access to sensor states
+7. **Seedoo AI Camera Integration**: MQTT-based AI camera events with configurable thresholds
 
 ## Technical Stack
 - **Backend**: FastAPI + Python + Motor (async MongoDB)
@@ -40,6 +41,19 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 | Normal_Activity  | LOW      | Normal activity                 |
 | No_Activity      | LOW      | No activity detected            |
 
+## Seedoo JSON Schema (Official)
+- `warning_id`: integer (required)
+- `timestamp`: ISO 8601 string (required)
+- `created_at`: ISO 8601 string (required) → stored as `seedoo_created_at`
+- `channel_name`: string|null (required) - primary identifier fallback
+- `warning_type`: string (required)
+- `warning_text`: string (required)
+- `confidence`: number 0-1 (required)
+- `is_warning`: boolean (required)
+- `video_url`: string|null
+- `video_paths`: string[]
+- `analysis_source`: string (always "real-time")
+
 ## MQTT Configuration
 - **Broker**: 51.91.9.198:1883
 - **Topics**:
@@ -61,6 +75,9 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - [x] Banner d'alerte global (incrustation correcte)
 - [x] Affichage localisation au lieu des IDs radar
 - [x] Page utilisateurs intégrée dans Paramètres
+- [x] Seedoo schema alignment (warning_id int, seedoo_created_at, channel_name fallback)
+- [x] Alertes Seedoo IA dans GlobalAlertBanner + LivePage
+- [x] Toggle banner d'alertes par utilisateur dans Paramètres
 - [ ] Test SENSITIVE_FALL and BED_EXIT events in production
 - [ ] WebSocket rooms by building/floor for push updates
 
@@ -85,8 +102,8 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 
 ### Backend
 - `server.py` - Main FastAPI application
-- `mqtt_service.py` - MQTT event handling (Vayyar radars)
-- `seedoo_mqtt_service.py` - Seedoo AI camera MQTT handling
+- `mqtt_service.py` - MQTT event handling (Vayyar radars + Seedoo)
+- `seedoo_mqtt_service.py` - Dedicated Seedoo AI camera MQTT handling
 - `ai_sensor_service.py` - AI sensor CRUD and events
 - `radar_event_models.py` - Event type definitions and normalization
 - `presence_session_service.py` - Presence session lifecycle
@@ -95,13 +112,13 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - `email_service.py` - SMTP email notifications
 
 ### Frontend
-- `SettingsPage.jsx` - Settings with integrated user management tab
+- `AlertContext.js` - Global alert state (radar + AI events, banner preference)
+- `GlobalAlertBanner.jsx` - Global alert banner (radar + AI, per-user toggle)
+- `SettingsPage.js` - Settings with user mgmt, email notif, banner toggle
 - `DashboardPage.js` - Main dashboard
 - `HistoryPage.js` - Event history with filters
 - `EventDetailPage.js` - Event detail with fall timeline
 - `LivePage.js` - Real-time monitoring with active alerts
-- `GlobalAlertBanner.jsx` - Global alert banner
-- `AlertContext.js` - Global alert state management
 - `EventActionDialog.jsx` - Shared action dialog component
 
 ## Known Issues
