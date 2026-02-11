@@ -1824,6 +1824,34 @@ async def update_event(event_id: str, update: EventUpdate, current_user: UserInD
     updated = await db.events.find_one({"id": event_id}, {"_id": 0})
     return updated
 
+
+@api_router.get("/events/{event_id}/comments")
+async def get_event_comments(event_id: str, current_user: UserInDB = Depends(get_current_user)):
+    """Get comments for an event - admin only."""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN", "SUPERVISOR"])
+    
+    event = await db.events.find_one({"id": event_id}, {"_id": 0, "comments": 1, "tenant_id": 1})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    if not await check_event_access(event, current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    return event.get("comments", [])
+
+@api_router.get("/users/assignable")
+async def list_assignable_users(current_user: UserInDB = Depends(get_current_user)):
+    """List users who can be assigned to events."""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN", "SUPERVISOR", "OPERATOR"])
+    
+    query = {"role": {"$in": ["SUPER_ADMIN", "TENANT_ADMIN", "SUPERVISOR", "OPERATOR"]}}
+    if current_user.role != "SUPER_ADMIN":
+        query["tenant_id"] = current_user.tenant_id
+    
+    users = await db.users.find(query, {"_id": 0, "id": 1, "full_name": 1, "email": 1, "role": 1}).to_list(100)
+    return users
+
+
 # ==================== RADAR EVENT ENDPOINTS ====================
 
 @api_router.post("/events/radar")
