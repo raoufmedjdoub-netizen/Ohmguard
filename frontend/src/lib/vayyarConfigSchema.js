@@ -2,7 +2,13 @@ import { z } from 'zod';
 
 // Flexible types - radars send mixed types (string/number/boolean interchangeably)
 const flexNum = (def = 0) => z.preprocess(
-  (v) => (v === true ? 1 : v === false ? 0 : v === '' ? def : Number(v)),
+  (v) => {
+    if (v === true) return 1;
+    if (v === false) return 0;
+    if (v === '' || v === null || v === undefined) return def;
+    const num = Number(v);
+    return isNaN(num) ? def : num;
+  },
   z.number().default(def)
 );
 const flexBool = (def = false) => z.preprocess(
