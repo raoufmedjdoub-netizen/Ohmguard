@@ -1722,16 +1722,49 @@ async def update_event(event_id: str, update: EventUpdate, current_user: UserInD
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
-    # Use helper function for tenant/client access check
     if not await check_event_access(event, current_user):
         raise HTTPException(status_code=403, detail="Access denied")
     
-    update_data = {k: v for k, v in update.model_dump().items() if v is not None}
+    # Build update data (exclude comment/cc_admin - they're action metadata, not event fields)
+    update_data = {}
+    if update.status is not None:
+        # Require comment for RESOLVED and FALSE_ALARM
+        if update.status in ("RESOLVED", "FALSE_ALARM") and not update.comment:
+            raise HTTPException(status_code=400, detail="Un commentaire est obligatoire pour cette action")
+        update_data["status"] = update.status
+    if update.assigned_to is not None:
+        update_data["assigned_to"] = update.assigned_to
+    if update.assigned_to_name is not None:
+        update_data["assigned_to_name"] = update.assigned_to_name
+    if update.notes is not None:
+        update_data["notes"] = update.notes
+    
+    # Build comment entry if provided
+    comment_entry = None
+    if update.comment:
+        action = update.status or ("ASSIGNED" if update.assigned_to else "COMMENT")
+        comment_entry = {
+            "id": str(uuid.uuid4()),
+            "user_id": current_user.id,
+            "user_name": current_user.full_name,
+            "user_role": current_user.role,
+            "text": update.comment,
+            "action": action,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+    
+    # Apply updates
+    mongo_update = {}
     if update_data:
-        await db.events.update_one({"id": event_id}, {"$set": update_data})
+        mongo_update["$set"] = update_data
+    if comment_entry:
+        mongo_update["$push"] = {"comments": comment_entry}
+    
+    if mongo_update:
+        await db.events.update_one({"id": event_id}, mongo_update)
         await log_audit(current_user.id, event['tenant_id'], f"update_{update_data.get('status', 'event')}", "event", event_id, update_data)
         
-        # Invalidate cache for this tenant
+        # Invalidate cache
         from config.event_cache import get_event_cache_service
         cache_service = get_event_cache_service()
         cache_service.invalidate_tenant_cache(event.get('tenant_id', 'unknown'))
@@ -1740,8 +1773,53 @@ async def update_event(event_id: str, update: EventUpdate, current_user: UserInD
         await manager.broadcast_to_tenant(event['tenant_id'], {
             "type": "event_updated",
             "event_id": event_id,
-            "update": update_data
+            "update": {**update_data, "comment": comment_entry}
         })
+    
+    # Send assignment email notification
+    if update.assigned_to:
+        try:
+            assigned_user = await db.users.find_one({"id": update.assigned_to}, {"_id": 0})
+            if assigned_user and assigned_user.get("email"):
+                from email_service import get_email_service
+                email_svc = get_email_service()
+                config = await email_svc.get_smtp_config()
+                if config and config.get("enabled"):
+                    location = event.get("location_path", "Localisation inconnue")
+                    sensor_name = event.get("radar_name", event.get("device_id", "Capteur"))
+                    subject = f"[OhmGuard] Alerte assignee - {sensor_name}"
+                    html_body = f"""
+                    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+                        <div style="background:#dc2626;color:white;padding:16px 24px;border-radius:8px 8px 0 0;">
+                            <h2 style="margin:0;">Alerte assignee</h2>
+                        </div>
+                        <div style="background:#fff;padding:24px;border:1px solid #e5e7eb;border-radius:0 0 8px 8px;">
+                            <p>Bonjour <strong>{assigned_user['full_name']}</strong>,</p>
+                            <p>Une alerte vous a ete assignee par <strong>{current_user.full_name}</strong> :</p>
+                            <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+                                <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Type</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">{event.get('type', 'FALL')}</td></tr>
+                                <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Capteur</td><td style="padding:8px;border-bottom:1px solid #eee;">{sensor_name}</td></tr>
+                                <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Localisation</td><td style="padding:8px;border-bottom:1px solid #eee;">{location}</td></tr>
+                                <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Statut</td><td style="padding:8px;border-bottom:1px solid #eee;">{event.get('fall_status', event.get('status', 'NEW'))}</td></tr>
+                                {f'<tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Commentaire</td><td style="padding:8px;border-bottom:1px solid #eee;">{update.comment}</td></tr>' if update.comment else ''}
+                            </table>
+                        </div>
+                    </div>
+                    """
+                    recipients = [assigned_user['email']]
+                    # CC site admin if requested
+                    if update.cc_admin:
+                        admins = await db.users.find({"role": {"$in": ["SUPER_ADMIN", "TENANT_ADMIN"]}, "tenant_id": event.get("tenant_id")}, {"_id": 0, "email": 1}).to_list(10)
+                        for a in admins:
+                            if a.get("email") and a["email"] not in recipients:
+                                recipients.append(a["email"])
+                    for email in recipients:
+                        try:
+                            email_svc._send_email_sync(config=config, to_email=email, subject=subject, html_body=html_body)
+                        except Exception as e:
+                            logger.warning(f"Failed to send assignment email to {email}: {e}")
+        except Exception as e:
+            logger.warning(f"Failed to send assignment notification: {e}")
     
     updated = await db.events.find_one({"id": event_id}, {"_id": 0})
     return updated
