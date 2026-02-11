@@ -120,6 +120,49 @@ function FallStatusTimeline({ history }) {
   );
 }
 
+const ACTION_LABELS = {
+  ACK: { label: 'Acquittement', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
+  RESOLVED: { label: 'Resolution', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
+  FALSE_ALARM: { label: 'Fausse alarme', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' },
+  ASSIGNED: { label: 'Assignation', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' },
+  COMMENT: { label: 'Commentaire', color: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300' },
+};
+
+function CommentsSection({ comments }) {
+  if (!comments || comments.length === 0) return null;
+
+  return (
+    <Card data-testid="comments-section">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <MessageSquare className="h-4 w-4" />
+          Historique des actions ({comments.length})
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {comments.map((c, idx) => {
+            const actionConfig = ACTION_LABELS[c.action] || ACTION_LABELS.COMMENT;
+            return (
+              <div key={c.id || idx} className="p-3 rounded-lg border border-border/50 bg-muted/20" data-testid={`comment-${idx}`}>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Badge className={cn('text-xs', actionConfig.color)}>{actionConfig.label}</Badge>
+                  <span className="text-xs font-medium">{c.user_name}</span>
+                  <span className="text-xs text-muted-foreground">({c.user_role})</span>
+                  <span className="text-xs text-muted-foreground ml-auto font-mono">
+                    {c.created_at ? formatDate(c.created_at, 'fr-FR') : '-'}
+                  </span>
+                </div>
+                <p className="text-sm">{c.text}</p>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function EventDetailPage() {
   const { eventId } = useParams();
   const navigate = useNavigate();
