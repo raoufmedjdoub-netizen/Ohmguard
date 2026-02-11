@@ -113,37 +113,37 @@ function AlertFeedItem({ alert, onAction, onView }) {
     <div
       data-testid={`alert-feed-${alert.id}`}
       className={cn(
-        'rounded-md border px-3 py-1.5 mb-1 transition-all',
+        'rounded-lg border-2 px-5 py-3 mb-2.5 transition-all',
         isAcked
           ? 'border-gray-200 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-900/30 opacity-60'
-          : `${blinkColor} bg-white dark:bg-gray-950 shadow-sm animate-alert-blink`
+          : `${blinkColor} bg-white dark:bg-gray-950 shadow-md animate-alert-blink`
       )}
     >
       {/* Line 1: type + badges + location + time */}
-      <div className="flex items-center gap-1.5 min-w-0">
-        {isAI ? <Camera className="h-3.5 w-3.5 text-violet-500 flex-shrink-0" /> : <AlertTriangle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />}
-        <Badge className={cn('text-[10px] font-bold text-white py-0 px-1.5', config.color)}>{config.label}</Badge>
-        {fallStatus && <Badge className={cn('text-[10px] py-0 px-1', fallStatus.color)}>{fallStatus.label}</Badge>}
-        {confidence !== null && <span className="text-[10px] font-mono text-muted-foreground">{confidence}%</span>}
-        {alert.is_simulated && <Badge className="bg-yellow-400/80 text-yellow-900 text-[10px] py-0 px-1">TEST</Badge>}
-        {isAcked && <Badge variant="outline" className="text-[10px] py-0 px-1 border-blue-400 text-blue-500">ACK</Badge>}
-        <span className="mx-0.5 text-muted-foreground">|</span>
-        <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-        <span className="text-xs font-medium truncate">{location}</span>
-        {isAI && alert.warning_text && <span className="text-[10px] text-muted-foreground italic truncate max-w-[140px] hidden xl:inline">{alert.warning_text}</span>}
-        <div className="ml-auto flex items-center gap-0.5 text-[10px] text-muted-foreground flex-shrink-0">
-          <Clock className="h-3 w-3" />
+      <div className="flex items-center gap-2 min-w-0">
+        {isAI ? <Camera className="h-5 w-5 text-violet-500 flex-shrink-0" /> : <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />}
+        <Badge className={cn('text-xs font-bold text-white py-0.5 px-2', config.color)}>{config.label}</Badge>
+        {fallStatus && <Badge className={cn('text-xs py-0.5 px-1.5', fallStatus.color)}>{fallStatus.label}</Badge>}
+        {confidence !== null && <span className="text-xs font-mono text-muted-foreground">{confidence}%</span>}
+        {alert.is_simulated && <Badge className="bg-yellow-400/80 text-yellow-900 text-xs py-0.5 px-1.5">TEST</Badge>}
+        {isAcked && <Badge variant="outline" className="text-xs py-0.5 px-1.5 border-blue-400 text-blue-500">ACK</Badge>}
+        <span className="mx-1 text-muted-foreground">|</span>
+        <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        <span className="text-sm font-medium truncate">{location}</span>
+        {isAI && alert.warning_text && <span className="text-xs text-muted-foreground italic truncate max-w-[200px] hidden xl:inline">{alert.warning_text}</span>}
+        <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
+          <Clock className="h-4 w-4" />
           <ElapsedTimer since={alert.addedAt || Date.now()} />
         </div>
       </div>
       {/* Line 2: actions */}
-      <div className="flex items-center gap-1 mt-0.5">
-        {!isAcked && <Button size="sm" variant="outline" className="h-5 text-[10px] px-1.5 py-0" onClick={() => onAction(alert, 'ACK')}>Acquitter</Button>}
-        <Button size="sm" className="h-5 text-[10px] px-1.5 py-0 bg-green-600 hover:bg-green-700 text-white" onClick={() => onAction(alert, 'RESOLVED')}>Resoudre</Button>
-        <Button size="sm" variant="ghost" className="h-5 text-[10px] px-1.5 py-0" onClick={() => onAction(alert, 'FALSE_ALARM')}>Faux</Button>
-        {!isAI && <Button size="sm" variant="outline" className="h-5 text-[10px] px-1.5 py-0" onClick={() => onAction(alert, 'ASSIGN')}><UserPlus className="h-2.5 w-2.5" /></Button>}
-        {isAI && alert.video_url && <Button size="sm" variant="outline" className="h-5 text-[10px] px-1.5 py-0" onClick={() => window.open(alert.video_url, '_blank')}><Video className="h-2.5 w-2.5 mr-0.5" />Video</Button>}
-        <Button size="sm" variant="ghost" className="h-5 text-[10px] px-1.5 py-0 ml-auto" onClick={() => onView(alert)}><Eye className="h-2.5 w-2.5 mr-0.5" />Details</Button>
+      <div className="flex items-center gap-2 mt-1.5">
+        {!isAcked && <Button size="sm" variant="outline" className="h-7 text-xs px-3" onClick={() => onAction(alert, 'ACK')}>Acquitter</Button>}
+        <Button size="sm" className="h-7 text-xs px-3 bg-green-600 hover:bg-green-700 text-white" onClick={() => onAction(alert, 'RESOLVED')}>Resoudre</Button>
+        <Button size="sm" variant="ghost" className="h-7 text-xs px-3" onClick={() => onAction(alert, 'FALSE_ALARM')}>Faux</Button>
+        {!isAI && <Button size="sm" variant="outline" className="h-7 text-xs px-2.5" onClick={() => onAction(alert, 'ASSIGN')}><UserPlus className="h-3.5 w-3.5" /></Button>}
+        {isAI && alert.video_url && <Button size="sm" variant="outline" className="h-7 text-xs px-3" onClick={() => window.open(alert.video_url, '_blank')}><Video className="h-3.5 w-3.5 mr-1" />Video</Button>}
+        <Button size="sm" variant="ghost" className="h-7 text-xs px-3 ml-auto" onClick={() => onView(alert)}><Eye className="h-3.5 w-3.5 mr-1" />Details</Button>
       </div>
     </div>
   );
@@ -214,20 +214,20 @@ function ActiveAlertsSection() {
 
   return (
     <>
-      <Card className="border-red-500/40 shadow-lg overflow-hidden" data-testid="active-alerts-section">
-        <CardHeader className="border-b border-red-500/20 py-2 px-4 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/20">
-          <CardTitle className="flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-400">
+      <Card className="border-red-500/40 shadow-lg overflow-hidden flex flex-col" data-testid="active-alerts-section">
+        <CardHeader className="border-b border-red-500/20 py-3 px-5 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/20">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-red-700 dark:text-red-400">
             <div className="relative">
-              <AlertTriangle className="h-4 w-4" />
-              <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+              <AlertTriangle className="h-5 w-5" />
+              <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600" />
               </span>
             </div>
             Fil d'alertes ({activeAlerts.length})
           </CardTitle>
           {/* Filter badges */}
-          <div className="flex items-center gap-1.5 flex-wrap mt-1">
+          <div className="flex items-center gap-2 flex-wrap mt-2">
             {unackedCount > 0 && (
               <Badge
                 data-testid="filter-pending"
@@ -303,7 +303,7 @@ function ActiveAlertsSection() {
             )}
           </div>
         </CardHeader>
-        <CardContent className="p-3 pl-1 max-h-[420px] overflow-y-auto">
+        <CardContent className="p-4 flex-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 260px)' }}>
           {sorted.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
               Aucune alerte pour ce filtre
@@ -559,9 +559,9 @@ export function LivePage() {
   }
 
   return (
-    <div data-testid="live-page" className="space-y-4">
+    <div data-testid="live-page" className="flex flex-col h-[calc(100vh-140px)]">
       {/* Header compact - indicateur temps réel et bouton refresh */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className="relative">
             <Activity className="h-5 w-5 text-primary" />
@@ -596,8 +596,10 @@ export function LivePage() {
         </Button>
       </div>
 
-      {/* Fil d'alertes en temps réel - source unique */}
-      <ActiveAlertsSection />
+      {/* Fil d'alertes en temps réel - source unique, pleine page */}
+      <div className="flex-1 min-h-0">
+        <ActiveAlertsSection />
+      </div>
     </div>
   );
 }
