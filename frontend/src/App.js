@@ -106,7 +106,7 @@ function AppRoutes() {
         <Route path="floor-plan" element={<FloorPlanPage />} />
         <Route path="carte" element={<FloorPlanPage />} />
         
-        <Route path="users" element={<UsersPage />} />
+        <Route path="users" element={<Navigate to="/settings" replace />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="statistics" element={<StatisticsPage />} />
         <Route path="settings" element={<SettingsPage />} />

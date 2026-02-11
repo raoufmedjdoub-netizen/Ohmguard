@@ -44,7 +44,6 @@ const navItems = [
   { path: '/organisations', icon: Building2, labelKey: 'nav.organisations' },
   { path: '/sites-batiments', icon: Layers, labelKey: 'nav.sites_buildings' },
   { path: '/carte', icon: Map, labelKey: 'nav.floor_plan' },
-  { path: '/users', icon: Users, labelKey: 'nav.users', requireAdmin: true },
   { path: '/settings', icon: Settings, labelKey: 'nav.settings' }
 ];
 
