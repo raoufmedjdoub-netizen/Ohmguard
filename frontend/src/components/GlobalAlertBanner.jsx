@@ -147,7 +147,7 @@ export function GlobalAlertBanner() {
 
   return (
     <>
-      <div data-testid="global-alert-banner" className="fixed top-14 left-0 right-0 z-40 shadow-2xl">
+      <div data-testid="global-alert-banner" className="sticky top-14 z-30 shadow-2xl">
         <div className="bg-red-900 text-white px-4 py-1.5 flex items-center justify-between text-sm">
           <div className="flex items-center gap-3">
             <AlertTriangle className="h-4 w-4 animate-pulse" />

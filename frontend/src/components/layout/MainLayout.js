@@ -47,9 +47,6 @@ export function MainLayout() {
         showMenuButton={true}
       />
       
-      {/* Bandeau d'alertes global */}
-      <GlobalAlertBanner />
-      
       {/* Overlay pour mobile quand sidebar ouverte */}
       {sidebarOpen && (
         <div 
