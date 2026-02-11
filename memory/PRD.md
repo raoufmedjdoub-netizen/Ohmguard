@@ -294,3 +294,10 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - **Files created**: `EventActionDialog.jsx`
 - **Files modified**: `server.py`, `api.js`, `GlobalAlertBanner.jsx`, `LivePage.js`, `EventDetailPage.js`, `AlertContext.js`
 
+### 2026-02-11 - Incrustation du Banner d'Alerte Global (UI Fix)
+- **Problem**: Le GlobalAlertBanner utilisait `position: fixed` qui superposait le contenu et cachait la navbar
+- **Fix**: Changed `fixed top-14 left-0 right-0 z-40` to `sticky top-14 z-30` in `GlobalAlertBanner.jsx`
+- **Fix**: Moved banner from top-level layout to inside `<main>` in `MainLayout.js` (after navbar, before SubNavbar)
+- **Result**: Banner is now embedded in the document flow, pushes content down, and navbar remains fully visible
+- **Files modified**: `GlobalAlertBanner.jsx`, `MainLayout.js`
+
