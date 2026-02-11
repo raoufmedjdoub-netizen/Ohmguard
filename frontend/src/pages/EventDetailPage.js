@@ -5,7 +5,7 @@ import { eventsAPI } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { cn, formatDate, getEventTypeColor, getSeverityColor, getStatusColor, getPresenceStatusColor } from '@/lib/utils';
+import { cn, formatDate, getEventTypeColor, getSeverityColor, getStatusColor } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
@@ -18,8 +18,104 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Crosshair,
+  TestTube,
+  Phone,
+  ArrowDownCircle,
+  Ruler
 } from 'lucide-react';
+
+const FALL_STATUS_CONFIG = {
+  fall_detected: { label: 'Chute detectee', color: 'bg-red-600 text-white', icon: AlertTriangle },
+  fall_confirmed: { label: 'Chute confirmee', color: 'bg-red-700 text-white', icon: CheckCircle },
+  calling: { label: 'Appel en cours', color: 'bg-orange-500 text-white', icon: Phone },
+  on_call: { label: 'En communication', color: 'bg-yellow-500 text-black', icon: Phone },
+  finished: { label: 'Termine', color: 'bg-green-600 text-white', icon: CheckCircle },
+  fall_exit: { label: 'Sortie de chute', color: 'bg-blue-500 text-white', icon: ArrowDownCircle },
+  canceled: { label: 'Annule', color: 'bg-gray-500 text-white', icon: XCircle },
+};
+
+function FallLocationCard({ event }) {
+  const hasLocation = event.fall_loc_x_cm != null || event.fall_loc_y_cm != null || event.fall_loc_z_cm != null;
+  if (!hasLocation) return null;
+
+  return (
+    <Card data-testid="fall-location-card">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Crosshair className="h-4 w-4" />
+          Localisation de la chute
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: 'X', value: event.fall_loc_x_cm, unit: 'cm' },
+            { label: 'Y', value: event.fall_loc_y_cm, unit: 'cm' },
+            { label: 'Z', value: event.fall_loc_z_cm, unit: 'cm' },
+          ].map(({ label, value, unit }) => (
+            <div key={label} className="text-center p-3 rounded-lg bg-accent/30">
+              <div className="text-xs text-muted-foreground mb-1">{label}</div>
+              <div className="text-lg font-mono font-bold">
+                {value != null ? `${value} ${unit}` : '-'}
+              </div>
+            </div>
+          ))}
+        </div>
+        {event.tar_height_est != null && (
+          <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+            <Ruler className="h-4 w-4" />
+            Hauteur estimee: <span className="font-mono font-bold text-foreground">{event.tar_height_est} cm</span>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function FallStatusTimeline({ history }) {
+  if (!history || history.length === 0) return null;
+
+  return (
+    <Card data-testid="fall-timeline-card">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Clock className="h-4 w-4" />
+          Chronologie de la chute
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="relative pl-6 space-y-3">
+          <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-border" />
+          {history.map((entry, idx) => {
+            const config = FALL_STATUS_CONFIG[entry.status] || { label: entry.status, color: 'bg-gray-400 text-white', icon: Activity };
+            const Icon = config.icon;
+            const isLast = idx === history.length - 1;
+            return (
+              <div key={idx} className="relative flex items-start gap-3" data-testid={`timeline-entry-${idx}`}>
+                <div className={cn(
+                  'absolute -left-4 w-4 h-4 rounded-full flex items-center justify-center ring-2 ring-background',
+                  isLast ? config.color : 'bg-muted'
+                )}>
+                  <Icon className="h-2.5 w-2.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Badge className={cn('text-xs', config.color)}>{config.label}</Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5 font-mono">
+                    {entry.timestamp ? formatDate(entry.timestamp, 'fr-FR') : '-'}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function EventDetailPage() {
   const { eventId } = useParams();
@@ -71,22 +167,15 @@ export function EventDetailPage() {
     );
   }
 
-  const eventType = event.type?.toLowerCase() || 'unknown';
-  const activeRegions = event.active_regions || [];
-  const targetCount = event.target_count || 0;
-  const presenceDetected = event.presence_detected;
+  const isFallEvent = event.type === 'FALL' && event.fall_status;
+  const fallStatusConfig = FALL_STATUS_CONFIG[event.fall_status] || null;
 
   return (
     <div data-testid="event-detail-page" className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => navigate(-1)}
-            data-testid="back-btn"
-          >
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} data-testid="back-btn">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
@@ -96,32 +185,20 @@ export function EventDetailPage() {
             </p>
           </div>
         </div>
-        
         <div className="flex items-center gap-2">
           {event.status === 'NEW' && (
-            <Button
-              variant="outline"
-              onClick={() => handleUpdateStatus('ACK')}
-              data-testid="ack-btn"
-            >
+            <Button variant="outline" onClick={() => handleUpdateStatus('ACK')} data-testid="ack-btn">
               <Clock className="h-4 w-4 mr-2" />
               {t('events.acknowledge')}
             </Button>
           )}
           {(event.status === 'NEW' || event.status === 'ACK') && (
             <>
-              <Button
-                onClick={() => handleUpdateStatus('RESOLVED')}
-                data-testid="resolve-btn"
-              >
+              <Button onClick={() => handleUpdateStatus('RESOLVED')} data-testid="resolve-btn">
                 <CheckCircle className="h-4 w-4 mr-2" />
                 {t('events.resolve')}
               </Button>
-              <Button
-                variant="ghost"
-                onClick={() => handleUpdateStatus('FALSE_ALARM')}
-                data-testid="false-alarm-btn"
-              >
+              <Button variant="ghost" onClick={() => handleUpdateStatus('FALSE_ALARM')} data-testid="false-alarm-btn">
                 <XCircle className="h-4 w-4 mr-2" />
                 {t('events.mark_false_alarm')}
               </Button>
@@ -130,17 +207,21 @@ export function EventDetailPage() {
         </div>
       </div>
 
-      {/* Main Info Card */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Event Overview */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>{t('events.event_type')}</span>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Badge className={cn('text-lg px-4 py-1', getEventTypeColor(event.type))}>
-                  {t(`events.type_${eventType}`)}
+                  {t(`events.type_${event.type?.toLowerCase() || 'unknown'}`)}
                 </Badge>
+                {isFallEvent && fallStatusConfig && (
+                  <Badge className={cn('text-lg px-4 py-1', fallStatusConfig.color)} data-testid="fall-status-badge">
+                    {fallStatusConfig.label}
+                  </Badge>
+                )}
                 <Badge variant="outline" className={cn('text-lg px-4 py-1 border', getStatusColor(event.status))}>
                   {t(`events.status_${event.status?.toLowerCase()}`)}
                 </Badge>
@@ -148,52 +229,82 @@ export function EventDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Presence Status */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 rounded-lg bg-accent/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <User className="h-5 w-5 text-primary" />
-                  <span className="text-sm font-medium">{t('events.presence')}</span>
-                </div>
-                <Badge 
-                  variant="outline" 
-                  className={cn(
-                    'text-lg px-4 py-2',
-                    presenceDetected 
-                      ? 'bg-success/20 text-success border-success/50' 
-                      : 'bg-muted/50 text-muted-foreground border-muted'
-                  )}
-                >
-                  {presenceDetected ? t('events.presence_detected') : t('events.no_presence')}
-                </Badge>
+            {/* Fall-specific info cards */}
+            {isFallEvent && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="fall-info-grid">
+                {event.is_simulated && (
+                  <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                    <div className="flex items-center gap-2 text-yellow-600">
+                      <TestTube className="h-4 w-4" />
+                      <span className="text-sm font-medium">Simule</span>
+                    </div>
+                  </div>
+                )}
+                {event.is_learning && (
+                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                    <div className="flex items-center gap-2 text-blue-600">
+                      <Activity className="h-4 w-4" />
+                      <span className="text-sm font-medium">Mode apprentissage</span>
+                    </div>
+                  </div>
+                )}
+                {event.is_silent && (
+                  <div className="p-3 rounded-lg bg-gray-500/10 border border-gray-500/30">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Activity className="h-4 w-4" />
+                      <span className="text-sm font-medium">Mode silencieux</span>
+                    </div>
+                  </div>
+                )}
+                {event.exit_reason && (
+                  <div className="p-3 rounded-lg bg-accent/30 col-span-full">
+                    <span className="text-xs text-muted-foreground">Raison de sortie: </span>
+                    <span className="text-sm font-mono">{event.exit_reason}</span>
+                  </div>
+                )}
               </div>
-              
-              <div className="p-4 rounded-lg bg-accent/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <MapPin className="h-5 w-5 text-primary" />
-                  <span className="text-sm font-medium">{t('events.active_regions')}</span>
+            )}
+
+            {/* Generic presence/regions (for non-fall events) */}
+            {!isFallEvent && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 rounded-lg bg-accent/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <User className="h-5 w-5 text-primary" />
+                    <span className="text-sm font-medium">{t('events.presence')}</span>
+                  </div>
+                  <Badge variant="outline" className={cn('text-lg px-4 py-2',
+                    event.presence_detected ? 'bg-success/20 text-success border-success/50' : 'bg-muted/50 text-muted-foreground border-muted'
+                  )}>
+                    {event.presence_detected ? t('events.presence_detected') : t('events.no_presence')}
+                  </Badge>
                 </div>
-                <div className="text-lg font-mono">
-                  {activeRegions.length > 0 
-                    ? activeRegions.join(', ')
-                    : <span className="text-muted-foreground">{t('events.no_active_regions')}</span>
-                  }
+                <div className="p-4 rounded-lg bg-accent/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MapPin className="h-5 w-5 text-primary" />
+                    <span className="text-sm font-medium">{t('events.active_regions')}</span>
+                  </div>
+                  <div className="text-lg font-mono">
+                    {(event.active_regions || []).length > 0
+                      ? (event.active_regions || []).join(', ')
+                      : <span className="text-muted-foreground">{t('events.no_active_regions')}</span>
+                    }
+                  </div>
+                </div>
+                <div className="p-4 rounded-lg bg-accent/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Target className="h-5 w-5 text-primary" />
+                    <span className="text-sm font-medium">{t('events.target_count')}</span>
+                  </div>
+                  <div className="text-2xl font-bold">
+                    {(event.target_count || 0) > 0
+                      ? event.target_count
+                      : <span className="text-muted-foreground text-lg">{t('events.no_targets')}</span>
+                    }
+                  </div>
                 </div>
               </div>
-              
-              <div className="p-4 rounded-lg bg-accent/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <Target className="h-5 w-5 text-primary" />
-                  <span className="text-sm font-medium">{t('events.target_count')}</span>
-                </div>
-                <div className="text-2xl font-bold">
-                  {targetCount > 0 
-                    ? targetCount 
-                    : <span className="text-muted-foreground text-lg">{t('events.no_targets')}</span>
-                  }
-                </div>
-              </div>
-            </div>
+            )}
 
             {/* Timestamps */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border">
@@ -225,12 +336,12 @@ export function EventDetailPage() {
                   <Activity className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium">{event.sensor_name || 'Unknown Sensor'}</p>
+                  <p className="font-medium">{event.radar_name || event.sensor_name || 'Unknown Sensor'}</p>
                   <p className="text-sm text-primary font-mono">
                     Device ID: {event.device_id || event.sensor_id?.substring(0, 12)}
                   </p>
-                  {event.sensor_serial && (
-                    <p className="text-xs text-muted-foreground font-mono">SN: {event.sensor_serial}</p>
+                  {event.location_path && (
+                    <p className="text-xs text-muted-foreground">{event.location_path}</p>
                   )}
                 </div>
               </div>
@@ -238,37 +349,35 @@ export function EventDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Quick Stats */}
+        {/* Right column */}
         <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">{t('events.confidence')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-primary">
-                {((event.confidence || 1) * 100).toFixed(0)}%
-              </div>
-            </CardContent>
-          </Card>
-          
+          {/* Fall location */}
+          {isFallEvent && <FallLocationCard event={event} />}
+
+          {/* Fall timeline */}
+          {isFallEvent && <FallStatusTimeline history={event.fall_status_history} />}
+
+          {/* Quick stats (non-fall) */}
+          {!isFallEvent && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">{t('events.confidence')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-4xl font-bold text-primary">
+                  {((event.confidence || 1) * 100).toFixed(0)}%
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">{t('events.site')}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="font-mono text-sm text-muted-foreground">
-                {event.site_id?.substring(0, 12) || '-'}
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">{t('events.zone')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="font-mono text-sm text-muted-foreground">
-                {event.zone_id?.substring(0, 12) || '-'}
+                {event.location?.building_name || event.site_id?.substring(0, 12) || '-'}
               </p>
             </CardContent>
           </Card>
