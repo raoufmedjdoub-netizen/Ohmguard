@@ -368,3 +368,69 @@ def normalize_fall_event(
             "payload": fall_payload.model_dump()
         }
     }
+
+
+def normalize_sensitive_fall_event(
+    device_id: str,
+    payload: SensitiveFallEventPayload,
+    sensor_id: Optional[str] = None,
+    site_id: Optional[str] = None,
+    zone_id: Optional[str] = None,
+    tenant_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Transform raw Vayyar Sensitive Fall Event (type=8) payload into a normalized event document.
+    Sensitive fall events with the same `timestamp` are part of the same flow.
+    Lifecycle: fall_suspected → calling → finished / fall_exit
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    occurred_at = epoch_ms_to_iso(payload.timestamp)
+
+    fall_status = payload.status
+    if fall_status in ("fall_suspected", "calling"):
+        severity = EventSeverity.HIGH.value
+    elif fall_status == "fall_exit":
+        severity = EventSeverity.MED.value
+    else:
+        severity = EventSeverity.HIGH.value
+
+    return {
+        "id": str(uuid.uuid4()),
+        "device_id": device_id,
+        "sensor_id": sensor_id,
+        "tenant_id": tenant_id,
+        "site_id": site_id,
+        "zone_id": zone_id,
+        "type": RadarEventType.SENSITIVE_FALL.value,
+        "severity": severity,
+        "status": EventStatus.NEW.value,
+        "confidence": payload.confidenceLevel,
+        "timestamp": now,
+        "occurred_at": occurred_at,
+        "raw_timestamp": payload.timestamp,
+        # Sensitive fall-specific fields
+        "fall_status": fall_status,
+        "fall_status_history": [{
+            "status": fall_status,
+            "timestamp": now,
+            "raw_timestamp": payload.timestamp
+        }],
+        "fall_loc_x_cm": payload.fallLocX_cm,
+        "fall_loc_y_cm": payload.fallLocY_cm,
+        "fall_loc_z_cm": payload.fallLocZ_cm,
+        "confidence_level": payload.confidenceLevel,
+        "suspected_events_counter": payload.suspectedEventsCounter,
+        "last_event_confidence": payload.lastEventConfidence,
+        "is_simulated": payload.isSimulated,
+        "is_learning": payload.isLearning,
+        "is_silent": payload.isSilent,
+        # Presence fields (set defaults)
+        "presence_status": PresenceStatus.DETECTED.value,
+        "presence_detected": True,
+        "active_regions": [],
+        "target_count": 0,
+        "raw_payload": {
+            "type": 8,
+            "payload": payload.model_dump()
+        }
+    }
