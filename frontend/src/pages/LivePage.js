@@ -90,138 +90,55 @@ function ElapsedTimer({ since }) {
 function AlertFeedItem({ alert, onAction, onView }) {
   const isAI = alert.alertSource === 'ai_camera' || alert.type === 'AI_ALERT';
   const isAcked = alert.status === 'ACK' || alert.status === 'ACKNOWLEDGED';
-
-  // Config for radar events
   const radarConfig = EVENT_TYPE_CONFIG[alert.type];
-  // Config for AI events
   const aiConfig = isAI ? (AI_WARNING_LABELS[alert.warning_type] || { label: alert.warning_type || 'IA', color: 'bg-violet-600', border: 'border-violet-500' }) : null;
-
   const config = isAI ? aiConfig : (radarConfig || EVENT_TYPE_CONFIG.FALL);
   const location = isAI
     ? (alert.location_path || alert.channel_name || 'Camera IA')
-    : (alert.location_path || alert.sensor_name || alert.radar_name || 'Localisation inconnue');
-
+    : (alert.location_path || alert.sensor_name || alert.radar_name || '—');
   const fallStatus = alert.fall_status ? FALL_STATUS_LABELS[alert.fall_status] : null;
   const confidence = isAI && alert.confidence ? Math.round(alert.confidence * 100) : null;
-  const eventTime = alert.timestamp || alert.occurred_at || alert.created_at;
-  const hasCoords = alert.fall_loc_x_cm != null;
+
+  // Color mapping for blinking border
+  const blinkColor = isAI
+    ? (aiConfig?.border || 'border-violet-500')
+    : (radarConfig?.borderColor || 'border-red-500');
 
   return (
     <div
       data-testid={`alert-feed-${alert.id}`}
       className={cn(
-        'group flex items-stretch gap-0 transition-all duration-300',
-        isAcked && 'opacity-60'
+        'rounded-md border px-3 py-1.5 mb-1 transition-all',
+        isAcked
+          ? 'border-gray-200 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-900/30 opacity-60'
+          : `${blinkColor} bg-white dark:bg-gray-950 shadow-sm animate-alert-blink`
       )}
     >
-      {/* Timeline line + dot */}
-      <div className="flex flex-col items-center w-8 flex-shrink-0">
-        <div className={cn(
-          'w-3 h-3 rounded-full mt-4 flex-shrink-0 ring-2 ring-background',
-          isAcked ? 'bg-gray-400' : (isAI ? 'bg-violet-500' : config.color),
-          !isAcked && 'animate-pulse'
-        )} />
-        <div className="w-px flex-1 bg-border" />
+      {/* Line 1: type + badges + location + time */}
+      <div className="flex items-center gap-1.5 min-w-0">
+        {isAI ? <Camera className="h-3.5 w-3.5 text-violet-500 flex-shrink-0" /> : <AlertTriangle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />}
+        <Badge className={cn('text-[10px] font-bold text-white py-0 px-1.5', config.color)}>{config.label}</Badge>
+        {fallStatus && <Badge className={cn('text-[10px] py-0 px-1', fallStatus.color)}>{fallStatus.label}</Badge>}
+        {confidence !== null && <span className="text-[10px] font-mono text-muted-foreground">{confidence}%</span>}
+        {alert.is_simulated && <Badge className="bg-yellow-400/80 text-yellow-900 text-[10px] py-0 px-1">TEST</Badge>}
+        {isAcked && <Badge variant="outline" className="text-[10px] py-0 px-1 border-blue-400 text-blue-500">ACK</Badge>}
+        <span className="mx-0.5 text-muted-foreground">|</span>
+        <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+        <span className="text-xs font-medium truncate">{location}</span>
+        {isAI && alert.warning_text && <span className="text-[10px] text-muted-foreground italic truncate max-w-[140px] hidden xl:inline">{alert.warning_text}</span>}
+        <div className="ml-auto flex items-center gap-0.5 text-[10px] text-muted-foreground flex-shrink-0">
+          <Clock className="h-3 w-3" />
+          <ElapsedTimer since={alert.addedAt || Date.now()} />
+        </div>
       </div>
-
-      {/* Alert content */}
-      <div className={cn(
-        'flex-1 rounded-lg border p-3 mb-2 transition-all',
-        isAcked
-          ? 'border-gray-200 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-900/30'
-          : `${config.border} bg-white dark:bg-gray-950 shadow-sm hover:shadow-md`
-      )}>
-        {/* Top row: type badge + location + time */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {isAI ? (
-            <Camera className="h-4 w-4 text-violet-500 flex-shrink-0" />
-          ) : (
-            <AlertTriangle className={cn('h-4 w-4 flex-shrink-0', isAcked ? 'text-gray-400' : 'text-red-500')} />
-          )}
-          <Badge className={cn('text-[11px] font-bold text-white', config.color)}>
-            {config.label}
-          </Badge>
-          {fallStatus && (
-            <Badge className={cn('text-[11px]', fallStatus.color)}>{fallStatus.label}</Badge>
-          )}
-          {confidence !== null && (
-            <Badge variant="outline" className="text-[11px] font-mono">{confidence}%</Badge>
-          )}
-          {alert.is_simulated && (
-            <Badge className="bg-yellow-400/80 text-yellow-900 text-[11px]">TEST</Badge>
-          )}
-          {isAcked && (
-            <Badge variant="outline" className="text-[11px] border-blue-400 text-blue-600">Acquitte</Badge>
-          )}
-          {alert.assigned_to_name && (
-            <Badge variant="outline" className="text-[11px] border-purple-400 text-purple-600">{alert.assigned_to_name}</Badge>
-          )}
-
-          <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
-            <Clock className="h-3 w-3" />
-            <ElapsedTimer since={alert.addedAt || Date.now()} />
-          </div>
-        </div>
-
-        {/* Middle row: location + optional coordinates */}
-        <div className="mt-1.5 flex items-center gap-2">
-          <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-          <span className="text-sm font-medium">{location}</span>
-          {hasCoords && (
-            <span className="text-[11px] font-mono text-muted-foreground ml-2">
-              <Crosshair className="h-3 w-3 inline mr-0.5" />
-              X:{alert.fall_loc_x_cm} Y:{alert.fall_loc_y_cm} Z:{alert.fall_loc_z_cm}
-            </span>
-          )}
-          {isAI && alert.warning_text && (
-            <span className="text-xs text-muted-foreground ml-2 italic truncate max-w-[200px]">
-              {alert.warning_text}
-            </span>
-          )}
-        </div>
-
-        {/* Bottom row: actions */}
-        <div className="mt-2 flex items-center gap-1 flex-wrap">
-          {!isAcked && (
-            <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => onAction(alert, 'ACK')}>
-              Acquitter
-            </Button>
-          )}
-          <Button size="sm" className="h-6 text-[11px] px-2 bg-green-600 hover:bg-green-700 text-white" onClick={() => onAction(alert, 'RESOLVED')}>
-            <CheckCircle className="h-3 w-3 mr-1" />Resoudre
-          </Button>
-          <Button size="sm" variant="ghost" className="h-6 text-[11px] px-2" onClick={() => onAction(alert, 'FALSE_ALARM')}>
-            <XCircle className="h-3 w-3 mr-1" />Faux
-          </Button>
-          {!isAI && (
-            <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => onAction(alert, 'ASSIGN')}>
-              <UserPlus className="h-3 w-3 mr-1" />Assigner
-            </Button>
-          )}
-          {isAI && alert.video_url && (
-            <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => window.open(alert.video_url, '_blank')}>
-              <Video className="h-3 w-3 mr-1" />Video
-            </Button>
-          )}
-          <Button size="sm" variant="ghost" className="h-6 text-[11px] px-2 ml-auto" onClick={() => onView(alert)}>
-            <Eye className="h-3 w-3 mr-1" />Details
-          </Button>
-        </div>
-
-        {/* Fall status timeline (compact) */}
-        {alert.fall_status_history && alert.fall_status_history.length > 1 && (
-          <div className="mt-2 pt-1.5 border-t border-border/50 flex items-center gap-1 flex-wrap">
-            {alert.fall_status_history.slice(-4).map((entry, idx) => {
-              const c = FALL_STATUS_LABELS[entry.status] || { label: entry.status, color: 'bg-gray-400 text-white' };
-              return (
-                <React.Fragment key={idx}>
-                  {idx > 0 && <span className="text-muted-foreground text-[10px]">→</span>}
-                  <Badge className={cn('text-[10px] py-0', c.color)}>{c.label}</Badge>
-                </React.Fragment>
-              );
-            })}
-          </div>
-        )}
+      {/* Line 2: actions */}
+      <div className="flex items-center gap-1 mt-0.5">
+        {!isAcked && <Button size="sm" variant="outline" className="h-5 text-[10px] px-1.5 py-0" onClick={() => onAction(alert, 'ACK')}>Acquitter</Button>}
+        <Button size="sm" className="h-5 text-[10px] px-1.5 py-0 bg-green-600 hover:bg-green-700 text-white" onClick={() => onAction(alert, 'RESOLVED')}>Resoudre</Button>
+        <Button size="sm" variant="ghost" className="h-5 text-[10px] px-1.5 py-0" onClick={() => onAction(alert, 'FALSE_ALARM')}>Faux</Button>
+        {!isAI && <Button size="sm" variant="outline" className="h-5 text-[10px] px-1.5 py-0" onClick={() => onAction(alert, 'ASSIGN')}><UserPlus className="h-2.5 w-2.5" /></Button>}
+        {isAI && alert.video_url && <Button size="sm" variant="outline" className="h-5 text-[10px] px-1.5 py-0" onClick={() => window.open(alert.video_url, '_blank')}><Video className="h-2.5 w-2.5 mr-0.5" />Video</Button>}
+        <Button size="sm" variant="ghost" className="h-5 text-[10px] px-1.5 py-0 ml-auto" onClick={() => onView(alert)}><Eye className="h-2.5 w-2.5 mr-0.5" />Details</Button>
       </div>
     </div>
   );
