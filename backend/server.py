@@ -384,7 +384,9 @@ class Event(EventBase):
     raw_timestamp: Optional[int] = None
     status: EventStatus = "NEW"
     assigned_to: Optional[str] = None
+    assigned_to_name: Optional[str] = None
     notes: Optional[str] = None
+    comments: Optional[List[dict]] = None
     # Location fields (enriched from sensor assignment)
     location_path: Optional[str] = None
     location: Optional[dict] = None
