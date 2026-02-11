@@ -894,7 +894,7 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
           <DialogContent aria-describedby="reset-pw-desc">
             <DialogHeader>
               <DialogTitle>Réinitialiser le mot de passe</DialogTitle>
-              <DialogDescription>
+              <DialogDescription id="reset-pw-desc">
                 Nouveau mot de passe pour {user.user_full_name || user.user_email}
               </DialogDescription>
             </DialogHeader>
