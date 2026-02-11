@@ -359,17 +359,11 @@ export function LivePage() {
     setLoading(true);
     
     try {
-      // Ne PAS charger les événements - uniquement les métadonnées
-      const [clientsRes, sensorsRes] = await Promise.all([
-        api.get('/clients'),
-        api.get('/sensors')
-      ]);
+      const sensorsRes = await api.get('/sensors');
       
-      // Pas d'événements au démarrage - page vide, temps réel uniquement
       setEvents([]);
-      setClients(clientsRes.data);
       
-      // Statuts des radars (pour info online/offline)
+      // Statuts des radars (pour notifications online/offline)
       const statuses = {};
       sensorsRes.data.forEach(sensor => {
         statuses[sensor.id] = {
@@ -388,18 +382,6 @@ export function LivePage() {
       isFetchingRef.current = false;
     }
   }, []);
-
-  // Charger les bâtiments quand un client est sélectionné
-  useEffect(() => {
-    if (selectedClient && selectedClient !== 'all') {
-      api.get(`/clients/${selectedClient}/buildings`).then(res => {
-        setBuildings(res.data);
-      }).catch(() => setBuildings([]));
-    } else {
-      setBuildings([]);
-      setSelectedBuilding('all');
-    }
-  }, [selectedClient]);
 
   useEffect(() => {
     fetchData();
