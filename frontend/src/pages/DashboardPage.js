@@ -4,7 +4,7 @@ import { statsAPI, eventsAPI } from '@/lib/api';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { cn, formatRelativeTime, getEventTypeColor, getSeverityColor, getStatusColor } from '@/lib/utils';
+import { cn, formatRelativeTime, getEventTypeColor, getEventTypeLabel, getSeverityColor, getStatusColor } from '@/lib/utils';
 import {
   AlertTriangle,
   CheckCircle,
@@ -175,7 +175,7 @@ export function DashboardPage() {
                 >
                   <div className="flex items-center gap-3">
                     <Badge className={cn('font-mono text-xs', getEventTypeColor(event.type))}>
-                      {event.type}
+                      {getEventTypeLabel(event.type)}
                     </Badge>
                     <Badge variant="outline" className={cn(getSeverityColor(event.severity))}>
                       {event.severity}
