@@ -87,6 +87,7 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - [x] Presence History page (frontend)
 - [x] Bulk UpdateBaseUrl MQTT command (fixed 2026-02-10)
 - [x] Fall Events implementation with Vayyar payload (2026-02-11)
+- [x] Incrustation du banner d'alerte global (2026-02-11)
 - [ ] Test SENSITIVE_FALL (type 8) and BED_EXIT (type 10) events
 - [ ] WebSocket rooms by building/floor for push updates
 
