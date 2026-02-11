@@ -609,7 +609,7 @@ export function FloorPlanPage() {
             if (event.event_type === 'FALL' || event.event_type === 'FALL_DETECTED') {
               newStatus = 'ALERT';
               // Show toast notification
-              toast.error(`🚨 Alerte chute détectée - ${sensor.name || sensor.device_id}`, {
+              toast.error(`Alerte chute détectée - ${sensor.room_name || sensor.name || 'Localisation inconnue'}`, {
                 duration: 5000
               });
             } else if (event.event_type === 'PRESENCE') {
