@@ -259,7 +259,7 @@ export const ENUM_VALUES = {
     { value: 1, label: "Allume (AllOn)" },
     { value: 2, label: "Statut uniquement (StatusOnly)" }
   ],
-  ledPolicy: ["ErrorsOnly", "AlwaysOn", "Off"],
+  ledPolicy: ["ErrorsOnly", "StatusOnly", "Undefined"],
   telemetryPolicy: ["Off", "On", "OnDemand"],
   telemetryTransport: ["MqttQos0", "MqttQos1", "Http"],
   trackerTargetsDebugPolicy: ["OFF", "ON", "VERBOSE"],
@@ -280,8 +280,8 @@ export const ENUM_VALUES = {
   rfBandWidth: ["BW500", "BW1000", "BW1500"],
   productType: ["Falling", "Presence", "Tracking"],
   bedExitWallSide: [
-    { value: 0, label: "Gauche" },
-    { value: 1, label: "Droite" }
+    { value: "Left", label: "Gauche" },
+    { value: "Right", label: "Droite" }
   ]
 };
 
