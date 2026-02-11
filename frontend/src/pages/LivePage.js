@@ -113,37 +113,36 @@ function AlertFeedItem({ alert, onAction, onView }) {
     <div
       data-testid={`alert-feed-${alert.id}`}
       className={cn(
-        'rounded-lg border-2 px-5 py-3 mb-2.5 transition-all',
+        'rounded-lg border-2 px-5 py-3.5 mb-2.5 transition-all',
         isAcked
           ? 'border-gray-200 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-900/30 opacity-60'
           : `${blinkColor} bg-white dark:bg-gray-950 shadow-md animate-alert-blink`
       )}
     >
-      {/* Line 1: type + badges + location + time */}
-      <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center gap-2.5 min-w-0">
+        {/* Left: info */}
         {isAI ? <Camera className="h-5 w-5 text-violet-500 flex-shrink-0" /> : <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />}
-        <Badge className={cn('text-xs font-bold text-white py-0.5 px-2', config.color)}>{config.label}</Badge>
-        {fallStatus && <Badge className={cn('text-xs py-0.5 px-1.5', fallStatus.color)}>{fallStatus.label}</Badge>}
-        {confidence !== null && <span className="text-xs font-mono text-muted-foreground">{confidence}%</span>}
-        {alert.is_simulated && <Badge className="bg-yellow-400/80 text-yellow-900 text-xs py-0.5 px-1.5">TEST</Badge>}
-        {isAcked && <Badge variant="outline" className="text-xs py-0.5 px-1.5 border-blue-400 text-blue-500">ACK</Badge>}
+        <Badge className={cn('text-sm font-bold text-white py-0.5 px-2.5', config.color)}>{config.label}</Badge>
+        {fallStatus && <Badge className={cn('text-sm py-0.5 px-2', fallStatus.color)}>{fallStatus.label}</Badge>}
+        {confidence !== null && <span className="text-sm font-mono text-muted-foreground">{confidence}%</span>}
+        {alert.is_simulated && <Badge className="bg-yellow-400/80 text-yellow-900 text-sm py-0.5 px-2">TEST</Badge>}
+        {isAcked && <Badge variant="outline" className="text-sm py-0.5 px-2 border-blue-400 text-blue-500">ACK</Badge>}
         <span className="mx-1 text-muted-foreground">|</span>
         <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-        <span className="text-sm font-medium truncate">{location}</span>
-        {isAI && alert.warning_text && <span className="text-xs text-muted-foreground italic truncate max-w-[200px] hidden xl:inline">{alert.warning_text}</span>}
-        <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
+        <span className="text-sm font-semibold truncate max-w-[280px]">{location}</span>
+        {isAI && alert.warning_text && <span className="text-xs text-muted-foreground italic truncate max-w-[180px] hidden xl:inline">{alert.warning_text}</span>}
+        <div className="flex items-center gap-1 text-sm text-muted-foreground flex-shrink-0">
           <Clock className="h-4 w-4" />
           <ElapsedTimer since={alert.addedAt || Date.now()} />
         </div>
-      </div>
-      {/* Line 2: actions */}
-      <div className="flex items-center gap-2 mt-1.5">
-        {!isAcked && <Button size="sm" variant="outline" className="h-7 text-xs px-3" onClick={() => onAction(alert, 'ACK')}>Acquitter</Button>}
-        <Button size="sm" className="h-7 text-xs px-3 bg-green-600 hover:bg-green-700 text-white" onClick={() => onAction(alert, 'RESOLVED')}>Resoudre</Button>
-        <Button size="sm" variant="ghost" className="h-7 text-xs px-3" onClick={() => onAction(alert, 'FALSE_ALARM')}>Faux</Button>
-        {!isAI && <Button size="sm" variant="outline" className="h-7 text-xs px-2.5" onClick={() => onAction(alert, 'ASSIGN')}><UserPlus className="h-3.5 w-3.5" /></Button>}
-        {isAI && alert.video_url && <Button size="sm" variant="outline" className="h-7 text-xs px-3" onClick={() => window.open(alert.video_url, '_blank')}><Video className="h-3.5 w-3.5 mr-1" />Video</Button>}
-        <Button size="sm" variant="ghost" className="h-7 text-xs px-3 ml-auto" onClick={() => onView(alert)}><Eye className="h-3.5 w-3.5 mr-1" />Details</Button>
+
+        {/* Right: actions */}
+        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+          {!isAcked && <Button size="sm" variant="outline" className="h-8 text-sm px-3" onClick={() => onAction(alert, 'ACK')}>Acquitter</Button>}
+          <Button size="sm" variant="ghost" className="h-8 text-sm px-3" onClick={() => onAction(alert, 'FALSE_ALARM')}>Fausse alerte</Button>
+          {isAI && alert.video_url && <Button size="sm" variant="outline" className="h-8 text-sm px-3" onClick={() => window.open(alert.video_url, '_blank')}><Video className="h-4 w-4 mr-1" />Video</Button>}
+          <Button size="sm" variant="ghost" className="h-8 text-sm px-3" onClick={() => onView(alert)}><Eye className="h-4 w-4 mr-1" />Details</Button>
+        </div>
       </div>
     </div>
   );
