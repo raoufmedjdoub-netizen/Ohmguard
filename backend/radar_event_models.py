@@ -44,6 +44,14 @@ class FallEventStatus(str, Enum):
     CANCELED = "canceled"
 
 
+class SensitiveFallEventStatus(str, Enum):
+    """Sensitive Fall event lifecycle statuses from Vayyar (type 8)"""
+    FALL_SUSPECTED = "fall_suspected"
+    CALLING = "calling"
+    FINISHED = "finished"
+    FALL_EXIT = "fall_exit"
+
+
 class PresenceStatus(str, Enum):
     """Presence detection status"""
     DETECTED = "DETECTED"
