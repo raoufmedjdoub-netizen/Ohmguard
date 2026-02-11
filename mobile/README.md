@@ -58,7 +58,7 @@ L'URL de l'API est configurée dans `app.json` :
 {
   "expo": {
     "extra": {
-      "apiUrl": "https://config-page-repair.preview.emergentagent.com/api"
+      "apiUrl": "https://template-manager-hub.preview.emergentagent.com/api"
     }
   }
 }
