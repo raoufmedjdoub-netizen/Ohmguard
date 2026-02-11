@@ -232,6 +232,7 @@ function ActiveAlertsSection() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogAction, setDialogAction] = useState('ACK');
   const [dialogEvent, setDialogEvent] = useState(null);
+  const [filter, setFilter] = useState('all'); // 'all' | 'pending' | 'radar' | 'ai' | event type keys
 
   const handleAction = (alert, action) => {
     setDialogEvent(alert);
@@ -256,14 +257,34 @@ function ActiveAlertsSection() {
     }
   };
 
+  const toggleFilter = (f) => setFilter(prev => prev === f ? 'all' : f);
+
   if (activeAlerts.length === 0) return null;
 
   const unackedCount = activeAlerts.filter(a => a.status !== 'ACK' && a.status !== 'ACKNOWLEDGED').length;
   const radarCount = activeAlerts.filter(a => a.alertSource !== 'ai_camera').length;
   const aiCount = activeAlerts.filter(a => a.alertSource === 'ai_camera').length;
 
+  // Count by event type
+  const typeCounts = {};
+  activeAlerts.forEach(a => {
+    const key = a.alertSource === 'ai_camera' ? (a.warning_type || 'AI') : (a.type || 'FALL');
+    typeCounts[key] = (typeCounts[key] || 0) + 1;
+  });
+
+  // Apply filter
+  const filtered = activeAlerts.filter(a => {
+    if (filter === 'all') return true;
+    if (filter === 'pending') return a.status !== 'ACK' && a.status !== 'ACKNOWLEDGED';
+    if (filter === 'radar') return a.alertSource !== 'ai_camera';
+    if (filter === 'ai') return a.alertSource === 'ai_camera';
+    // Filter by specific event type
+    if (a.alertSource === 'ai_camera') return a.warning_type === filter;
+    return a.type === filter;
+  });
+
   // Sort by time - newest first
-  const sorted = [...activeAlerts].sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+  const sorted = [...filtered].sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
 
   return (
     <>
@@ -278,23 +299,90 @@ function ActiveAlertsSection() {
               </span>
             </div>
             Fil d'alertes ({activeAlerts.length})
+          </CardTitle>
+          {/* Filter badges */}
+          <div className="flex items-center gap-1.5 flex-wrap mt-1">
             {unackedCount > 0 && (
-              <Badge className="bg-red-600 text-white text-[11px]">{unackedCount} en attente</Badge>
+              <Badge
+                data-testid="filter-pending"
+                className={cn(
+                  'text-[11px] cursor-pointer transition-all select-none',
+                  filter === 'pending'
+                    ? 'bg-red-600 text-white ring-2 ring-red-400 ring-offset-1'
+                    : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300'
+                )}
+                onClick={() => toggleFilter('pending')}
+              >
+                {unackedCount} en attente
+              </Badge>
             )}
             {radarCount > 0 && (
-              <Badge variant="outline" className="text-[11px] border-red-300 text-red-600">
+              <Badge
+                data-testid="filter-radar"
+                className={cn(
+                  'text-[11px] cursor-pointer transition-all select-none',
+                  filter === 'radar'
+                    ? 'bg-red-600 text-white ring-2 ring-red-400 ring-offset-1'
+                    : 'bg-transparent border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30'
+                )}
+                onClick={() => toggleFilter('radar')}
+              >
                 <Radio className="h-3 w-3 mr-0.5" />{radarCount} radar
               </Badge>
             )}
             {aiCount > 0 && (
-              <Badge variant="outline" className="text-[11px] border-violet-300 text-violet-600">
+              <Badge
+                data-testid="filter-ai"
+                className={cn(
+                  'text-[11px] cursor-pointer transition-all select-none',
+                  filter === 'ai'
+                    ? 'bg-violet-600 text-white ring-2 ring-violet-400 ring-offset-1'
+                    : 'bg-transparent border border-violet-300 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30'
+                )}
+                onClick={() => toggleFilter('ai')}
+              >
                 <Camera className="h-3 w-3 mr-0.5" />{aiCount} IA
               </Badge>
             )}
-          </CardTitle>
+            <span className="w-px h-4 bg-border mx-0.5" />
+            {Object.entries(typeCounts).map(([type, count]) => {
+              const radarCfg = EVENT_TYPE_CONFIG[type];
+              const aiCfg = AI_WARNING_LABELS[type];
+              const label = radarCfg?.label || aiCfg?.label || type;
+              const isActive = filter === type;
+              return (
+                <Badge
+                  key={type}
+                  data-testid={`filter-${type}`}
+                  className={cn(
+                    'text-[11px] cursor-pointer transition-all select-none',
+                    isActive
+                      ? cn('text-white ring-2 ring-offset-1', radarCfg?.color || aiCfg?.color || 'bg-gray-600', radarCfg ? 'ring-red-400' : 'ring-violet-400')
+                      : 'bg-transparent border border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-900'
+                  )}
+                  onClick={() => toggleFilter(type)}
+                >
+                  {label} ({count})
+                </Badge>
+              );
+            })}
+            {filter !== 'all' && (
+              <Badge
+                data-testid="filter-clear"
+                className="text-[11px] cursor-pointer bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-400 select-none"
+                onClick={() => setFilter('all')}
+              >
+                <X className="h-3 w-3 mr-0.5" />Tout
+              </Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-3 pl-1 max-h-[420px] overflow-y-auto">
-          {sorted.map(alert => (
+          {sorted.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              Aucune alerte pour ce filtre
+            </div>
+          ) : sorted.map(alert => (
             <AlertFeedItem
               key={alert.id}
               alert={alert}
