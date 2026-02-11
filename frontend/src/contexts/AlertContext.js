@@ -77,22 +77,23 @@ export function AlertProvider({ children }) {
           }
         }
         
-        // Load critical AI alerts (NEW status only)
-        try {
-          const aiRes = await api.get('/ai-events', {
-            params: { status: 'NEW', limit: 20 }
-          });
-          if (aiRes.data?.length) {
-            const criticalAi = aiRes.data.filter(e => CRITICAL_AI_TYPES.includes(e.warning_type));
-            allAlerts.push(...criticalAi.map(e => ({
-              ...e,
-              type: 'AI_ALERT',
-              alertSource: 'ai_camera',
-              addedAt: new Date(e.timestamp || e.created_at).getTime() || Date.now(),
-              updatedAt: Date.now()
-            })));
-          }
-        } catch {}
+        // Load critical AI alerts (NEW + ACK status)
+        for (const aiStatus of ['NEW', 'ACK', 'ACKNOWLEDGED']) {
+          try {
+            const aiRes = await api.get('/ai-events', {
+              params: { status: aiStatus, limit: 50 }
+            });
+            if (aiRes.data?.length) {
+              allAlerts.push(...aiRes.data.map(e => ({
+                ...e,
+                type: 'AI_ALERT',
+                alertSource: 'ai_camera',
+                addedAt: new Date(e.timestamp || e.created_at).getTime() || Date.now(),
+                updatedAt: Date.now()
+              })));
+            }
+          } catch {}
+        }
         
         if (allAlerts.length > 0) {
           setActiveAlerts(allAlerts);
@@ -203,7 +204,7 @@ export function AlertProvider({ children }) {
       }
       else if (message.type === 'new_ai_event') {
         const event = message.event;
-        if (event && CRITICAL_AI_TYPES.includes(event.warning_type)) {
+        if (event) {
           addAlert({
             ...event,
             type: 'AI_ALERT',
