@@ -195,3 +195,34 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - **Result**: Configuration can now be saved successfully (toast: "Configuration envoyée (v1)")
 - **Files modified**: `frontend/src/lib/vayyarConfigSchema.js`, `backend/vayyar_config_schema.py`
 
+### 2026-02-11 - Bulk Config Send & Template Management
+- **Bulk Config Send**: New feature to send configuration to multiple selected radars at once
+  - Button "Envoyer Config" appears when radars are selected on RadarsPage
+  - Select a template, then send to all selected radars
+  - Progress reporting: success/failure count per radar
+- **Template Management**: Full CRUD for configuration templates
+  - Create templates with name, description, and full config (using DEFAULT_CONFIG)
+  - System templates (shared) vs User templates (per tenant)
+  - Edit and delete templates
+  - Templates stored in MongoDB `config_templates` collection
+- **Backend Endpoints**:
+  - `POST /api/devices/bulk-config` - Send config to multiple devices
+  - `POST /api/config/templates/create` - Create template with proper body
+  - `PUT /api/config/templates/{id}` - Update template
+  - `DELETE /api/config/templates/{id}` - Delete template
+- **Frontend Components**: 
+  - Bulk Config Dialog with template selection
+  - Template Management Dialog with create/edit/delete
+- **Files modified**: `backend/server.py`, `backend/vayyar_config_service.py`, `frontend/src/pages/RadarsPage.js`
+
+### 2026-02-11 - MQTT Broker Change
+- Changed MQTT broker from `185.249.227.251` to `51.91.9.198` port 1883
+- Both Vayyar config service and Seedoo service now use the new broker
+- **File modified**: `backend/.env`
+
+### 2026-02-11 - Schema Fixes for Radar Compatibility
+- **bedExitWallSide**: Changed from number (0/1) to string ("Left"/"Right") - radar expects string
+- **ledPolicy**: Updated enum values to match radar expectations
+- **flexNum()**: Fixed to handle NaN values by returning default instead of failing
+- **Files modified**: `frontend/src/lib/vayyarConfigSchema.js`
+
