@@ -302,3 +302,10 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - **Result**: Banner is now embedded in the document flow, pushes content down, and navbar remains fully visible
 - **Files modified**: `GlobalAlertBanner.jsx`, `MainLayout.js`
 
+### 2026-02-11 - Affichage Localisation au lieu des IDs Radar
+- **Problem**: Toutes les pages événements affichaient device_id, sensor_id ou serial_product au lieu de la localisation
+- **Fix**: Prioriser `location_path` (ex: "FCC > Résidence Amaraggi > 1er Étage > 113") sur toutes les pages
+- **Fix**: Suppression des contraintes de troncature (max-w, truncate) pour afficher le texte complet
+- **Pages modifiées**: DashboardPage, HistoryPage, LivePage, EventDetailPage, LiveEventCard, GlobalAlertBanner, ReportsPage, FloorPlanPage
+- **Files modified**: `DashboardPage.js`, `HistoryPage.js`, `LivePage.js`, `EventDetailPage.js`, `LiveEventCard.jsx`, `GlobalAlertBanner.jsx`, `ReportsPage.js`, `FloorPlanPage.js`
+
