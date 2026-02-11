@@ -274,3 +274,74 @@ def format_target_count_display(target_count: int) -> str:
     if target_count == 0:
         return "Aucune cible détectée"
     return f"{target_count} cible{'s' if target_count > 1 else ''}"
+
+
+def normalize_fall_event(
+    device_id: str,
+    fall_payload: FallEventPayload,
+    sensor_id: Optional[str] = None,
+    site_id: Optional[str] = None,
+    zone_id: Optional[str] = None,
+    tenant_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Transform raw Vayyar Fall Event payload into a normalized event document.
+    Fall events with the same `timestamp` are part of the same fall flow.
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    occurred_at = epoch_ms_to_iso(fall_payload.timestamp)
+    status_update_at = epoch_ms_to_iso(fall_payload.statusUpdateTimestamp)
+    end_at = epoch_ms_to_iso(fall_payload.endTimestamp) if fall_payload.endTimestamp else None
+
+    # Determine severity based on fall status
+    fall_status = fall_payload.status
+    if fall_status in ("fall_detected", "fall_confirmed", "calling", "on_call"):
+        severity = EventSeverity.HIGH.value
+    elif fall_status in ("fall_exit", "canceled"):
+        severity = EventSeverity.MED.value
+    else:
+        severity = EventSeverity.HIGH.value
+
+    return {
+        "id": str(uuid.uuid4()),
+        "device_id": device_id,
+        "sensor_id": sensor_id,
+        "tenant_id": tenant_id,
+        "site_id": site_id,
+        "zone_id": zone_id,
+        "type": RadarEventType.FALL.value,
+        "severity": severity,
+        "status": EventStatus.NEW.value,
+        "confidence": 1.0,
+        "timestamp": now,
+        "occurred_at": occurred_at,
+        "raw_timestamp": fall_payload.timestamp,
+        # Fall-specific fields
+        "fall_status": fall_status,
+        "fall_status_history": [{
+            "status": fall_status,
+            "timestamp": status_update_at,
+            "raw_timestamp": fall_payload.statusUpdateTimestamp
+        }],
+        "fall_loc_x_cm": fall_payload.fallLocX_cm,
+        "fall_loc_y_cm": fall_payload.fallLocY_cm,
+        "fall_loc_z_cm": fall_payload.fallLocZ_cm,
+        "tar_height_est": fall_payload.tarHeightEst,
+        "is_simulated": fall_payload.isSimulated,
+        "is_learning": fall_payload.isLearning,
+        "is_silent": fall_payload.isSilent,
+        "exit_reason": fall_payload.exitReason,
+        "id_of_trigger": fall_payload.idOfTrigger,
+        "end_timestamp": fall_payload.endTimestamp,
+        "end_at": end_at,
+        "extra": fall_payload.extra,
+        # Presence fields (not applicable for fall events, set defaults)
+        "presence_status": PresenceStatus.DETECTED.value,
+        "presence_detected": True,
+        "active_regions": [],
+        "target_count": 0,
+        "raw_payload": {
+            "type": 5,
+            "payload": fall_payload.model_dump()
+        }
+    }
