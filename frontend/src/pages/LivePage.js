@@ -6,16 +6,14 @@
  * Quand presence_detected: false, la carte disparaît.
  * Supporte les événements des radars Vayyar ET des caméras IA Seedoo.
  */
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import api from '@/lib/api';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useAlerts } from '@/contexts/AlertContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { cn, formatDate } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 /* Inject blink animation once */
 if (typeof document !== 'undefined' && !document.getElementById('alert-blink-css')) {
@@ -36,28 +34,19 @@ import { toast } from 'sonner';
 import {
   Radio,
   RefreshCw,
-  Filter,
   Loader2,
   Wifi,
   WifiOff,
-  Building2,
   Activity,
   Camera,
   Video,
   AlertTriangle,
-  User,
-  Flame,
   Eye,
-  CheckCircle,
-  XCircle,
-  Crosshair,
   Clock,
   MapPin,
   UserPlus,
   X
 } from 'lucide-react';
-
-import { RadarStatusCard } from '@/components/live';
 import { EventActionDialog } from '@/components/EventActionDialog';
 import { useNavigate } from 'react-router-dom';
 
@@ -160,7 +149,7 @@ function AlertFeedItem({ alert, onAction, onView }) {
   );
 }
 
-function ActiveAlertsSection({ onFilterChange }) {
+function ActiveAlertsSection() {
   const { activeAlerts, updateAlert, dismissAlert } = useAlerts();
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -194,7 +183,6 @@ function ActiveAlertsSection({ onFilterChange }) {
   const toggleFilter = (f) => {
     const next = filter === f ? 'all' : f;
     setFilter(next);
-    onFilterChange?.(next);
   };
 
   if (activeAlerts.length === 0) return null;
@@ -356,23 +344,11 @@ export function LivePage() {
   // États
   const [events, setEvents] = useState([]);
   const [aiEvents, setAiEvents] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [buildings, setBuildings] = useState([]);
   const [radarStatuses, setRadarStatuses] = useState({});
   const [loading, setLoading] = useState(true);
-  const [selectedClient, setSelectedClient] = useState('all');
-  const [selectedBuilding, setSelectedBuilding] = useState('all');
-  const [activeView, setActiveView] = useState('all'); // 'all', 'radars', 'ai'
   const [newEventIds, setNewEventIds] = useState(new Set());
-  const [alertFilter, setAlertFilter] = useState('all');
   
   const isFetchingRef = useRef(false);
-
-  // Determine section visibility from alert filter
-  const showRadars = alertFilter === 'all' || alertFilter === 'radar' || alertFilter === 'pending'
-    || Object.keys(EVENT_TYPE_CONFIG).includes(alertFilter);
-  const showAI = alertFilter === 'all' || alertFilter === 'ai' || alertFilter === 'pending'
-    || Object.keys(AI_WARNING_LABELS).includes(alertFilter);
 
   // Chargement des métadonnées uniquement (pas d'événements historiques)
   // La page démarre vide et se remplit via WebSocket temps réel
