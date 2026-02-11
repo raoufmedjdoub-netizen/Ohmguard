@@ -13,6 +13,7 @@ import { Navbar } from './Navbar';
 import { SubNavbar } from './SubNavbar';
 import { Sidebar } from './Sidebar';
 import { PageActionsProvider } from '@/contexts/PageActionsContext';
+import { GlobalAlertBanner } from '@/components/GlobalAlertBanner';
 import { cn } from '@/lib/utils';
 
 export function MainLayout() {
