@@ -799,7 +799,7 @@ class VayyarConfigService:
                     continue
                 
                 # Send config to this device
-                version = await self.send_config(
+                version = await self.publish_config(
                     device_id,
                     config,
                     options,
