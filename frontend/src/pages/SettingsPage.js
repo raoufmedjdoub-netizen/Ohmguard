@@ -101,10 +101,13 @@ function GeneralSettingsTab() {
   const { theme, setTheme } = useTheme();
   const [emailNotif, setEmailNotif] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [bannerEnabled, setBannerEnabled] = useState(true);
+  const [bannerLoading, setBannerLoading] = useState(false);
 
   useEffect(() => {
     api.get('/users/me/notifications').then(r => {
       setEmailNotif(r.data.email_notifications || false);
+      setBannerEnabled(r.data.alert_banner_enabled !== false);
     }).catch(() => {});
   }, []);
 
@@ -122,6 +125,21 @@ function GeneralSettingsTab() {
       toast.error('Erreur');
     } finally {
       setNotifLoading(false);
+    }
+  };
+
+  const toggleBanner = async (val) => {
+    setBannerLoading(true);
+    try {
+      await api.put('/users/me/notifications', { alert_banner_enabled: val });
+      setBannerEnabled(val);
+      toast.success(val ? 'Bandeau d\'alertes activé' : 'Bandeau d\'alertes désactivé');
+      // Also update AlertContext if available
+      window.dispatchEvent(new CustomEvent('banner-toggle', { detail: val }));
+    } catch (e) {
+      toast.error('Erreur');
+    } finally {
+      setBannerLoading(false);
     }
   };
 
