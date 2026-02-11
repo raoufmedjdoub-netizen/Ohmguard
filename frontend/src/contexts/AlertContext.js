@@ -245,7 +245,8 @@ export function AlertProvider({ children }) {
       resolveAlert,
       markFalseAlarm,
       dismissAlert,
-      addAlert
+      addAlert,
+      updateAlert
     }}>
       {children}
     </AlertContext.Provider>
