@@ -63,7 +63,7 @@ export function AlertProvider({ children }) {
           for (const status of ['NEW', 'ACK']) {
             try {
               const res = await api.get('/events', {
-                params: { event_type: eventType, status, limit: 20 }
+                params: { event_type: eventType, status, limit: 50 }
               });
               if (res.data?.length) {
                 allAlerts.push(...res.data.map(e => ({
