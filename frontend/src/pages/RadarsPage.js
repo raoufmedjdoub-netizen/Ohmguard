@@ -596,10 +596,18 @@ export function RadarsPage() {
                 <Button 
                   variant="default" 
                   size="sm"
+                  onClick={() => setBulkConfigDialogOpen(true)}
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Envoyer Config
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
                   onClick={() => setUpdateBaseUrlDialogOpen(true)}
                 >
                   <Settings2 className="h-4 w-4 mr-2" />
-                  Modifier UpdateBaseUrl
+                  Modifier BaseUrl
                 </Button>
               </div>
             </div>
