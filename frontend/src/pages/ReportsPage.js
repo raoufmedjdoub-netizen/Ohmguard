@@ -87,8 +87,8 @@ export function ReportsPage() {
           loc = parts.length > 0 ? parts.join(' > ') : 'Unknown';
         } else if (event.radar_name) {
           loc = event.radar_name;
-        } else if (event.sensor_id) {
-          loc = `Sensor ${event.sensor_id.slice(0, 8)}`;
+        } else {
+          loc = 'Localisation inconnue';
         }
         
         zoneCount[loc] = (zoneCount[loc] || 0) + 1;
