@@ -18,6 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import api, { sensorsAPI } from '@/lib/api';
+import { DEFAULT_CONFIG } from '@/lib/vayyarConfigSchema';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { usePageActions } from '@/contexts/PageActionsContext';
 import SensorImportModal from '@/components/SensorImportModal';
