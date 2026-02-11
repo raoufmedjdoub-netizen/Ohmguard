@@ -58,42 +58,38 @@ export function AlertProvider({ children }) {
 
         const allAlerts = [];
         
-        // Load radar alerts (FALL, SENSITIVE_FALL, BED_EXIT)
+        // Load radar alerts (FALL, SENSITIVE_FALL, BED_EXIT) - uniquement NEW
         for (const eventType of ALERT_TYPES) {
-          for (const status of ['NEW', 'ACK']) {
-            try {
-              const res = await api.get('/events', {
-                params: { event_type: eventType, status, limit: 50 }
-              });
-              if (res.data?.length) {
-                allAlerts.push(...res.data.map(e => ({
-                  ...e,
-                  alertSource: 'radar',
-                  addedAt: new Date(e.timestamp || e.occurred_at).getTime() || Date.now(),
-                  updatedAt: Date.now()
-                })));
-              }
-            } catch {}
-          }
-        }
-        
-        // Load critical AI alerts (NEW + ACK status)
-        for (const aiStatus of ['NEW', 'ACK', 'ACKNOWLEDGED']) {
           try {
-            const aiRes = await api.get('/ai-events', {
-              params: { status: aiStatus, limit: 50 }
+            const res = await api.get('/events', {
+              params: { event_type: eventType, status: 'NEW', limit: 50 }
             });
-            if (aiRes.data?.length) {
-              allAlerts.push(...aiRes.data.map(e => ({
+            if (res.data?.length) {
+              allAlerts.push(...res.data.map(e => ({
                 ...e,
-                type: 'AI_ALERT',
-                alertSource: 'ai_camera',
-                addedAt: new Date(e.timestamp || e.created_at).getTime() || Date.now(),
+                alertSource: 'radar',
+                addedAt: new Date(e.timestamp || e.occurred_at).getTime() || Date.now(),
                 updatedAt: Date.now()
               })));
             }
           } catch {}
         }
+        
+        // Load AI alerts - uniquement NEW
+        try {
+          const aiRes = await api.get('/ai-events', {
+            params: { status: 'NEW', limit: 50 }
+          });
+          if (aiRes.data?.length) {
+            allAlerts.push(...aiRes.data.map(e => ({
+              ...e,
+              type: 'AI_ALERT',
+              alertSource: 'ai_camera',
+              addedAt: new Date(e.timestamp || e.created_at).getTime() || Date.now(),
+              updatedAt: Date.now()
+            })));
+          }
+        } catch {}
         
         if (allAlerts.length > 0) {
           setActiveAlerts(allAlerts);
