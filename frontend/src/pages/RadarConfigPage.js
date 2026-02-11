@@ -1032,10 +1032,9 @@ export function RadarConfigPage() {
                   <div>
                     <h4 className="font-medium mb-4">Logging</h4>
                     <div className="grid grid-cols-2 gap-4">
-                      <SelectField control={control} name="appConfig.logLevel" label="Niveau de log" options={ENUM_VALUES.logLevel} />
                       <SelectField control={control} name="appConfig.appLogAutoLevel" label="Log auto" options={ENUM_VALUES.appLogLevel} />
-                      <SelectField control={control} name="appConfig.appLogOnDemandLevel" label="Log à la demande" options={ENUM_VALUES.appLogLevel} />
-                      <SwitchField control={control} name="appConfig.legacyLogFileUpload" label="Upload legacy" description="Upload fichiers logs ancienne méthode" />
+                      <SelectField control={control} name="appConfig.appLogOnDemandLevel" label="Log a la demande" options={ENUM_VALUES.appLogLevel} />
+                      <SwitchField control={control} name="appConfig.legacyLogFileUpload" label="Upload legacy" description="Upload fichiers logs ancienne methode" />
                     </div>
                   </div>
 
