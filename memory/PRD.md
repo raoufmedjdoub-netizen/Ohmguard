@@ -269,3 +269,28 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - **Files created**: `AlertContext.js`, `GlobalAlertBanner.jsx`
 - **Files modified**: `App.js`, `MainLayout.js`, `LivePage.js`, `WebSocketContext.js`, `socketio_service.py`, `server.py`
 
+### 2026-02-11 - Workflow d'acquittement avance (MAJOR)
+- **Backend**: Updated `EventUpdate` model with `comment`, `assigned_to_name`, `cc_admin` fields
+- **Backend**: Updated `update_event` endpoint:
+  - Mandatory comment validation for RESOLVED and FALSE_ALARM (returns 400)
+  - Comments stored in `event.comments` array with user_id, user_name, user_role, action, timestamp
+  - Assignment stores both user ID and full_name
+  - Email notification on assignment (with optional CC to site admin)
+- **Backend**: Added `GET /api/events/{event_id}/comments` (admin only)
+- **Backend**: Added `GET /api/users/assignable` endpoint
+- **Frontend**: Created `EventActionDialog.jsx` shared component:
+  - Config-driven per action (ACK/RESOLVED/FALSE_ALARM/ASSIGN)
+  - Comment field (mandatory for RESOLVED/FALSE_ALARM, optional for ACK/ASSIGN)
+  - User assignment dropdown + CC admin checkbox
+  - Event info summary (type, location, sensor)
+- **Frontend**: Updated `GlobalAlertBanner.jsx` to use dialog + show assigned_to_name badge
+- **Frontend**: Updated `LivePage.js` ActiveAlertCard with Assigner button + dialog
+- **Frontend**: Updated `EventDetailPage.js`:
+  - `CommentsSection`: Shows action history with user, role, action badge, timestamp
+  - Assignment card showing assigned user
+  - Assigner button in header actions
+  - All actions use EventActionDialog
+- **Testing**: 100% (8/8 backend, 15/15 frontend)
+- **Files created**: `EventActionDialog.jsx`
+- **Files modified**: `server.py`, `api.js`, `GlobalAlertBanner.jsx`, `LivePage.js`, `EventDetailPage.js`, `AlertContext.js`
+
