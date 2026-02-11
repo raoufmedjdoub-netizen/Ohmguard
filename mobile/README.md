@@ -58,7 +58,7 @@ L'URL de l'API est configurée dans `app.json` :
 {
   "expo": {
     "extra": {
-      "apiUrl": "https://ai-sensor-payload.preview.emergentagent.com/api"
+      "apiUrl": "https://alert-feed-live.preview.emergentagent.com/api"
     }
   }
 }
