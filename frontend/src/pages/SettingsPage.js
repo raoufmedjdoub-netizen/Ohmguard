@@ -891,7 +891,7 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
 
         {/* Reset Password Dialog */}
         <Dialog open={showResetPw} onOpenChange={setShowResetPw}>
-          <DialogContent>
+          <DialogContent aria-describedby="reset-pw-desc">
             <DialogHeader>
               <DialogTitle>Réinitialiser le mot de passe</DialogTitle>
               <DialogDescription>
