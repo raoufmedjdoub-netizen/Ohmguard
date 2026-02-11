@@ -1,6 +1,7 @@
 /**
  * GlobalAlertBanner - Fixed alert banner visible on ALL pages
- * Displays all active (unacknowledged) fall/critical alerts with action dialogs.
+ * Displays all active (unacknowledged) fall/critical + AI camera alerts with action dialogs.
+ * Can be disabled per user via Settings.
  */
 import React, { useState } from 'react';
 import { useAlerts } from '@/contexts/AlertContext';
@@ -21,13 +22,24 @@ import {
   X,
   MapPin,
   Clock,
-  UserPlus
+  UserPlus,
+  Camera,
+  Video
 } from 'lucide-react';
 
 const EVENT_CONFIG = {
   FALL: { label: 'CHUTE', bg: 'bg-red-600', pulse: 'animate-pulse' },
   SENSITIVE_FALL: { label: 'CHUTE SUSPECTE', bg: 'bg-orange-600', pulse: 'animate-pulse' },
   BED_EXIT: { label: 'SORTIE DE LIT', bg: 'bg-amber-600', pulse: '' },
+  AI_ALERT: { label: 'ALERTE IA', bg: 'bg-violet-600', pulse: 'animate-pulse' },
+};
+
+const AI_WARNING_LABELS = {
+  Fall_Detected: 'Chute (IA)',
+  Violence: 'Violence',
+  Fire: 'Feu',
+  Smoke: 'Fumee',
+  Intrusion: 'Intrusion',
 };
 
 const FALL_STATUS_LABELS = {
@@ -57,10 +69,18 @@ function ElapsedTime({ since }) {
 }
 
 function AlertRow({ alert, onAction, onView, onDismiss }) {
-  const config = EVENT_CONFIG[alert.type] || EVENT_CONFIG.FALL;
-  const isAcked = alert.status === 'ACK';
-  const location = alert.location_path || alert.sensor_name || alert.radar_name || 'Localisation inconnue';
+  const isAI = alert.alertSource === 'ai_camera';
+  const config = isAI ? EVENT_CONFIG.AI_ALERT : (EVENT_CONFIG[alert.type] || EVENT_CONFIG.FALL);
+  const isAcked = alert.status === 'ACK' || alert.status === 'ACKNOWLEDGED';
+
+  // Location: radar uses location_path, AI uses channel_name or location_path
+  const location = isAI
+    ? (alert.location_path || alert.channel_name || 'Camera IA')
+    : (alert.location_path || alert.sensor_name || alert.radar_name || 'Localisation inconnue');
+
   const fallStatus = alert.fall_status ? FALL_STATUS_LABELS[alert.fall_status] || alert.fall_status : null;
+  const aiLabel = isAI ? (AI_WARNING_LABELS[alert.warning_type] || alert.warning_type) : null;
+  const confidence = isAI && alert.confidence ? `${Math.round(alert.confidence * 100)}%` : null;
 
   return (
     <div
@@ -71,9 +91,10 @@ function AlertRow({ alert, onAction, onView, onDismiss }) {
         !isAcked && config.pulse
       )}
     >
-      <AlertTriangle className="h-5 w-5 flex-shrink-0" />
-      <Badge className="bg-white/20 text-white text-xs font-bold">{config.label}</Badge>
+      {isAI ? <Camera className="h-5 w-5 flex-shrink-0" /> : <AlertTriangle className="h-5 w-5 flex-shrink-0" />}
+      <Badge className="bg-white/20 text-white text-xs font-bold">{aiLabel || config.label}</Badge>
       {fallStatus && <Badge className="bg-black/20 text-white text-xs">{fallStatus}</Badge>}
+      {confidence && <Badge className="bg-white/10 text-white text-xs">{confidence}</Badge>}
       {alert.is_simulated && <Badge className="bg-yellow-400/30 text-yellow-100 text-xs">TEST</Badge>}
       {alert.assigned_to_name && (
         <Badge className="bg-purple-400/30 text-purple-100 text-xs">{alert.assigned_to_name}</Badge>
@@ -103,10 +124,17 @@ function AlertRow({ alert, onAction, onView, onDismiss }) {
           <XCircle className="h-3.5 w-3.5 mr-1" />
           Faux
         </Button>
-        <Button size="sm" variant="ghost" className="h-7 text-white hover:bg-white/20 text-xs" onClick={() => onAction(alert, 'ASSIGN')}>
-          <UserPlus className="h-3.5 w-3.5" />
-        </Button>
-        <Button size="sm" variant="ghost" className="h-7 text-white hover:bg-white/20" onClick={() => onView(alert.id)}>
+        {!isAI && (
+          <Button size="sm" variant="ghost" className="h-7 text-white hover:bg-white/20 text-xs" onClick={() => onAction(alert, 'ASSIGN')}>
+            <UserPlus className="h-3.5 w-3.5" />
+          </Button>
+        )}
+        {isAI && alert.video_url && (
+          <Button size="sm" variant="ghost" className="h-7 text-white hover:bg-white/20 text-xs" onClick={() => window.open(alert.video_url, '_blank')}>
+            <Video className="h-3.5 w-3.5" />
+          </Button>
+        )}
+        <Button size="sm" variant="ghost" className="h-7 text-white hover:bg-white/20" onClick={() => onView(alert)}>
           <Eye className="h-3.5 w-3.5" />
         </Button>
         <Button size="sm" variant="ghost" className="h-7 text-white hover:bg-white/20" onClick={() => onDismiss(alert.id)}>
@@ -118,7 +146,7 @@ function AlertRow({ alert, onAction, onView, onDismiss }) {
 }
 
 export function GlobalAlertBanner() {
-  const { activeAlerts, soundEnabled, setSoundEnabled, updateAlert, dismissAlert } = useAlerts();
+  const { activeAlerts, soundEnabled, setSoundEnabled, bannerEnabled, updateAlert, dismissAlert } = useAlerts();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -126,6 +154,13 @@ export function GlobalAlertBanner() {
   const [dialogEvent, setDialogEvent] = useState(null);
 
   const handleAction = (alert, action) => {
+    // For AI events, handle ACK/RESOLVED/FALSE_ALARM directly (no dialog needed for simple actions)
+    if (alert.alertSource === 'ai_camera' && action !== 'ASSIGN') {
+      setDialogEvent(alert);
+      setDialogAction(action);
+      setDialogOpen(true);
+      return;
+    }
     setDialogEvent(alert);
     setDialogAction(action);
     setDialogOpen(true);
@@ -140,10 +175,20 @@ export function GlobalAlertBanner() {
     }
   };
 
-  if (activeAlerts.length === 0) return null;
+  // Don't render if banner is disabled by user or no alerts
+  if (!bannerEnabled || activeAlerts.length === 0) return null;
 
   const alertCount = activeAlerts.length;
-  const unackedCount = activeAlerts.filter(a => a.status !== 'ACK').length;
+  const unackedCount = activeAlerts.filter(a => a.status !== 'ACK' && a.status !== 'ACKNOWLEDGED').length;
+  const aiCount = activeAlerts.filter(a => a.alertSource === 'ai_camera').length;
+
+  const handleView = (alert) => {
+    if (alert.alertSource === 'ai_camera') {
+      navigate('/ai-sensors');
+    } else {
+      navigate(`/events/${alert.id}`);
+    }
+  };
 
   return (
     <>
@@ -156,6 +201,12 @@ export function GlobalAlertBanner() {
             </span>
             {unackedCount > 0 && (
               <Badge className="bg-white text-red-900 text-xs">{unackedCount} non acquittee{unackedCount > 1 ? 's' : ''}</Badge>
+            )}
+            {aiCount > 0 && (
+              <Badge className="bg-violet-400/30 text-white text-xs">
+                <Camera className="h-3 w-3 mr-1" />
+                {aiCount} IA
+              </Badge>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -175,7 +226,7 @@ export function GlobalAlertBanner() {
                 key={alert.id}
                 alert={alert}
                 onAction={handleAction}
-                onView={(id) => navigate(`/events/${id}`)}
+                onView={handleView}
                 onDismiss={dismissAlert}
               />
             ))}
@@ -189,9 +240,10 @@ export function GlobalAlertBanner() {
         eventId={dialogEvent?.id}
         action={dialogAction}
         eventInfo={dialogEvent ? {
-          type: dialogEvent.type,
-          location: dialogEvent.location_path || dialogEvent.radar_name || 'Localisation inconnue',
-          sensor: dialogEvent.radar_name
+          type: dialogEvent.alertSource === 'ai_camera' ? (AI_WARNING_LABELS[dialogEvent.warning_type] || dialogEvent.warning_type) : dialogEvent.type,
+          location: dialogEvent.location_path || dialogEvent.channel_name || dialogEvent.radar_name || 'Localisation inconnue',
+          sensor: dialogEvent.alertSource === 'ai_camera' ? dialogEvent.channel_name : dialogEvent.radar_name,
+          isAI: dialogEvent.alertSource === 'ai_camera'
         } : null}
         onSuccess={handleActionSuccess}
       />
