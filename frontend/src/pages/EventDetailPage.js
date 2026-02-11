@@ -234,20 +234,24 @@ export function EventDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           {event.status === 'NEW' && (
-            <Button variant="outline" onClick={() => handleUpdateStatus('ACK')} data-testid="ack-btn">
+            <Button variant="outline" onClick={() => handleAction('ACK')} data-testid="ack-btn">
               <Clock className="h-4 w-4 mr-2" />
               {t('events.acknowledge')}
             </Button>
           )}
           {(event.status === 'NEW' || event.status === 'ACK') && (
             <>
-              <Button onClick={() => handleUpdateStatus('RESOLVED')} data-testid="resolve-btn">
+              <Button onClick={() => handleAction('RESOLVED')} data-testid="resolve-btn">
                 <CheckCircle className="h-4 w-4 mr-2" />
                 {t('events.resolve')}
               </Button>
-              <Button variant="ghost" onClick={() => handleUpdateStatus('FALSE_ALARM')} data-testid="false-alarm-btn">
+              <Button variant="ghost" onClick={() => handleAction('FALSE_ALARM')} data-testid="false-alarm-btn">
                 <XCircle className="h-4 w-4 mr-2" />
                 {t('events.mark_false_alarm')}
+              </Button>
+              <Button variant="outline" onClick={() => handleAction('ASSIGN')} data-testid="assign-btn">
+                <UserPlus className="h-4 w-4 mr-2" />
+                Assigner
               </Button>
             </>
           )}
