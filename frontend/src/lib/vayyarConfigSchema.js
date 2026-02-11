@@ -199,7 +199,7 @@ const walabotConfigSchema = z.object({
   bedExitEnabled: flexBool(true),
   bedExitPredictionThreshold: flexNum(0.9),
   bedExitNFramesToReset: flexNum(100),
-  bedExitWallSide: flexNum(0),
+  bedExitWallSide: flexStr("Left"),
 
   // Telemetry flags
   enableBedExitTelemetry: flexBool(false),
