@@ -102,6 +102,8 @@ export function AlertProvider({ children }) {
   }, []);
 
   const acknowledgeAlert = useCallback(async (eventId) => {
+    // This is now handled by the EventActionDialog
+    // Kept for programmatic use (e.g., WebSocket updates)
     try {
       await api.patch(`/events/${eventId}`, { status: 'ACK' });
       updateAlert(eventId, { status: 'ACK' });
@@ -112,7 +114,7 @@ export function AlertProvider({ children }) {
 
   const resolveAlert = useCallback(async (eventId) => {
     try {
-      await api.patch(`/events/${eventId}`, { status: 'RESOLVED' });
+      await api.patch(`/events/${eventId}`, { status: 'RESOLVED', comment: 'Resolu' });
       dismissAlert(eventId);
     } catch (e) {
       console.error('Failed to resolve alert:', e);
@@ -121,7 +123,7 @@ export function AlertProvider({ children }) {
 
   const markFalseAlarm = useCallback(async (eventId) => {
     try {
-      await api.patch(`/events/${eventId}`, { status: 'FALSE_ALARM' });
+      await api.patch(`/events/${eventId}`, { status: 'FALSE_ALARM', comment: 'Fausse alarme' });
       dismissAlert(eventId);
     } catch (e) {
       console.error('Failed to mark false alarm:', e);
