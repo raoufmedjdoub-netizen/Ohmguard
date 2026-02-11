@@ -932,6 +932,168 @@ class MQTTService:
             await self._send_fall_push_notification(event, sensor, "FALL")
             await self._send_fall_email(event, sensor)
 
+    async def _handle_sensitive_fall_event(self, device_id: str, event_payload: Dict, sensor: Dict):
+        """
+        Handle Vayyar Sensitive Fall Events (type=8) with lifecycle tracking.
+        Lifecycle: fall_suspected → calling → finished / fall_exit
+        Events with the same `timestamp` are part of the same flow.
+        """
+        try:
+            sf_payload = SensitiveFallEventPayload(**event_payload)
+        except Exception as e:
+            logger.error(f"Failed to parse sensitive fall event payload from {device_id}: {e}")
+            return
+        
+        fall_status = sf_payload.status
+        logger.info(f"SENSITIVE_FALL event from {device_id}: status={fall_status}, "
+                    f"confidence={sf_payload.confidenceLevel}, "
+                    f"suspected_count={sf_payload.suspectedEventsCounter}, "
+                    f"simulated={sf_payload.isSimulated}, "
+                    f"loc=({sf_payload.fallLocX_cm}, {sf_payload.fallLocY_cm}, {sf_payload.fallLocZ_cm}), "
+                    f"timestamp={sf_payload.timestamp}")
+        
+        # Check if there's an existing event for this flow (same device + same timestamp)
+        existing = await self.db.events.find_one({
+            "device_id": device_id,
+            "type": "SENSITIVE_FALL",
+            "raw_timestamp": sf_payload.timestamp
+        }, {"_id": 0})
+        
+        now = datetime.now(timezone.utc).isoformat()
+        
+        if existing:
+            # UPDATE existing event with new status
+            update_data = {
+                "fall_status": fall_status,
+                "confidence_level": sf_payload.confidenceLevel,
+                "suspected_events_counter": sf_payload.suspectedEventsCounter,
+                "last_event_confidence": sf_payload.lastEventConfidence,
+            }
+            
+            # Update location
+            update_data["fall_loc_x_cm"] = sf_payload.fallLocX_cm
+            update_data["fall_loc_y_cm"] = sf_payload.fallLocY_cm
+            update_data["fall_loc_z_cm"] = sf_payload.fallLocZ_cm
+            
+            # Update raw_payload with latest
+            update_data["raw_payload"] = {
+                "type": 8,
+                "payload": sf_payload.model_dump()
+            }
+            
+            # Downgrade severity for terminal statuses
+            if fall_status == "fall_exit":
+                update_data["severity"] = "MED"
+            elif fall_status == "finished":
+                update_data["severity"] = "HIGH"
+            
+            # Append to status history
+            await self.db.events.update_one(
+                {"id": existing["id"]},
+                {
+                    "$set": update_data,
+                    "$push": {
+                        "fall_status_history": {
+                            "status": fall_status,
+                            "timestamp": now,
+                            "raw_timestamp": sf_payload.timestamp
+                        }
+                    }
+                }
+            )
+            
+            logger.info(f"Updated sensitive fall event {existing['id']} with status={fall_status}")
+            
+            # Broadcast update to WebSocket
+            if self.broadcast_callback:
+                await self.broadcast_callback(sensor['tenant_id'], {
+                    "type": "fall_event_update",
+                    "event_id": existing["id"],
+                    "fall_status": fall_status,
+                    "event_type": "SENSITIVE_FALL",
+                    "sensor_id": sensor['id'],
+                    "sensor_name": sensor.get('name'),
+                    "device_id": device_id,
+                    "building_id": sensor.get('building_id'),
+                    "floor_id": sensor.get('floor_id'),
+                    "is_simulated": sf_payload.isSimulated,
+                    "confidence_level": sf_payload.confidenceLevel,
+                    "suspected_events_counter": sf_payload.suspectedEventsCounter,
+                    "fall_loc_x_cm": sf_payload.fallLocX_cm,
+                    "fall_loc_y_cm": sf_payload.fallLocY_cm,
+                    "fall_loc_z_cm": sf_payload.fallLocZ_cm,
+                    "timestamp": now
+                })
+            return
+        
+        # NEW sensitive fall event - create initial document
+        event = normalize_sensitive_fall_event(
+            device_id=device_id,
+            payload=sf_payload,
+            sensor_id=sensor['id'],
+            site_id=sensor.get('site_id'),
+            zone_id=sensor.get('zone_id'),
+            tenant_id=sensor.get('tenant_id')
+        )
+        
+        await self.db.events.insert_one(event)
+        
+        # Update sensor last_seen
+        await self.db.sensors.update_one(
+            {"id": sensor['id']},
+            {"$set": {
+                "status": "ONLINE",
+                "last_seen": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        # Update Last State in Redis
+        try:
+            from last_state_service import get_last_state_service
+            last_state_service = get_last_state_service()
+            await last_state_service.update_sensor_state(
+                sensor_id=sensor['id'],
+                tenant_id=sensor['tenant_id'],
+                building_id=sensor.get('building_id'),
+                floor_id=sensor.get('floor_id'),
+                state_data={
+                    "device_id": device_id,
+                    "sensor_name": sensor.get('name'),
+                    "room_id": sensor.get('room_id'),
+                    "room_name": sensor.get('room_name'),
+                    "space_id": sensor.get('space_id'),
+                    "space_name": sensor.get('space_name'),
+                    "last_event_type": "SENSITIVE_FALL",
+                    "last_event_severity": "HIGH",
+                    "presence_detected": True,
+                    "model": sensor.get('model'),
+                    "firmware_version": sensor.get('firmware_version')
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Failed to update last state in Redis for sensitive fall: {e}")
+        
+        logger.info(f"Created SENSITIVE_FALL event {event['id']} from device {device_id}, "
+                    f"fall_status={fall_status}, confidence={sf_payload.confidenceLevel}, simulated={sf_payload.isSimulated}")
+        
+        # Broadcast new sensitive fall event
+        if self.broadcast_callback:
+            event_for_broadcast = {k: v for k, v in event.items() if k != '_id'}
+            await self.broadcast_callback(sensor['tenant_id'], {
+                "type": "new_radar_event",
+                "event": {
+                    **event_for_broadcast,
+                    "sensor_name": sensor.get('name'),
+                    "urgent": True
+                }
+            })
+        
+        # Trigger alerts for initial fall_suspected
+        if fall_status == "fall_suspected":
+            await self._process_alert_rules(event, sensor)
+            await self._send_fall_push_notification(event, sensor, "SENSITIVE_FALL")
+            await self._send_fall_email(event, sensor)
+
     async def _handle_device_event_legacy(self, device_id: str, payload: Dict, sensor: Dict):
         """Legacy event handler for non-standard payloads"""
         event_type_code = payload.get("type", 0)
