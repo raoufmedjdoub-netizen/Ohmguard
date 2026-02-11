@@ -236,6 +236,32 @@ function GeneralSettingsTab() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            {bannerEnabled ? <Bell className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
+            Bandeau d'alertes
+          </CardTitle>
+          <CardDescription>Afficher le bandeau d'alertes en haut de toutes les pages</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-base">Activer le bandeau d'alertes global</Label>
+              <p className="text-sm text-muted-foreground">
+                Affiche les alertes critiques (chutes radar, alertes IA) en temps réel
+              </p>
+            </div>
+            <Switch
+              checked={bannerEnabled}
+              onCheckedChange={toggleBanner}
+              disabled={bannerLoading}
+              data-testid="banner-toggle-switch"
+            />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
