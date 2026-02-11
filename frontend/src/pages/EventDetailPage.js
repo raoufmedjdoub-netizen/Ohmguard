@@ -478,8 +478,8 @@ export function EventDetailPage() {
         action={dialogAction}
         eventInfo={{
           type: event.type,
-          location: event.location_path,
-          sensor: event.radar_name || event.device_id
+          location: event.location_path || 'Localisation inconnue',
+          sensor: event.radar_name
         }}
         onSuccess={handleActionSuccess}
       />
