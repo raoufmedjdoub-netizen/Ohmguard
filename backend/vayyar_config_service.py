@@ -742,6 +742,88 @@ class VayyarConfigService:
         """Delete a template"""
         result = await self.db.config_templates.delete_one({"id": template_id})
         return result.deleted_count > 0
+    
+    async def update_template(
+        self,
+        template_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        config: Optional[dict] = None,
+        is_system: Optional[bool] = None
+    ) -> Optional[dict]:
+        """Update a configuration template"""
+        update_data = {"updatedAt": datetime.now(timezone.utc).isoformat()}
+        if name is not None:
+            update_data["name"] = name
+        if description is not None:
+            update_data["description"] = description
+        if config is not None:
+            update_data["config"] = config
+        if is_system is not None:
+            update_data["isSystem"] = is_system
+        
+        result = await self.db.config_templates.find_one_and_update(
+            {"id": template_id},
+            {"$set": update_data},
+            return_document=True,
+            projection={"_id": 0}
+        )
+        return result
+    
+    async def send_bulk_config(
+        self,
+        device_ids: List[str],
+        config: dict,
+        options: MqttPublishOptions,
+        tenant_id: Optional[str] = None
+    ) -> dict:
+        """Send configuration to multiple devices"""
+        results = {
+            "total": len(device_ids),
+            "success_count": 0,
+            "failed_count": 0,
+            "results": []
+        }
+        
+        for device_id in device_ids:
+            try:
+                # Get sensor info
+                sensor = await self.db.sensors.find_one({"id": device_id})
+                if not sensor:
+                    results["results"].append({
+                        "deviceId": device_id,
+                        "success": False,
+                        "error": "Sensor not found"
+                    })
+                    results["failed_count"] += 1
+                    continue
+                
+                # Send config to this device
+                version = await self.send_config(
+                    device_id,
+                    config,
+                    options,
+                    tenant_id
+                )
+                
+                results["results"].append({
+                    "deviceId": device_id,
+                    "success": True,
+                    "versionId": version.id,
+                    "versionNumber": version.versionNumber
+                })
+                results["success_count"] += 1
+                
+            except Exception as e:
+                logger.error(f"Failed to send config to {device_id}: {e}")
+                results["results"].append({
+                    "deviceId": device_id,
+                    "success": False,
+                    "error": str(e)
+                })
+                results["failed_count"] += 1
+        
+        return results
 
 
 # Global service instance
