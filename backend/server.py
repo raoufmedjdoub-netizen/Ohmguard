@@ -4027,6 +4027,8 @@ async def startup_event():
             )
         elif msg_type == 'sensor_registered':
             await broadcast_sensor_registered(tenant_id, message.get('sensor', message))
+        elif msg_type == 'fall_event_update':
+            await broadcast_fall_event_update(tenant_id, message)
         else:
             await broadcast_new_event(tenant_id, message)
     
