@@ -23,16 +23,50 @@ export function AlertProvider({ children }) {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const audioRef = useRef(null);
   const alertTimersRef = useRef({});
+  const loadedRef = useRef(false);
 
   // Initialize audio
   useEffect(() => {
     audioRef.current = new Audio(ALERT_SOUND_URL);
     audioRef.current.volume = 0.8;
     return () => {
-      // Cleanup timers
       Object.values(alertTimersRef.current).forEach(clearInterval);
     };
   }, []);
+
+  // Load existing unresolved alerts from API on mount
+  useEffect(() => {
+    if (!isAuthenticated || loadedRef.current) return;
+    loadedRef.current = true;
+    
+    const loadExistingAlerts = async () => {
+      try {
+        const res = await api.get('/events', {
+          params: { event_type: 'FALL', status: 'NEW', limit: 20 }
+        });
+        const fallEvents = res.data || [];
+        // Also load ACK events
+        const res2 = await api.get('/events', {
+          params: { event_type: 'FALL', status: 'ACK', limit: 20 }
+        });
+        const ackedEvents = res2.data || [];
+        
+        const allAlerts = [...fallEvents, ...ackedEvents].map(e => ({
+          ...e,
+          addedAt: new Date(e.timestamp || e.occurred_at).getTime() || Date.now(),
+          updatedAt: Date.now()
+        }));
+        
+        if (allAlerts.length > 0) {
+          setActiveAlerts(allAlerts);
+        }
+      } catch (e) {
+        console.warn('Failed to load existing alerts:', e);
+      }
+    };
+    
+    loadExistingAlerts();
+  }, [isAuthenticated]);
 
   const playAlertSound = useCallback(() => {
     if (!soundEnabled || !audioRef.current) return;
