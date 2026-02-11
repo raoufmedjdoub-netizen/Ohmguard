@@ -256,7 +256,7 @@ export const LiveEventCard = memo(function LiveEventCard({
                 <TooltipTrigger asChild>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <MapPin className="h-3.5 w-3.5" />
-                    <span className="font-medium text-foreground truncate max-w-[200px]" title={displayName}>{displayName}</span>
+                    <span className="font-medium text-foreground">{displayName}</span>
                     <span className="text-border">•</span>
                     {realtime.deviceOnline !== false ? (
                       <span className="flex items-center gap-1 text-green-600">

@@ -401,9 +401,9 @@ export function HistoryPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="max-w-[200px]">
+                        <div>
                           {locationPath ? (
-                            <span className="text-xs text-primary font-medium truncate block" title={locationPath}>
+                            <span className="text-xs text-primary font-medium">
                               {locationPath}
                             </span>
                           ) : (

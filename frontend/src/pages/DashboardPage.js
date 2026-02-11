@@ -180,7 +180,7 @@ export function DashboardPage() {
                     <Badge variant="outline" className={cn(getSeverityColor(event.severity))}>
                       {event.severity}
                     </Badge>
-                    <span className="text-sm text-muted-foreground truncate max-w-[250px]" title={event.location_path}>
+                    <span className="text-sm text-muted-foreground">
                       {event.location_path || event.radar_name || 'Localisation inconnue'}
                     </span>
                   </div>
