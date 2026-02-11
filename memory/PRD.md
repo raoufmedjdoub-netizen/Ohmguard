@@ -133,7 +133,7 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 
 ## Known Issues
 1. **Mobile app** - Not starting (React Native/Expo issue)
-2. **RadarConfigPage** - Large file, needs refactoring
+2. ~~**RadarConfigPage** - Large file, needs refactoring~~ (DONE - now functional)
 
 ### 2026-02-10 - Bulk UpdateBaseUrl Fix
 - **Fixed**: Frontend was sending MQTT `device_id` but backend looked up by platform `id` → "Sensor not found" for 19/20 radars
