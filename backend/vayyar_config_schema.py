@@ -89,7 +89,9 @@ class CommandType(IntEnum):
     UPDATE_WIFI_CREDENTIALS = 16
 
 
-class ConfigVersionStatus(str):
+from enum import Enum
+
+class ConfigVersionStatus(str, Enum):
     """Configuration version status"""
     DRAFT = "DRAFT"
     SENT = "SENT"
