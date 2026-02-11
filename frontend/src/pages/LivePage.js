@@ -364,8 +364,15 @@ export function LivePage() {
   const [selectedBuilding, setSelectedBuilding] = useState('all');
   const [activeView, setActiveView] = useState('all'); // 'all', 'radars', 'ai'
   const [newEventIds, setNewEventIds] = useState(new Set());
+  const [alertFilter, setAlertFilter] = useState('all');
   
   const isFetchingRef = useRef(false);
+
+  // Determine section visibility from alert filter
+  const showRadars = alertFilter === 'all' || alertFilter === 'radar' || alertFilter === 'pending'
+    || Object.keys(EVENT_TYPE_CONFIG).includes(alertFilter);
+  const showAI = alertFilter === 'all' || alertFilter === 'ai' || alertFilter === 'pending'
+    || Object.keys(AI_WARNING_LABELS).includes(alertFilter);
 
   // Chargement des métadonnées uniquement (pas d'événements historiques)
   // La page démarre vide et se remplit via WebSocket temps réel
