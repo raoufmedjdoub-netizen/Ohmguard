@@ -356,7 +356,10 @@ class EventCreate(EventBase):
 class EventUpdate(BaseModel):
     status: Optional[EventStatus] = None
     assigned_to: Optional[str] = None
+    assigned_to_name: Optional[str] = None
     notes: Optional[str] = None
+    comment: Optional[str] = None  # Comment text for the action
+    cc_admin: Optional[bool] = None  # CC site admin on assignment email
 
 # Push Notification Token Models
 class PushTokenRequest(BaseModel):
