@@ -169,11 +169,15 @@ class RBACService:
         for cu in client_users:
             user = await self.db.users.find_one(
                 {"id": cu["user_id"]},
-                {"_id": 0, "email": 1, "full_name": 1}
+                {"_id": 0, "email": 1, "full_name": 1, "phone": 1, "job_title": 1, "department": 1, "notes": 1}
             )
             if user:
                 cu["user_email"] = user.get("email")
                 cu["user_full_name"] = user.get("full_name")
+                cu["phone"] = user.get("phone")
+                cu["job_title"] = user.get("job_title")
+                cu["department"] = user.get("department")
+                cu["notes"] = user.get("notes")
             
             # Count overrides and scopes
             cu["permissions_count"] = await self.db.permission_overrides.count_documents(
