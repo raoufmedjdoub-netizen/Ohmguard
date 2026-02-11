@@ -119,16 +119,18 @@ export function HistoryPage() {
   }, [fetchData]);
 
   const handleExport = () => {
-    const headers = ['ID', 'Type', 'Severity', 'Status', 'Presence', 'Active Regions', 'Targets', 'Location', 'Timestamp', 'Device'];
+    const headers = ['ID', 'Type', 'Severity', 'Status', 'Fall Status', 'Simulated', 'Location', 'Fall X(cm)', 'Fall Y(cm)', 'Fall Z(cm)', 'Timestamp', 'Device'];
     const rows = events.map(e => [
       e.id,
       e.type,
       e.severity,
       e.status,
-      e.presence_detected ? 'Yes' : 'No',
-      (e.active_regions || []).join(';') || '-',
-      e.target_count || 0,
+      e.fall_status || '-',
+      e.is_simulated ? 'Yes' : 'No',
       e.location_path || '-',
+      e.fall_loc_x_cm ?? '-',
+      e.fall_loc_y_cm ?? '-',
+      e.fall_loc_z_cm ?? '-',
       e.timestamp || e.occurred_at,
       e.device_id || e.sensor_id
     ]);
