@@ -24,25 +24,24 @@ class RadarEventType(str, Enum):
     
     @classmethod
     def from_code(cls, code: int) -> "RadarEventType":
-        """Map Vayyar type code to RadarEventType
-        
-        Vayyar Code Mapping:
-        ┌─────────────┬────────────────┬──────────┐
-        │ Vayyar Code │   Event Type   │ Severity │
-        ├─────────────┼────────────────┼──────────┤
-        │ 4           │ PRESENCE       │ LOW      │
-        │ 5           │ FALL           │ HIGH     │
-        │ 8           │ SENSITIVE_FALL │ HIGH     │
-        │ 10          │ BED_EXIT       │ MED      │
-        └─────────────┴────────────────┴──────────┘
-        """
         mapping = {
-            4: cls.PRESENCE,        # Person detected in room
-            5: cls.FALL,            # Standard fall detected
-            8: cls.SENSITIVE_FALL,  # Suspected fall (confidence-based)
-            10: cls.BED_EXIT,       # Person exiting bed
+            4: cls.PRESENCE,
+            5: cls.FALL,
+            8: cls.SENSITIVE_FALL,
+            10: cls.BED_EXIT,
         }
         return mapping.get(code, cls.UNKNOWN)
+
+
+class FallEventStatus(str, Enum):
+    """Fall event lifecycle statuses from Vayyar"""
+    FALL_DETECTED = "fall_detected"
+    FALL_CONFIRMED = "fall_confirmed"
+    CALLING = "calling"
+    ON_CALL = "on_call"
+    FINISHED = "finished"
+    FALL_EXIT = "fall_exit"
+    CANCELED = "canceled"
 
 
 class PresenceStatus(str, Enum):
