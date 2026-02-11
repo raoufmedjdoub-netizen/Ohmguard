@@ -2612,20 +2612,26 @@ async def update_notification_preferences(
     prefs: dict,
     current_user: UserInDB = Depends(get_current_user)
 ):
-    """Update current user's email notification preferences."""
-    email_notifications = prefs.get("email_notifications", False)
-    await db.users.update_one(
-        {"id": current_user.id},
-        {"$set": {"email_notifications": email_notifications}}
-    )
-    return {"success": True, "email_notifications": email_notifications}
+    """Update current user's notification preferences."""
+    update_fields = {}
+    if "email_notifications" in prefs:
+        update_fields["email_notifications"] = bool(prefs["email_notifications"])
+    if "alert_banner_enabled" in prefs:
+        update_fields["alert_banner_enabled"] = bool(prefs["alert_banner_enabled"])
+    if update_fields:
+        await db.users.update_one(
+            {"id": current_user.id},
+            {"$set": update_fields}
+        )
+    return {"success": True, **update_fields}
 
 @api_router.get("/users/me/notifications")
 async def get_notification_preferences(current_user: UserInDB = Depends(get_current_user)):
-    """Get current user's email notification preferences."""
-    user = await db.users.find_one({"id": current_user.id}, {"_id": 0, "email_notifications": 1, "email": 1})
+    """Get current user's notification preferences."""
+    user = await db.users.find_one({"id": current_user.id}, {"_id": 0, "email_notifications": 1, "email": 1, "alert_banner_enabled": 1})
     return {
         "email_notifications": user.get("email_notifications", False) if user else False,
+        "alert_banner_enabled": user.get("alert_banner_enabled", True) if user else True,
         "email": user.get("email", "") if user else ""
     }
 
