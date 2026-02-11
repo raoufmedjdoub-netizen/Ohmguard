@@ -81,12 +81,15 @@ const EVENT_TYPE_CONFIG = {
 
 const AI_WARNING_LABELS = {
   Fall_Detected: { label: 'Chute (IA)', icon: 'alert', color: 'bg-red-600', border: 'border-red-500' },
+  fall: { label: 'Chute (IA)', icon: 'alert', color: 'bg-red-600', border: 'border-red-500' },
   Violence: { label: 'Violence', icon: 'alert', color: 'bg-red-700', border: 'border-red-600' },
   Fire: { label: 'Feu', icon: 'flame', color: 'bg-orange-600', border: 'border-orange-500' },
   Smoke: { label: 'Fumee', icon: 'flame', color: 'bg-gray-600', border: 'border-gray-500' },
   Intrusion: { label: 'Intrusion', icon: 'eye', color: 'bg-purple-700', border: 'border-purple-600' },
   Person_Detected: { label: 'Personne', icon: 'user', color: 'bg-blue-500', border: 'border-blue-400' },
   Loitering: { label: 'Rodeur', icon: 'eye', color: 'bg-amber-600', border: 'border-amber-500' },
+  Normal_Activity: { label: 'Activite', icon: 'user', color: 'bg-green-500', border: 'border-green-400' },
+  'Incivilité': { label: 'Incivilite', icon: 'alert', color: 'bg-orange-700', border: 'border-orange-600' },
 };
 
 function ElapsedTimer({ since }) {
