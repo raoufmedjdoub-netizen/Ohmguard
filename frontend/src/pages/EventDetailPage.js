@@ -5,6 +5,7 @@ import { eventsAPI } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { EventActionDialog } from '@/components/EventActionDialog';
 import { cn, formatDate, getEventTypeColor, getSeverityColor, getStatusColor } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
@@ -23,7 +24,9 @@ import {
   TestTube,
   Phone,
   ArrowDownCircle,
-  Ruler
+  Ruler,
+  MessageSquare,
+  UserPlus
 } from 'lucide-react';
 
 const FALL_STATUS_CONFIG = {
