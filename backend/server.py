@@ -766,6 +766,80 @@ async def create_fall_event(current_user: UserInDB = Depends(get_current_user)):
         "event_id": event_id
     }
 
+
+@api_router.post("/create-sensitive-fall-event")
+async def create_sensitive_fall_event(current_user: UserInDB = Depends(get_current_user)):
+    """
+    Create a simulated SENSITIVE_FALL event (type 8) for testing.
+    """
+    import uuid
+    from datetime import datetime, timezone
+    from radar_event_models import (
+        SensitiveFallEventPayload, normalize_sensitive_fall_event
+    )
+    
+    sensor = await db.sensors.find_one({"tenant_id": current_user.tenant_id}, {"_id": 0})
+    
+    sf_payload = SensitiveFallEventPayload(
+        timestamp=int(datetime.now(timezone.utc).timestamp() * 1000),
+        status="fall_suspected",
+        isSimulated=True,
+        isLearning=False,
+        isSilent=False,
+        fallLocX_cm=150.0,
+        fallLocY_cm=200.0,
+        fallLocZ_cm=30.0,
+        confidenceLevel=0.85,
+        suspectedEventsCounter=1,
+        lastEventConfidence=0.85
+    )
+    
+    event = normalize_sensitive_fall_event(
+        device_id=sensor.get("device_id", f"test_{uuid.uuid4().hex[:8]}") if sensor else f"test_{uuid.uuid4().hex[:8]}",
+        payload=sf_payload,
+        sensor_id=sensor["id"] if sensor else None,
+        site_id=sensor.get("site_id") if sensor else None,
+        zone_id=sensor.get("zone_id") if sensor else None,
+        tenant_id=current_user.tenant_id
+    )
+    
+    # Enrich with location
+    if sensor:
+        event["radar_name"] = sensor.get("name")
+        location_parts = []
+        if sensor.get("client_name"):
+            location_parts.append(sensor["client_name"])
+        if sensor.get("building_name"):
+            location_parts.append(sensor["building_name"])
+        if sensor.get("floor_name"):
+            location_parts.append(sensor["floor_name"])
+        if sensor.get("room_name"):
+            location_parts.append(sensor["room_name"])
+        if location_parts:
+            event["location_path"] = " > ".join(location_parts)
+    
+    await db.events.insert_one(event)
+    
+    # Broadcast via WebSocket
+    from socketio_service import get_socketio_service
+    sio_service = get_socketio_service()
+    if sio_service:
+        event_for_broadcast = {k: v for k, v in event.items() if k != '_id'}
+        await sio_service.broadcast_to_tenant(current_user.tenant_id, {
+            "type": "new_radar_event",
+            "event": {
+                **event_for_broadcast,
+                "sensor_name": sensor.get('name') if sensor else None,
+                "urgent": True
+            }
+        })
+    
+    logger.info(f"[Test] Sensitive Fall event created: {event['id']}")
+    return {
+        "message": "Sensitive Fall event created",
+        "event_id": event['id']
+    }
+
 # ==================== SITE ENDPOINTS ====================
 
 @api_router.post("/sites", response_model=Site)
