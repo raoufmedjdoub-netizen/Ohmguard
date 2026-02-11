@@ -985,12 +985,11 @@ export function RadarConfigPage() {
                   <div>
                     <h4 className="font-medium mb-4">Configuration BLE</h4>
                     <div className="grid grid-cols-2 gap-4">
-                      <SelectField control={control} name="appConfig.bleServerType" label="Type serveur BLE" options={ENUM_VALUES.bleServerType} />
                       <Controller
                         name="appConfig.bleCustomDeviceName"
                         control={control}
                         render={({ field }) => (
-                          <ConfigField label="Nom BLE personnalisé">
+                          <ConfigField label="Nom BLE personnalise">
                             <Input {...field} placeholder="VC000" maxLength={20} />
                           </ConfigField>
                         )}
