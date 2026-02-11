@@ -161,71 +161,71 @@ const appConfigSchema = z.object({
 
 const walabotConfigSchema = z.object({
   // Arena boundaries
-  xMin: z.number().default(-1.8),
-  xMax: z.number().default(1.8),
-  yMin: z.number().default(0.3),
-  yMax: z.number().default(3.5),
-  zMin: z.number().default(0),
-  zMax: z.number().default(1.8),
+  xMin: flexNum(-1.8),
+  xMax: flexNum(1.8),
+  yMin: flexNum(0.3),
+  yMax: flexNum(3.5),
+  zMin: flexNum(0),
+  zMax: flexNum(1.8),
 
   // Sensor
-  sensorHeight: z.number().default(1.5),
-  sensorMounting: z.number().default(3),
+  sensorHeight: flexNum(1.5),
+  sensorMounting: flexNum(3),
 
   // Sub-regions
   trackerSubRegions: z.array(trackerSubRegionSchema).default([]),
 
   // Falling
-  fallingSensitivity: z.number().default(1),
-  maxTargetsForFallingTrigger: z.number().default(1),
-  durationUntilConfirm_sec: z.number().default(52),
-  minTimeOfTarInFallLoc_sec: z.number().default(30),
-  fallingMitigatorEnabled: z.boolean().default(true),
-  fallingMitigatorThreshold: z.number().default(0),
+  fallingSensitivity: flexNum(1),
+  maxTargetsForFallingTrigger: flexNum(1),
+  durationUntilConfirm_sec: flexNum(52),
+  minTimeOfTarInFallLoc_sec: flexNum(30),
+  fallingMitigatorEnabled: flexBool(true),
+  fallingMitigatorThreshold: flexNum(0),
 
   // Presence
-  performHeatup: z.boolean().default(true),
-  performAgc: z.boolean().default(true),
-  enterDuration: z.number().default(120),
-  exitDuration: z.number().default(120),
+  performHeatup: flexBool(true),
+  performAgc: flexBool(true),
+  enterDuration: flexNum(120),
+  exitDuration: flexNum(120),
 
   // Bed exit
-  bedExitEnabled: z.union([z.boolean(), z.string()]).default(true),
-  bedExitPredictionThreshold: z.number().default(0.9),
-  bedExitNFramesToReset: z.number().default(100),
-  bedExitWallSide: z.number().default(0),
+  bedExitEnabled: flexBool(true),
+  bedExitPredictionThreshold: flexNum(0.9),
+  bedExitNFramesToReset: flexNum(100),
+  bedExitWallSide: flexNum(0),
 
   // Telemetry flags
-  enableBedExitTelemetry: z.boolean().default(false),
-  enableBedExitStateTelemetry: z.boolean().default(false),
-  enableTrackerTargetTelemetry: z.boolean().default(true),
-  enableDoorEventTelemetry: z.boolean().default(false),
-  enablePeakTelemetry: z.boolean().default(true),
-  enableAboveThPointTelemetry: z.boolean().default(false),
-  enableIslandPointTelemetry: z.boolean().default(false),
-  enableHeightProfileTelemetry: z.boolean().default(true),
-  enableOtfPointTelemetry: z.boolean().default(true),
-  enableFallingTelemetry: z.boolean().default(true),
-  enableSensitiveFallingTelemetry: z.boolean().default(true),
-  enablePresenceTelemetry: z.boolean().default(true),
-  enableImageParamsTelemetry: z.boolean().default(true),
-  enableInterfererLocHistoryTelemetry: z.boolean().default(true),
-  enableMtiParamsTelemetry: z.boolean().default(true),
-  enableReferenceTelemetry: z.boolean().default(true),
-  enableSuiteTelemetry: z.boolean().default(false),
-  enableClustersTelemetry: z.boolean().default(true),
-  enableSubRegionStateTelemetry: z.boolean().default(true),
+  enableBedExitTelemetry: flexBool(false),
+  enableBedExitStateTelemetry: flexBool(false),
+  enableTrackerTargetTelemetry: flexBool(true),
+  enableDoorEventTelemetry: flexBool(false),
+  enablePeakTelemetry: flexBool(true),
+  enableAboveThPointTelemetry: flexBool(false),
+  enableIslandPointTelemetry: flexBool(false),
+  enableHeightProfileTelemetry: flexBool(true),
+  enableOtfPointTelemetry: flexBool(true),
+  enableFallingTelemetry: flexBool(true),
+  enableSensitiveFallingTelemetry: flexBool(true),
+  enablePresenceTelemetry: flexBool(true),
+  enableImageParamsTelemetry: flexBool(true),
+  enableInterfererLocHistoryTelemetry: flexBool(true),
+  enableMtiParamsTelemetry: flexBool(true),
+  enableReferenceTelemetry: flexBool(true),
+  enableSuiteTelemetry: flexBool(false),
+  enableClustersTelemetry: flexBool(true),
+  enableSubRegionStateTelemetry: flexBool(true),
 
   // Dry contact
-  dryContactActivationDuration_sec: z.number().default(30)
+  dryContactActivationDuration_sec: flexNum(30)
 }).passthrough();
 
 // ==================== rfProfile ====================
 
 const rfProfileSchema = z.object({
-  rfRegulationZone: z.string().default("WW"),
-  rfBandWidth: z.string().default("BW500")
-});
+  rfRegulationZone: flexStr("WW"),
+  rfBandWidth: flexStr("BW500")
+}).passthrough();
 
 // ==================== Complete Config ====================
 
@@ -233,17 +233,17 @@ export const vayyarConfigSchema = z.object({
   appConfig: appConfigSchema.default({}),
   walabotConfig: walabotConfigSchema.default({}),
   rfProfile: rfProfileSchema.default({}),
-  productType: z.string().default("Falling")
+  productType: flexStr("Falling")
 }).passthrough();
 
 // ==================== MQTT Options ====================
 
 export const mqttOptionsSchema = z.object({
-  qos: z.number().min(0).max(2).default(1),
-  retain: z.boolean().default(false),
-  correlationId: z.string().optional(),
-  topic: z.string().optional()
-});
+  qos: flexNum(1),
+  retain: flexBool(false),
+  correlationId: flexStr("").optional(),
+  topic: flexStr("").optional()
+}).passthrough();
 
 // ==================== ENUM VALUES ====================
 
