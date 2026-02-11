@@ -810,10 +810,10 @@ export function LivePage() {
       </div>
 
       {/* Alertes actives en temps reel */}
-      <ActiveAlertsSection />
+      <ActiveAlertsSection onFilterChange={setAlertFilter} />
 
       {/* Grille compacte de radars - TEMPS REEL UNIQUEMENT */}
-      {(activeView === 'all' || activeView === 'radars') && (
+      {showRadars && (activeView === 'all' || activeView === 'radars') && (
       <Card>
         <CardHeader className="border-b border-border py-2 px-4">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
