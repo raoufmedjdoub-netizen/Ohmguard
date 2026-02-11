@@ -65,7 +65,9 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <WebSocketProvider>
-              <MainLayout />
+              <AlertProvider>
+                <MainLayout />
+              </AlertProvider>
             </WebSocketProvider>
           </ProtectedRoute>
         }
