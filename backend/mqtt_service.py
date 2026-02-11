@@ -584,7 +584,17 @@ class MQTTService:
         # Log extracted presence data
         logger.debug(f"Presence data: detected={event_payload.get('presenceDetected')}, regionMap={event_payload.get('presenceRegionMap')}, targets={len(event_payload.get('trackerTargets', []))}")
         
-        # Build RadarEventRequest for normalization
+        # ===================================================================================
+        # FALL EVENT HANDLING (type 5)
+        # Fall events have a lifecycle: fall_detected → fall_confirmed → calling → on_call → finished/fall_exit/canceled
+        # Events with the same `timestamp` field are part of the same fall flow.
+        # We UPDATE the existing event document rather than creating duplicates.
+        # ===================================================================================
+        if event_type_code == 5:
+            await self._handle_fall_event(device_id, event_payload, sensor)
+            return
+        
+        # Build RadarEventRequest for normalization (non-fall events)
         try:
             radar_payload = RadarEventPayload(
                 presenceDetected=event_payload.get("presenceDetected", False),
