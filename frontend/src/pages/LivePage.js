@@ -60,6 +60,16 @@ const EVENT_TYPE_CONFIG = {
   BED_EXIT: { label: 'SORTIE DE LIT', color: 'bg-amber-600', borderColor: 'border-amber-500' },
 };
 
+const AI_WARNING_LABELS = {
+  Fall_Detected: { label: 'Chute (IA)', icon: 'alert', color: 'bg-red-600', border: 'border-red-500' },
+  Violence: { label: 'Violence', icon: 'alert', color: 'bg-red-700', border: 'border-red-600' },
+  Fire: { label: 'Feu', icon: 'flame', color: 'bg-orange-600', border: 'border-orange-500' },
+  Smoke: { label: 'Fumee', icon: 'flame', color: 'bg-gray-600', border: 'border-gray-500' },
+  Intrusion: { label: 'Intrusion', icon: 'eye', color: 'bg-purple-700', border: 'border-purple-600' },
+  Person_Detected: { label: 'Personne', icon: 'user', color: 'bg-blue-500', border: 'border-blue-400' },
+  Loitering: { label: 'Rodeur', icon: 'eye', color: 'bg-amber-600', border: 'border-amber-500' },
+};
+
 function ElapsedTimer({ since }) {
   const [elapsed, setElapsed] = useState('');
   useEffect(() => {
@@ -76,109 +86,142 @@ function ElapsedTimer({ since }) {
   return <span className="font-mono">{elapsed}</span>;
 }
 
-function ActiveAlertCard({ alert, onAction, onView }) {
-  const config = EVENT_TYPE_CONFIG[alert.type] || EVENT_TYPE_CONFIG.FALL;
-  const fallConfig = FALL_STATUS_LABELS[alert.fall_status];
-  const isAcked = alert.status === 'ACK';
-  const location = alert.location_path || alert.sensor_name || alert.radar_name || 'Localisation inconnue';
-  const hasLocation = alert.fall_loc_x_cm != null || alert.fall_loc_y_cm != null;
+function AlertFeedItem({ alert, onAction, onView }) {
+  const isAI = alert.alertSource === 'ai_camera' || alert.type === 'AI_ALERT';
+  const isAcked = alert.status === 'ACK' || alert.status === 'ACKNOWLEDGED';
+
+  // Config for radar events
+  const radarConfig = EVENT_TYPE_CONFIG[alert.type];
+  // Config for AI events
+  const aiConfig = isAI ? (AI_WARNING_LABELS[alert.warning_type] || { label: alert.warning_type || 'IA', color: 'bg-violet-600', border: 'border-violet-500' }) : null;
+
+  const config = isAI ? aiConfig : (radarConfig || EVENT_TYPE_CONFIG.FALL);
+  const location = isAI
+    ? (alert.location_path || alert.channel_name || 'Camera IA')
+    : (alert.location_path || alert.sensor_name || alert.radar_name || 'Localisation inconnue');
+
+  const fallStatus = alert.fall_status ? FALL_STATUS_LABELS[alert.fall_status] : null;
+  const confidence = isAI && alert.confidence ? Math.round(alert.confidence * 100) : null;
+  const eventTime = alert.timestamp || alert.occurred_at || alert.created_at;
+  const hasCoords = alert.fall_loc_x_cm != null;
 
   return (
     <div
-      data-testid={`active-alert-${alert.id}`}
+      data-testid={`alert-feed-${alert.id}`}
       className={cn(
-        'rounded-lg border-2 p-4 transition-all',
-        isAcked ? 'border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50' : `${config.borderColor} bg-white dark:bg-gray-900`,
-        !isAcked && 'shadow-lg'
+        'group flex items-stretch gap-0 transition-all duration-300',
+        isAcked && 'opacity-60'
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0 space-y-2">
-          {/* Type + Status */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge className={cn('text-xs font-bold text-white', config.color)}>
-              {config.label}
-            </Badge>
-            {fallConfig && (
-              <Badge className={cn('text-xs', fallConfig.color)}>{fallConfig.label}</Badge>
-            )}
-            {alert.is_simulated && (
-              <Badge className="bg-yellow-400/80 text-yellow-900 text-xs">TEST</Badge>
-            )}
-            {isAcked && (
-              <Badge variant="outline" className="text-xs border-blue-400 text-blue-600">Acquitte</Badge>
-            )}
-            {alert.assigned_to_name && (
-              <Badge variant="outline" className="text-xs border-purple-400 text-purple-600">{alert.assigned_to_name}</Badge>
-            )}
-          </div>
+      {/* Timeline line + dot */}
+      <div className="flex flex-col items-center w-8 flex-shrink-0">
+        <div className={cn(
+          'w-3 h-3 rounded-full mt-4 flex-shrink-0 ring-2 ring-background',
+          isAcked ? 'bg-gray-400' : (isAI ? 'bg-violet-500' : config.color),
+          !isAcked && 'animate-pulse'
+        )} />
+        <div className="w-px flex-1 bg-border" />
+      </div>
 
-          {/* Location */}
-          <div className="flex items-center gap-1.5 text-sm">
-            <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-            <span className="font-medium truncate">{location}</span>
-          </div>
-
-          {/* Fall location coordinates */}
-          {hasLocation && (
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <Crosshair className="h-3 w-3" />
-              <span className="font-mono">X:{alert.fall_loc_x_cm} Y:{alert.fall_loc_y_cm} Z:{alert.fall_loc_z_cm}</span>
-              {alert.tar_height_est != null && (
-                <span className="font-mono">H:{alert.tar_height_est}cm</span>
-              )}
-            </div>
+      {/* Alert content */}
+      <div className={cn(
+        'flex-1 rounded-lg border p-3 mb-2 transition-all',
+        isAcked
+          ? 'border-gray-200 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-900/30'
+          : `${config.border} bg-white dark:bg-gray-950 shadow-sm hover:shadow-md`
+      )}>
+        {/* Top row: type badge + location + time */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {isAI ? (
+            <Camera className="h-4 w-4 text-violet-500 flex-shrink-0" />
+          ) : (
+            <AlertTriangle className={cn('h-4 w-4 flex-shrink-0', isAcked ? 'text-gray-400' : 'text-red-500')} />
+          )}
+          <Badge className={cn('text-[11px] font-bold text-white', config.color)}>
+            {config.label}
+          </Badge>
+          {fallStatus && (
+            <Badge className={cn('text-[11px]', fallStatus.color)}>{fallStatus.label}</Badge>
+          )}
+          {confidence !== null && (
+            <Badge variant="outline" className="text-[11px] font-mono">{confidence}%</Badge>
+          )}
+          {alert.is_simulated && (
+            <Badge className="bg-yellow-400/80 text-yellow-900 text-[11px]">TEST</Badge>
+          )}
+          {isAcked && (
+            <Badge variant="outline" className="text-[11px] border-blue-400 text-blue-600">Acquitte</Badge>
+          )}
+          {alert.assigned_to_name && (
+            <Badge variant="outline" className="text-[11px] border-purple-400 text-purple-600">{alert.assigned_to_name}</Badge>
           )}
 
-          {/* Timer */}
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
             <Clock className="h-3 w-3" />
             <ElapsedTimer since={alert.addedAt || Date.now()} />
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col gap-1 flex-shrink-0">
+        {/* Middle row: location + optional coordinates */}
+        <div className="mt-1.5 flex items-center gap-2">
+          <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+          <span className="text-sm font-medium">{location}</span>
+          {hasCoords && (
+            <span className="text-[11px] font-mono text-muted-foreground ml-2">
+              <Crosshair className="h-3 w-3 inline mr-0.5" />
+              X:{alert.fall_loc_x_cm} Y:{alert.fall_loc_y_cm} Z:{alert.fall_loc_z_cm}
+            </span>
+          )}
+          {isAI && alert.warning_text && (
+            <span className="text-xs text-muted-foreground ml-2 italic truncate max-w-[200px]">
+              {alert.warning_text}
+            </span>
+          )}
+        </div>
+
+        {/* Bottom row: actions */}
+        <div className="mt-2 flex items-center gap-1 flex-wrap">
           {!isAcked && (
-            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onAction(alert, 'ACK')}>
+            <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => onAction(alert, 'ACK')}>
               Acquitter
             </Button>
           )}
-          <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => onAction(alert, 'RESOLVED')}>
-            <CheckCircle className="h-3 w-3 mr-1" />
-            Resoudre
+          <Button size="sm" className="h-6 text-[11px] px-2 bg-green-600 hover:bg-green-700 text-white" onClick={() => onAction(alert, 'RESOLVED')}>
+            <CheckCircle className="h-3 w-3 mr-1" />Resoudre
           </Button>
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onAction(alert, 'FALSE_ALARM')}>
-            <XCircle className="h-3 w-3 mr-1" />
-            Faux
+          <Button size="sm" variant="ghost" className="h-6 text-[11px] px-2" onClick={() => onAction(alert, 'FALSE_ALARM')}>
+            <XCircle className="h-3 w-3 mr-1" />Faux
           </Button>
-          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onAction(alert, 'ASSIGN')}>
-            <UserPlus className="h-3 w-3 mr-1" />
-            Assigner
-          </Button>
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onView(alert.id)}>
-            <Eye className="h-3 w-3 mr-1" />
-            Details
+          {!isAI && (
+            <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => onAction(alert, 'ASSIGN')}>
+              <UserPlus className="h-3 w-3 mr-1" />Assigner
+            </Button>
+          )}
+          {isAI && alert.video_url && (
+            <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => window.open(alert.video_url, '_blank')}>
+              <Video className="h-3 w-3 mr-1" />Video
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" className="h-6 text-[11px] px-2 ml-auto" onClick={() => onView(alert)}>
+            <Eye className="h-3 w-3 mr-1" />Details
           </Button>
         </div>
-      </div>
 
-      {/* Fall status timeline (compact) */}
-      {alert.fall_status_history && alert.fall_status_history.length > 1 && (
-        <div className="mt-3 pt-2 border-t border-border/50">
-          <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Fall status timeline (compact) */}
+        {alert.fall_status_history && alert.fall_status_history.length > 1 && (
+          <div className="mt-2 pt-1.5 border-t border-border/50 flex items-center gap-1 flex-wrap">
             {alert.fall_status_history.slice(-4).map((entry, idx) => {
               const c = FALL_STATUS_LABELS[entry.status] || { label: entry.status, color: 'bg-gray-400 text-white' };
               return (
                 <React.Fragment key={idx}>
-                  {idx > 0 && <span className="text-muted-foreground text-xs">→</span>}
+                  {idx > 0 && <span className="text-muted-foreground text-[10px]">→</span>}
                   <Badge className={cn('text-[10px] py-0', c.color)}>{c.label}</Badge>
                 </React.Fragment>
               );
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -205,33 +248,60 @@ function ActiveAlertsSection() {
     }
   };
 
+  const handleView = (alert) => {
+    if (alert.alertSource === 'ai_camera') {
+      navigate('/ai-sensors');
+    } else {
+      navigate(`/events/${alert.id}`);
+    }
+  };
+
   if (activeAlerts.length === 0) return null;
 
-  const unackedCount = activeAlerts.filter(a => a.status !== 'ACK').length;
+  const unackedCount = activeAlerts.filter(a => a.status !== 'ACK' && a.status !== 'ACKNOWLEDGED').length;
+  const radarCount = activeAlerts.filter(a => a.alertSource !== 'ai_camera').length;
+  const aiCount = activeAlerts.filter(a => a.alertSource === 'ai_camera').length;
+
+  // Sort by time - newest first
+  const sorted = [...activeAlerts].sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
 
   return (
     <>
-      <Card className="border-red-500/50 shadow-lg" data-testid="active-alerts-section">
-        <CardHeader className="border-b border-red-500/20 py-2 px-4 bg-red-50 dark:bg-red-950/30">
+      <Card className="border-red-500/40 shadow-lg overflow-hidden" data-testid="active-alerts-section">
+        <CardHeader className="border-b border-red-500/20 py-2 px-4 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/20">
           <CardTitle className="flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-400">
-            <AlertTriangle className="h-4 w-4 animate-pulse" />
-            Alertes actives ({activeAlerts.length})
+            <div className="relative">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600" />
+              </span>
+            </div>
+            Fil d'alertes ({activeAlerts.length})
             {unackedCount > 0 && (
-              <Badge className="bg-red-600 text-white text-xs ml-1">{unackedCount} non acquittee{unackedCount > 1 ? 's' : ''}</Badge>
+              <Badge className="bg-red-600 text-white text-[11px]">{unackedCount} en attente</Badge>
+            )}
+            {radarCount > 0 && (
+              <Badge variant="outline" className="text-[11px] border-red-300 text-red-600">
+                <Radio className="h-3 w-3 mr-0.5" />{radarCount} radar
+              </Badge>
+            )}
+            {aiCount > 0 && (
+              <Badge variant="outline" className="text-[11px] border-violet-300 text-violet-600">
+                <Camera className="h-3 w-3 mr-0.5" />{aiCount} IA
+              </Badge>
             )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {activeAlerts.map(alert => (
-              <ActiveAlertCard
-                key={alert.id}
-                alert={alert}
-                onAction={handleAction}
-                onView={(id) => navigate(`/events/${id}`)}
-              />
-            ))}
-          </div>
+        <CardContent className="p-3 pl-1 max-h-[420px] overflow-y-auto">
+          {sorted.map(alert => (
+            <AlertFeedItem
+              key={alert.id}
+              alert={alert}
+              onAction={handleAction}
+              onView={handleView}
+            />
+          ))}
         </CardContent>
       </Card>
 
@@ -241,9 +311,12 @@ function ActiveAlertsSection() {
         eventId={dialogEvent?.id}
         action={dialogAction}
         eventInfo={dialogEvent ? {
-          type: dialogEvent.type,
-          location: dialogEvent.location_path || dialogEvent.radar_name || 'Localisation inconnue',
-          sensor: dialogEvent.radar_name
+          type: dialogEvent.alertSource === 'ai_camera'
+            ? (AI_WARNING_LABELS[dialogEvent.warning_type]?.label || dialogEvent.warning_type)
+            : dialogEvent.type,
+          location: dialogEvent.location_path || dialogEvent.channel_name || dialogEvent.radar_name || 'Localisation inconnue',
+          sensor: dialogEvent.alertSource === 'ai_camera' ? dialogEvent.channel_name : dialogEvent.radar_name,
+          isAI: dialogEvent.alertSource === 'ai_camera'
         } : null}
         onSuccess={handleActionSuccess}
       />
