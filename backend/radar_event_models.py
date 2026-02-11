@@ -105,6 +105,21 @@ class FallEventPayload(BaseModel):
     idOfTrigger: Optional[str] = None
 
 
+class SensitiveFallEventPayload(BaseModel):
+    """Payload structure for Vayyar Sensitive Fall Events (type=8)"""
+    timestamp: int = 0  # Epoch ms
+    status: str = "fall_suspected"  # SensitiveFallEventStatus
+    isSimulated: bool = False
+    isLearning: bool = False
+    isSilent: bool = False
+    fallLocX_cm: float = 0
+    fallLocY_cm: float = 0
+    fallLocZ_cm: float = 0
+    confidenceLevel: float = 0
+    suspectedEventsCounter: int = 0
+    lastEventConfidence: float = 0
+
+
 class RadarEventRequest(BaseModel):
     """Request body for POST /api/events/radar"""
     payload: RadarEventPayload
