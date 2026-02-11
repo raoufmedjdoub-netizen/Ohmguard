@@ -377,35 +377,22 @@ export function HistoryPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
+                        {fallStatus ? (
+                          <FallStatusBadge status={fallStatus} />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         <div className="max-w-[200px]">
                           {locationPath ? (
                             <span className="text-xs text-primary font-medium truncate block" title={locationPath}>
                               {locationPath}
                             </span>
                           ) : (
-                            <span className="text-xs text-muted-foreground">–</span>
+                            <span className="text-xs text-muted-foreground">-</span>
                           )}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant="outline" 
-                          className={cn(
-                            presenceDetected 
-                              ? 'bg-success/20 text-success border-success/50' 
-                              : 'bg-muted/50 text-muted-foreground border-muted'
-                          )}
-                        >
-                          {presenceDetected ? t('yes') : t('no')}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-mono">
-                          {targetCount > 0 
-                            ? targetCount 
-                            : <span className="text-muted-foreground">0</span>
-                          }
-                        </span>
                       </TableCell>
                       <TableCell>
                         <span className="text-sm">
