@@ -137,7 +137,8 @@ export const rulesAPI = {
 // Users API
 export const usersAPI = {
   list: () => api.get('/users'),
-  update: (id, data) => api.patch(`/users/${id}`, data)
+  update: (id, data) => api.patch(`/users/${id}`, data),
+  assignable: () => api.get('/users/assignable')
 };
 
 // Notifications API
