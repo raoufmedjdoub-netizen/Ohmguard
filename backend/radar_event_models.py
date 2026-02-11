@@ -68,13 +68,33 @@ class EventStatus(str, Enum):
 # ==================== REQUEST MODELS ====================
 
 class RadarEventPayload(BaseModel):
-    """Payload structure from Vayyar radar"""
+    """Payload structure from Vayyar radar (presence/generic events)"""
     presenceDetected: bool = False
     presenceRegionMap: Dict[str, int] = Field(default_factory=dict)
     presenceTargetType: int = 0
     roomPresenceIndication: int = 0
     timestamp: int = 0  # milliseconds epoch
     trackerTargets: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class FallEventPayload(BaseModel):
+    """Payload structure for Vayyar Fall Events (type=5)"""
+    timestamp: int = 0  # Epoch ms - beginning of fall event (same for all messages in same fall flow)
+    statusUpdateTimestamp: int = 0  # Epoch ms - when this message was sent
+    status: str = "fall_detected"  # FallEventStatus enum value
+    type: str = "fall"  # Always "fall"
+    deviceId: str = ""
+    endTimestamp: int = 0  # Epoch ms - when event ended
+    isSimulated: bool = False
+    exitReason: str = ""
+    isLearning: Optional[bool] = None
+    extra: str = ""  # X, Y, Z location of trigger target
+    isSilent: Optional[bool] = None
+    fallLocX_cm: Optional[float] = None
+    fallLocY_cm: Optional[float] = None
+    fallLocZ_cm: Optional[float] = None
+    tarHeightEst: Optional[float] = None
+    idOfTrigger: Optional[str] = None
 
 
 class RadarEventRequest(BaseModel):
