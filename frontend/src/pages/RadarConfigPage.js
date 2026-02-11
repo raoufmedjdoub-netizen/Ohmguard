@@ -668,11 +668,13 @@ export function RadarConfigPage() {
                       Détection de présence
                     </h4>
                     <div className="grid grid-cols-2 gap-4">
-                      <NumberField control={control} name="walabotConfig.enterDuration" label="Durée d'entrée" unit="sec" min={0} max={300} />
-                      <NumberField control={control} name="walabotConfig.exitDuration" label="Durée de sortie" unit="sec" min={0} max={300} />
-                      <SwitchField control={control} name="walabotConfig.performHeatup" label="Préchauffage" description="Phase de calibration au démarrage" />
-                      <SwitchField control={control} name="walabotConfig.performAgc" label="AGC" description="Contrôle automatique du gain" />
-                      <SwitchField control={control} name="appConfig.enableDoorEvents" label="Événements porte" description="Détecte les entrées/sorties" />
+                      <NumberField control={control} name="walabotConfig.enterDuration" label="Duree d'entree" unit="sec" min={0} max={300} />
+                      <NumberField control={control} name="walabotConfig.exitDuration" label="Duree de sortie" unit="sec" min={0} max={300} />
+                      <SwitchField control={control} name="walabotConfig.performHeatup" label="Prechauffage" description="Phase de calibration au demarrage" />
+                      <SwitchField control={control} name="walabotConfig.performAgc" label="AGC" description="Controle automatique du gain" />
+                      <SwitchField control={control} name="appConfig.enableDoorEvents" label="Evenements porte" description="Detecte les entrees/sorties" />
+                      <SwitchField control={control} name="appConfig.enablePresencePeriodicReport" label="Rapport presence periodique" description="Envoi periodique du statut presence" />
+                      <NumberField control={control} name="appConfig.presenceReportMinRateMills" label="Intervalle rapport" unit="ms" min={1000} max={600000} step={1000} />
                     </div>
                   </div>
 
