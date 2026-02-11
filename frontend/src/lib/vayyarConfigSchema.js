@@ -27,20 +27,20 @@ const dryContactsSchema = z.object({
 }).passthrough();
 
 const trackerSubRegionSchema = z.object({
-  xMin: z.number().default(0),
-  xMax: z.number().default(0),
-  yMin: z.number().default(0),
-  yMax: z.number().default(0),
-  zMin: z.number().default(0),
-  zMax: z.number().default(0),
-  enterDuration: z.number().default(120),
-  exitDuration: z.number().default(120),
-  isFallingDetection: z.boolean().default(false),
-  isPresenceDetection: z.boolean().default(false),
-  isLowSnr: z.boolean().default(true),
-  isHorizontal: z.boolean().default(true),
-  isDoor: z.boolean().default(false),
-  name: z.string().default("string")
+  xMin: flexNum(0),
+  xMax: flexNum(0),
+  yMin: flexNum(0),
+  yMax: flexNum(0),
+  zMin: flexNum(0),
+  zMax: flexNum(0),
+  enterDuration: flexNum(120),
+  exitDuration: flexNum(120),
+  isFallingDetection: flexBool(false),
+  isPresenceDetection: flexBool(false),
+  isLowSnr: flexBool(true),
+  isHorizontal: flexBool(true),
+  isDoor: flexBool(false),
+  name: flexStr("string")
 }).passthrough();
 
 // ==================== appConfig ====================
