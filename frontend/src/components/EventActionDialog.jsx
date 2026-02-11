@@ -134,7 +134,6 @@ export function EventActionDialog({ open, onOpenChange, eventId, action, eventIn
       onSuccess?.(res.data);
       onOpenChange(false);
     } catch (e) {
-      console.error('EventActionDialog error:', e, 'eventInfo:', eventInfo, 'eventId:', eventId, 'action:', action);
       const msg = e.response?.data?.detail || 'Erreur lors de la mise a jour';
       toast.error(msg);
     } finally {
