@@ -37,12 +37,21 @@ class CreateClientUserRequest(BaseModel):
     full_name: str
     password: str
     role: ClientRole = ClientRole.VIEWER
+    phone: Optional[str] = None
+    job_title: Optional[str] = None
+    department: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class UpdateClientUserRequest(BaseModel):
     """Request to update a client user"""
     role: Optional[ClientRole] = None
     is_active: Optional[bool] = None
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    job_title: Optional[str] = None
+    department: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class PermissionOverrideRequest(BaseModel):
