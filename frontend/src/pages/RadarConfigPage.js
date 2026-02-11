@@ -626,15 +626,19 @@ export function RadarConfigPage() {
                       Détection de chute
                     </h4>
                     <div className="grid grid-cols-2 gap-4">
-                      <SelectField control={control} name="walabotConfig.fallingSensitivity" label="Sensibilité" options={ENUM_VALUES.fallingSensitivity} />
+                      <SelectField control={control} name="walabotConfig.fallingSensitivity" label="Sensibilite" options={ENUM_VALUES.fallingSensitivity} />
                       <SelectField control={control} name="walabotConfig.sensorMounting" label="Position capteur" options={ENUM_VALUES.sensorMounting} />
-                      <SwitchField control={control} name="appConfig.enableSensitiveMode" label="Mode sensible" description="Détection des chutes sensibles" />
-                      <SwitchField control={control} name="walabotConfig.fallingMitigatorEnabled" label="Mitigateur de chute" description="Réduit les faux positifs" />
+                      <SwitchField control={control} name="appConfig.enableSensitiveMode" label="Mode sensible" description="Detection des chutes sensibles" />
+                      <SwitchField control={control} name="walabotConfig.fallingMitigatorEnabled" label="Mitigateur de chute" description="Reduit les faux positifs" />
+                      <NumberField control={control} name="walabotConfig.maxTargetsForFallingTrigger" label="Max cibles pour chute" min={0} max={5} />
+                      <NumberField control={control} name="walabotConfig.fallingMitigatorThreshold" label="Seuil mitigateur" min={0} max={1} step={0.1} />
                     </div>
                     <div className="grid grid-cols-2 gap-4 mt-4">
-                      <SliderField control={control} name="appConfig.sensitivityLevel" label="Niveau de sensibilité" min={0} max={1} step={0.05} />
-                      <NumberField control={control} name="appConfig.thMinEventsForFirstDecision" label="Événements min pour décision" min={1} max={20} />
-                      <NumberField control={control} name="appConfig.thNumOfDetectionsInChain" label="Détections en chaîne" min={1} max={20} />
+                      <SliderField control={control} name="appConfig.sensitivityLevel" label="Niveau de sensibilite" min={0} max={1} step={0.05} />
+                      <NumberField control={control} name="appConfig.thMinEventsForFirstDecision" label="Evenements min pour decision" min={1} max={20} />
+                      <NumberField control={control} name="appConfig.thNumOfDetectionsInChain" label="Detections en chaine" min={1} max={20} />
+                      <NumberField control={control} name="walabotConfig.durationUntilConfirm_sec" label="Duree avant confirmation" unit="sec" min={0} max={120} />
+                      <NumberField control={control} name="walabotConfig.minTimeOfTarInFallLoc_sec" label="Temps min en position chute" unit="sec" min={0} max={120} />
                     </div>
                   </div>
 
