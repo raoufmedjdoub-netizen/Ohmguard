@@ -140,6 +140,15 @@ export function WebSocketProvider({ children }) {
       });
     });
 
+    // Listen for AI camera events (Seedoo)
+    socket.on('new_ai_event', (data) => {
+      console.log('New AI event received:', data);
+      notifyListeners({
+        type: 'new_ai_event',
+        event: data.event || data
+      });
+    });
+
     // Cleanup on unmount
     return () => {
       console.log('Disconnecting Socket.IO...');
