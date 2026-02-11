@@ -379,20 +379,17 @@ export function EventDetailPage() {
               </div>
             </div>
 
-            {/* Sensor Info */}
+            {/* Localisation & Capteur */}
             <div className="pt-4 border-t border-border">
-              <h3 className="text-sm font-medium text-muted-foreground mb-2">{t('events.sensor')}</h3>
+              <h3 className="text-sm font-medium text-muted-foreground mb-2">Localisation</h3>
               <div className="flex items-center gap-4">
                 <div className="p-3 rounded-lg bg-primary/10">
-                  <Activity className="h-6 w-6 text-primary" />
+                  <MapPin className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium">{event.radar_name || event.sensor_name || 'Unknown Sensor'}</p>
-                  <p className="text-sm text-primary font-mono">
-                    Device ID: {event.device_id || event.sensor_id?.substring(0, 12)}
-                  </p>
-                  {event.location_path && (
-                    <p className="text-xs text-muted-foreground">{event.location_path}</p>
+                  <p className="font-medium">{event.location_path || 'Localisation inconnue'}</p>
+                  {event.radar_name && (
+                    <p className="text-sm text-muted-foreground">Capteur : {event.radar_name}</p>
                   )}
                 </div>
               </div>

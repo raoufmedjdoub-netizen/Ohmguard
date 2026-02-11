@@ -748,11 +748,10 @@ export function LivePage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
               {radarCards.map((event) => {
                 const radarStatus = radarStatuses[event.sensor_id] || {};
-                const radarName = event.radar_name || 
+                const radarName = event.location_path || 
+                                  event.location?.room_number ||
+                                  event.radar_name || 
                                   radarStatus.name || 
-                                  radarStatus.serial_product || 
-                                  event.serial_product ||
-                                  event.sensor_id?.substring(0, 8) || 
                                   'N/A';
                 
                 // Présence active si type PRESENCE et presence_detected === true

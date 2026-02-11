@@ -132,7 +132,7 @@ export function HistoryPage() {
       e.fall_loc_y_cm ?? '-',
       e.fall_loc_z_cm ?? '-',
       e.timestamp || e.occurred_at,
-      e.device_id || e.sensor_id
+      e.location_path || e.radar_name || e.sensor_id
     ]);
     
     const csv = [headers, ...rows].map(r => r.join(',')).join('\n');

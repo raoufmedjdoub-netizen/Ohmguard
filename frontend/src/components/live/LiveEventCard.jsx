@@ -166,13 +166,10 @@ export const LiveEventCard = memo(function LiveEventCard({
   const location = event.location || null;
   const locationPath = event.location_path || null;
   
-  // Info radar - utiliser le nom du radar si disponible
+  // Info localisation - prioriser la chambre/pièce
+  const locationLabel = event.location_path || event.location?.room_number || null;
   const radarName = event.radar_name || event.sensor_name || null;
-  const radarSerial = event.serial_product || null;
-  const deviceSerial = radarSerial || 
-                       event.device_id?.replace('id_', '').substring(0, 12) || 
-                       event.sensor_id?.substring(0, 8) || 
-                       'N/A';
+  const displayName = locationLabel || radarName || 'Localisation inconnue';
   
   // Déterminer si la carte doit être mise en avant (urgente)
   const isUrgent = (event.severity === 'HIGH' || event.severity === 'CRITICAL') && 
@@ -257,15 +254,8 @@ export const LiveEventCard = memo(function LiveEventCard({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Radio className="h-3.5 w-3.5" />
-                    {radarName ? (
-                      <span className="font-medium text-foreground">{radarName}</span>
-                    ) : (
-                      <span className="font-mono">{deviceSerial}</span>
-                    )}
-                    {radarSerial && radarName && (
-                      <span className="font-mono text-muted-foreground/70">({radarSerial})</span>
-                    )}
+                    <MapPin className="h-3.5 w-3.5" />
+                    <span className="font-medium text-foreground truncate max-w-[200px]" title={displayName}>{displayName}</span>
                     <span className="text-border">•</span>
                     {realtime.deviceOnline !== false ? (
                       <span className="flex items-center gap-1 text-green-600">
@@ -282,9 +272,8 @@ export const LiveEventCard = memo(function LiveEventCard({
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
                   <div className="text-xs space-y-1">
-                    {radarName && <p>Radar: {radarName}</p>}
-                    {radarSerial && <p>Série: {radarSerial}</p>}
-                    <p>ID: {event.device_id || event.sensor_id}</p>
+                    {locationLabel && <p>Localisation: {locationLabel}</p>}
+                    {radarName && <p>Capteur: {radarName}</p>}
                   </div>
                 </TooltipContent>
               </Tooltip>
