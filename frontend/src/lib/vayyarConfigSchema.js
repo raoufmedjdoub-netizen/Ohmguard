@@ -1,16 +1,30 @@
 import { z } from 'zod';
 
+// Flexible types - radars send mixed types (string/number/boolean interchangeably)
+const flexNum = (def = 0) => z.preprocess(
+  (v) => (v === true ? 1 : v === false ? 0 : v === '' ? def : Number(v)),
+  z.number().default(def)
+);
+const flexBool = (def = false) => z.preprocess(
+  (v) => (v === 'true' || v === 1 || v === true),
+  z.boolean().default(def)
+);
+const flexStr = (def = '') => z.preprocess(
+  (v) => (v == null ? def : String(v)),
+  z.string().default(def)
+);
+
 // ==================== Sub-schemas ====================
 
 const dryContactConfigSchema = z.object({
-  mode: z.number().default(0),
-  policy: z.number().default(0)
-});
+  mode: flexNum(0),
+  policy: flexNum(0)
+}).passthrough();
 
 const dryContactsSchema = z.object({
   primary: dryContactConfigSchema.default({ mode: 0, policy: 0 }),
   secondary: dryContactConfigSchema.default({ mode: 0, policy: 0 })
-});
+}).passthrough();
 
 const trackerSubRegionSchema = z.object({
   xMin: z.number().default(0),
