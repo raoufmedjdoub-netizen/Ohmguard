@@ -187,3 +187,11 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - **New fields added**: sensitivityLevel, suspendDuration, MQTT advanced, multiPresenceAlpha, RF profile, bed exit wall side, all walabot telemetry flags
 - **Removed deprecated fields**: bleServerType, logLevel
 - **Files modified**: `vayyarConfigSchema.js`, `RadarConfigPage.js`
+
+### 2026-02-11 - RadarConfigPage Zod Validation Fix (CRITICAL)
+- **Problem**: Form submission failed with "invalid_type" Zod validation errors because HTML inputs send values as strings, not numbers/booleans
+- **Frontend fix**: Replaced all strict Zod types (`z.number()`, `z.boolean()`, `z.string()`) in `walabotConfig`, `rfProfile`, and `mqttOptionsSchema` with flexible coercing types (`flexNum()`, `flexBool()`, `flexStr()`) that handle string-to-type conversion
+- **Backend fix**: `ConfigVersionStatus` class was inheriting only from `str`, causing `'str' object has no attribute 'value'` error. Fixed by making it inherit from `str, Enum`
+- **Result**: Configuration can now be saved successfully (toast: "Configuration envoyée (v1)")
+- **Files modified**: `frontend/src/lib/vayyarConfigSchema.js`, `backend/vayyar_config_schema.py`
+
