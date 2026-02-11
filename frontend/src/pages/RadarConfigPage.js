@@ -386,7 +386,7 @@ export function RadarConfigPage() {
           </Button>
           <Button 
             onClick={handleSubmit(onSubmit)} 
-            disabled={sending || !isDirty}
+            disabled={sending}
           >
             {sending ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
             Envoyer Config
