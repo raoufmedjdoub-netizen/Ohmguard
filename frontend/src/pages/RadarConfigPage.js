@@ -651,10 +651,11 @@ export function RadarConfigPage() {
                       Sortie de lit
                     </h4>
                     <div className="grid grid-cols-2 gap-4">
-                      <SwitchField control={control} name="walabotConfig.bedExitEnabled" label="Activer détection" description="Détecte les sorties de lit" />
+                      <SwitchField control={control} name="walabotConfig.bedExitEnabled" label="Activer detection" description="Detecte les sorties de lit" />
                       <SwitchField control={control} name="appConfig.enableOutOfBed" label="Hors du lit" description="Alerte si personne hors du lit" />
-                      <SliderField control={control} name="walabotConfig.bedExitPredictionThreshold" label="Seuil de prédiction" min={0} max={1} step={0.05} />
+                      <SliderField control={control} name="walabotConfig.bedExitPredictionThreshold" label="Seuil de prediction" min={0} max={1} step={0.05} />
                       <NumberField control={control} name="walabotConfig.bedExitNFramesToReset" label="Frames pour reset" min={10} max={500} />
+                      <SelectField control={control} name="walabotConfig.bedExitWallSide" label="Cote du mur" options={ENUM_VALUES.bedExitWallSide} />
                     </div>
                   </div>
 
