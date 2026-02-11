@@ -387,6 +387,21 @@ class Event(EventBase):
     # Radar info fields (enriched from sensor)
     radar_name: Optional[str] = None
     serial_product: Optional[str] = None
+    # Fall event specific fields
+    fall_status: Optional[str] = None
+    fall_status_history: Optional[List[dict]] = None
+    fall_loc_x_cm: Optional[float] = None
+    fall_loc_y_cm: Optional[float] = None
+    fall_loc_z_cm: Optional[float] = None
+    tar_height_est: Optional[float] = None
+    is_simulated: Optional[bool] = None
+    is_learning: Optional[bool] = None
+    is_silent: Optional[bool] = None
+    exit_reason: Optional[str] = None
+    id_of_trigger: Optional[str] = None
+    end_timestamp: Optional[int] = None
+    end_at: Optional[str] = None
+    extra: Optional[str] = None
 
 class AlertRuleBase(BaseModel):
     name: str
