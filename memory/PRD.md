@@ -19,7 +19,7 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - **Real-time**: MQTT (aiomqtt) + WebSocket (python-socketio)
 - **Mobile**: React Native / Expo (in progress)
 
-## Vayyar Event Type Mapping (UPDATED 2026-02-09)
+## Vayyar Event Type Mapping
 | Vayyar Code | Event Type      | Severity | Description                    |
 |-------------|-----------------|----------|--------------------------------|
 | 4           | PRESENCE        | LOW      | Person detected in room        |
@@ -27,72 +27,45 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 | 8           | SENSITIVE_FALL  | HIGH     | Suspected fall (confidence)    |
 | 10          | BED_EXIT        | MED      | Person exiting bed             |
 
+## Seedoo AI Camera Warning Types
+| Warning Type     | Severity | Description                     |
+|------------------|----------|---------------------------------|
+| Fall_Detected    | HIGH     | Fall detected by AI camera      |
+| Violence         | HIGH     | Violence detected               |
+| Fire             | HIGH     | Fire detected                   |
+| Smoke            | HIGH     | Smoke detected                  |
+| Intrusion        | HIGH     | Intrusion detected              |
+| Person_Detected  | MEDIUM   | Person detected                 |
+| Loitering        | MEDIUM   | Loitering detected              |
+| Normal_Activity  | LOW      | Normal activity                 |
+| No_Activity      | LOW      | No activity detected            |
+
 ## MQTT Configuration
-- **Broker**: 185.249.227.251:1883
+- **Broker**: 51.91.9.198:1883
 - **Topics**:
   - Config: `/devices/{deviceId}/config`
   - Commands: `/devices/{deviceId}/commands`
   - State: `/devices/{deviceId}/state`
   - Events: `/devices/{deviceId}/events`
-
-## Redis Key Design (Last State Module)
-- Sensor state: `ls:{tenant_id}:sensor:{sensor_id}`
-- Building index: `ls:{tenant_id}:building:{building_id}:sensors`
-- Floor index: `ls:{tenant_id}:floor:{floor_id}:sensors`
-- TTL: 7 days (604800 seconds)
-- OFFLINE_THRESHOLD: 120 seconds
-
----
-
-## Changelog
-
-### 2026-02-09 - Last State Module Implementation
-- **Created**: `last_state_service.py` - Redis-based state management
-- **Created**: `/api/last-state/*` endpoints with RBAC
-- **Created**: `LiveStatePage.js` - Real-time monitoring UI
-- **Created**: `useLastState.js` hook for React
-- **Created**: `SensorStatusBadge.jsx` components
-- **Added**: Pagination on RadarsPage (20 items/page)
-- **Added**: WebSocket throttling for PRESENCE events (5s interval)
-- **Added**: MongoDB indexes for performance
-- **Added**: Redis cache on /api/sensors endpoint
-
-### 2026-02-09 - Presence Sessions Architecture (MAJOR)
-- **Created**: `presence_session_service.py` - Manages presence session lifecycle
-- **Created**: `/api/presence-sessions/*` endpoints for session history and stats
-- **Created**: `PresenceHistoryPage.js` - Frontend page for presence history
-- **ARCHITECTURAL CHANGE**: PRESENCE events (type=4) are NO LONGER saved in the `events` collection
-- **New collection**: `presence_sessions` stores aggregated sessions with start_at, end_at, duration_sec
-- **Session tracking**: presence=true starts a session, presence=false ends it
-- **SUPER_ADMIN**: Can see all sessions across all tenants
-- **Real-time duration**: Active sessions show live-updating duration on frontend
-
-### 2026-02-09 - Vayyar Event Mapping Fix
-- **Fixed**: Corrected event type mapping in `radar_event_models.py`
-- **Added**: `SENSITIVE_FALL` and `BED_EXIT` event types
-- **Added**: Push notification support for fall events
-
-### 2026-02-09 - Sensor Import Improvements
-- **Added**: Excel template generation with formatting
-- **Added**: Interactive table for data entry
-- **Removed**: Model/Firmware columns (auto-retrieved from MQTT)
-
----
+  - AI Cameras: `/seedoo/{channel}`
 
 ## Roadmap
 
 ### P0 - Critical
 - [x] Last State Module implementation
-- [x] Presence Sessions Architecture (stop saving raw PRESENCE events)
-- [x] Presence History page (frontend)
-- [x] Bulk UpdateBaseUrl MQTT command (fixed 2026-02-10)
-- [x] Fall Events implementation with Vayyar payload (2026-02-11)
-- [x] Incrustation du banner d'alerte global (2026-02-11)
-- [ ] Test SENSITIVE_FALL (type 8) and BED_EXIT (type 10) events
+- [x] Presence Sessions Architecture
+- [x] Fall Events implementation with Vayyar payload
+- [x] SENSITIVE_FALL (type 8) integration
+- [x] Real-time Fall Alert UI (GlobalAlertBanner + AlertContext)
+- [x] Workflow d'acquittement avancé
+- [x] Banner d'alerte global (incrustation correcte)
+- [x] Affichage localisation au lieu des IDs radar
+- [x] Page utilisateurs intégrée dans Paramètres
+- [ ] Test SENSITIVE_FALL and BED_EXIT events in production
 - [ ] WebSocket rooms by building/floor for push updates
 
 ### P1 - High Priority
-- [x] Cleanup false fall events (verified clean - 0 found 2026-02-10)
+- [x] Cleanup false fall events
 - [ ] CSV import error reports (downloadable)
 - [ ] Redis production environment configuration
 
@@ -107,226 +80,29 @@ OhmGuard is a comprehensive fall detection and monitoring platform that integrat
 - [ ] Sensor maintenance mode
 - [ ] Audit logging
 - [ ] Outbound webhooks for events
-- [ ] Refactor RoomVisualEditor.jsx
-- [ ] Refactor RadarConfigPage.js (split into components)
-
----
 
 ## Key Files Reference
 
 ### Backend
 - `server.py` - Main FastAPI application
-- `mqtt_service.py` - MQTT event handling (PRESENCE events → sessions, not events)
-- `presence_session_service.py` - Presence session lifecycle management
+- `mqtt_service.py` - MQTT event handling (Vayyar radars)
+- `seedoo_mqtt_service.py` - Seedoo AI camera MQTT handling
+- `ai_sensor_service.py` - AI sensor CRUD and events
+- `radar_event_models.py` - Event type definitions and normalization
+- `presence_session_service.py` - Presence session lifecycle
 - `last_state_service.py` - Redis state management
-- `radar_event_models.py` - Event type definitions
 - `vayyar_config_service.py` - Radar configuration
-- `sensor_import_service.py` - CSV/Excel import
+- `email_service.py` - SMTP email notifications
 
 ### Frontend
-- `PresenceHistoryPage.js` - Presence session history and statistics
-- `LiveStatePage.js` - Real-time sensor monitoring
-- `RadarsPage.js` - Sensor management with pagination
-- `SensorImportModal.jsx` - Import with table interface
-- `useLastState.js` - Last state React hook
-- `SensorStatusBadge.jsx` - Status indicator components
-
----
+- `SettingsPage.jsx` - Settings with integrated user management tab
+- `DashboardPage.js` - Main dashboard
+- `HistoryPage.js` - Event history with filters
+- `EventDetailPage.js` - Event detail with fall timeline
+- `LivePage.js` - Real-time monitoring with active alerts
+- `GlobalAlertBanner.jsx` - Global alert banner
+- `AlertContext.js` - Global alert state management
+- `EventActionDialog.jsx` - Shared action dialog component
 
 ## Known Issues
 1. **Mobile app** - Not starting (React Native/Expo issue)
-2. ~~**RadarConfigPage** - Large file, needs refactoring~~ (DONE - now functional)
-
-### 2026-02-10 - Bulk UpdateBaseUrl Fix
-- **Fixed**: Frontend was sending MQTT `device_id` but backend looked up by platform `id` → "Sensor not found" for 19/20 radars
-- **Fixed**: Each command opened a separate MQTT connection → connection instability
-- **Solution**: Frontend now sends platform sensor IDs; new `send_bulk_commands()` method uses a single MQTT connection for all commands
-- **Files modified**: `vayyar_config_service.py`, `server.py`, `RadarsPage.js`
-- **Verified**: 20/20 radars updated successfully via curl test
-
-### 2026-02-10 - Pagination Size Selector
-- **Added**: Page size selector on RadarsPage (20, 50, 100, 500, 1000 per page)
-- **Added**: "Tous les filtrés" quick select button to select all filtered radars across all pages
-- **Files modified**: `RadarsPage.js`
-
-### 2026-02-10 - Fix Imported vs Auto-Registered Sensor Duplicates
-- **Root cause**: Imported sensors had `device_id` = serial number, MQTT auto-registration created duplicates with real MQTT device_id
-- **Code fix**: `_handle_device_state` and `_handle_device_event` now check `serialProduct` from MQTT payload to link existing imported sensors before auto-registering
-- **Data cleanup**: Merged 24 duplicate pairs (updated imported sensor's device_id, deleted auto-registered duplicates)
-- **Files modified**: `mqtt_service.py`
-
-### 2026-02-10 - SubNavbar Actions Integration (UI Refactoring)
-- **Removed duplicate page headers**: Created `PageActionsContext` to allow pages to inject their action buttons into the SubNavbar
-- **Pages updated**: RadarsPage, LiveStatePage, PresenceHistoryPage, UsersPage, ClientsPage, StatisticsPage, AISensorsPage, SettingsPage, SitesBatimentsPage, FloorPlanPage, SensorsPage
-- **Architecture**: Ref-based context (no re-render cascade) with subscriber pattern for SubNavbar only
-- **Files created**: `contexts/PageActionsContext.js`
-- **Files modified**: `MainLayout.js`, `SubNavbar.js`, all pages above
-
-### 2026-02-10 - WebSocket Room-Based Routing
-- **Architecture**: Room-based broadcasting filtered by role and location scopes
-  - `admin_all`: SUPER_ADMIN receives ALL events
-  - `tenant_{id}`: TENANT_ADMIN receives all events for their tenant
-  - `building_{id}`: Scoped users receive events only for their assigned buildings
-  - `floor_{id}`: Fine-grained filtering by floor
-  - Fallback: Users without location_scopes see all events in their tenant
-- **Backend**: Complete rewrite of `socketio_service.py` with JWT-based room assignment
-- **Backend**: All MQTT broadcasts now include `building_id` and `floor_id` for routing
-- **Endpoint**: `GET /api/health/websocket` for admin to monitor connected clients and rooms
-- **Frontend**: `WebSocketContext.js` updated to expose `rooms` state
-- **Files modified**: `socketio_service.py`, `mqtt_service.py`, `server.py`, `WebSocketContext.js`
-
-### 2026-02-10 - Email Notifications for FALL Events
-- **Backend**: `email_service.py` - SMTP email service with configurable settings stored in MongoDB
-- **Endpoints**: `GET/PUT /api/settings/smtp`, `POST /api/settings/smtp/test`, `GET/PUT /api/users/me/notifications`
-- **Flow**: MQTT FALL event → check SMTP enabled → query users with email_notifications=true → send HTML alert email
-- **Frontend**: SettingsPage updated with SMTP config form (admin only) + test button + per-user notification toggle
-- **Fix**: Added proper EHLO domain, Date header, Message-ID for Outlook compatibility. Fixed SSL (port 465 = SMTP_SSL)
-- **Files created**: `email_service.py`
-- **Files modified**: `server.py`, `mqtt_service.py`, `SettingsPage.js`
-
-### 2026-02-11 - RadarConfigPage Refactoring
-- **Schema updated**: `vayyarConfigSchema.js` rewritten to match exact Vayyar JSON structure with string enums, new fields (BLE, WiFi health, MQTT, NTP, telemetry triggers, RF profile, etc.)
-- **New fields added**: sensitivityLevel, suspendDuration, MQTT advanced, multiPresenceAlpha, RF profile, bed exit wall side, all walabot telemetry flags
-- **Removed deprecated fields**: bleServerType, logLevel
-- **Files modified**: `vayyarConfigSchema.js`, `RadarConfigPage.js`
-
-### 2026-02-11 - RadarConfigPage Zod Validation Fix (CRITICAL)
-- **Problem**: Form submission failed with "invalid_type" Zod validation errors because HTML inputs send values as strings, not numbers/booleans
-- **Frontend fix**: Replaced all strict Zod types (`z.number()`, `z.boolean()`, `z.string()`) in `walabotConfig`, `rfProfile`, and `mqttOptionsSchema` with flexible coercing types (`flexNum()`, `flexBool()`, `flexStr()`) that handle string-to-type conversion
-- **Backend fix**: `ConfigVersionStatus` class was inheriting only from `str`, causing `'str' object has no attribute 'value'` error. Fixed by making it inherit from `str, Enum`
-- **Result**: Configuration can now be saved successfully (toast: "Configuration envoyée (v1)")
-- **Files modified**: `frontend/src/lib/vayyarConfigSchema.js`, `backend/vayyar_config_schema.py`
-
-### 2026-02-11 - Bulk Config Send & Template Management
-- **Bulk Config Send**: New feature to send configuration to multiple selected radars at once
-  - Button "Envoyer Config" appears when radars are selected on RadarsPage
-  - Select a template, then send to all selected radars
-  - Progress reporting: success/failure count per radar
-- **Template Management**: Full CRUD for configuration templates
-  - Create templates with name, description, and full config (using DEFAULT_CONFIG)
-  - System templates (shared) vs User templates (per tenant)
-  - Edit and delete templates
-  - Templates stored in MongoDB `config_templates` collection
-- **Backend Endpoints**:
-  - `POST /api/devices/bulk-config` - Send config to multiple devices
-  - `POST /api/config/templates/create` - Create template with proper body
-  - `PUT /api/config/templates/{id}` - Update template
-  - `DELETE /api/config/templates/{id}` - Delete template
-- **Frontend Components**: 
-  - Bulk Config Dialog with template selection
-  - Template Management Dialog with create/edit/delete
-- **Files modified**: `backend/server.py`, `backend/vayyar_config_service.py`, `frontend/src/pages/RadarsPage.js`
-
-### 2026-02-11 - MQTT Broker Change
-- Changed MQTT broker from `185.249.227.251` to `51.91.9.198` port 1883
-- Both Vayyar config service and Seedoo service now use the new broker
-- **File modified**: `backend/.env`
-
-### 2026-02-11 - Schema Fixes for Radar Compatibility
-- **bedExitWallSide**: Changed from number (0/1) to string ("Left"/"Right") - radar expects string
-- **ledPolicy**: Updated enum values to match radar expectations
-- **flexNum()**: Fixed to handle NaN values by returning default instead of failing
-- **Files modified**: `frontend/src/lib/vayyarConfigSchema.js`
-
-### 2026-02-11 - Fall Events Implementation (MAJOR)
-- **Backend**: Added `FallEventPayload`, `FallEventStatus` models in `radar_event_models.py`
-- **Backend**: Added `normalize_fall_event()` function for Vayyar fall payload transformation
-- **Backend**: Added `_handle_fall_event()` method in `mqtt_service.py` with lifecycle tracking
-  - Fall events with same `timestamp` are part of same fall flow (UPDATE existing event)
-  - Tracks fall_status lifecycle: fall_detected → fall_confirmed → calling → on_call → finished/fall_exit/canceled
-  - Stores fall location (X, Y, Z in cm), tarHeightEst, isSimulated, exitReason
-  - Appends to `fall_status_history` array on each status update
-- **Backend**: Updated `Event` model in `server.py` with fall-specific fields
-- **Frontend**: Rewrote `EventDetailPage.js` with fall-specific components:
-  - `FallLocationCard`: Shows X, Y, Z coordinates and estimated height
-  - `FallStatusTimeline`: Shows chronological fall lifecycle with colored badges
-  - Simulated/Learning/Silent indicator badges
-- **Frontend**: Updated `HistoryPage.js`:
-  - Added "Statut chute" column with `FallStatusBadge` component
-  - Added SENSITIVE_FALL and BED_EXIT filter options
-  - Updated CSV export with fall-specific columns
-- **Testing**: 100% pass rate (14/14 backend, 12/12 frontend)
-- **Files modified**: `radar_event_models.py`, `mqtt_service.py`, `server.py`, `EventDetailPage.js`, `HistoryPage.js`
-
-### 2026-02-11 - Real-time Fall Alert UI (MAJOR)
-- **AlertContext**: New global context managing active alerts across all pages
-  - Loads existing unresolved FALL events from API on mount
-  - Subscribes to WebSocket for real-time `new_radar_event` and `fall_event_update`
-  - Provides acknowledge, resolve, false alarm, dismiss actions
-  - Alert sound on new critical events
-- **GlobalAlertBanner**: Fixed red banner at top of all pages
-  - Shows all active alerts simultaneously with count and unacknowledged badge
-  - Each alert: type badge (CHUTE), status (Detectee/Confirmee), location, elapsed timer
-  - Action buttons: Acquitter, Resoudre, Faux, View, Dismiss
-  - Sound toggle and collapse toggle
-  - TEST badge for simulated events
-- **LivePage ActiveAlertsSection**: Detailed alert cards grid
-  - Fall location coordinates (X, Y, Z in cm) + height estimate
-  - Fall status timeline (last 4 entries with arrows)
-  - Per-card action buttons
-- **Backend**: Added `broadcast_fall_event_update` to socketio_service.py
-- **Backend**: Added `fall_event_update` handler in socketio_broadcast
-- **Testing**: 100% pass rate (18/18 frontend tests)
-- **Files created**: `AlertContext.js`, `GlobalAlertBanner.jsx`
-- **Files modified**: `App.js`, `MainLayout.js`, `LivePage.js`, `WebSocketContext.js`, `socketio_service.py`, `server.py`
-
-### 2026-02-11 - Workflow d'acquittement avance (MAJOR)
-- **Backend**: Updated `EventUpdate` model with `comment`, `assigned_to_name`, `cc_admin` fields
-- **Backend**: Updated `update_event` endpoint:
-  - Mandatory comment validation for RESOLVED and FALSE_ALARM (returns 400)
-  - Comments stored in `event.comments` array with user_id, user_name, user_role, action, timestamp
-  - Assignment stores both user ID and full_name
-  - Email notification on assignment (with optional CC to site admin)
-- **Backend**: Added `GET /api/events/{event_id}/comments` (admin only)
-- **Backend**: Added `GET /api/users/assignable` endpoint
-- **Frontend**: Created `EventActionDialog.jsx` shared component:
-  - Config-driven per action (ACK/RESOLVED/FALSE_ALARM/ASSIGN)
-  - Comment field (mandatory for RESOLVED/FALSE_ALARM, optional for ACK/ASSIGN)
-  - User assignment dropdown + CC admin checkbox
-  - Event info summary (type, location, sensor)
-- **Frontend**: Updated `GlobalAlertBanner.jsx` to use dialog + show assigned_to_name badge
-- **Frontend**: Updated `LivePage.js` ActiveAlertCard with Assigner button + dialog
-- **Frontend**: Updated `EventDetailPage.js`:
-  - `CommentsSection`: Shows action history with user, role, action badge, timestamp
-  - Assignment card showing assigned user
-  - Assigner button in header actions
-  - All actions use EventActionDialog
-- **Testing**: 100% (8/8 backend, 15/15 frontend)
-- **Files created**: `EventActionDialog.jsx`
-- **Files modified**: `server.py`, `api.js`, `GlobalAlertBanner.jsx`, `LivePage.js`, `EventDetailPage.js`, `AlertContext.js`
-
-### 2026-02-11 - Incrustation du Banner d'Alerte Global (UI Fix)
-- **Problem**: Le GlobalAlertBanner utilisait `position: fixed` qui superposait le contenu et cachait la navbar
-- **Fix**: Changed `fixed top-14 left-0 right-0 z-40` to `sticky top-14 z-30` in `GlobalAlertBanner.jsx`
-- **Fix**: Moved banner from top-level layout to inside `<main>` in `MainLayout.js` (after navbar, before SubNavbar)
-- **Result**: Banner is now embedded in the document flow, pushes content down, and navbar remains fully visible
-- **Files modified**: `GlobalAlertBanner.jsx`, `MainLayout.js`
-
-### 2026-02-11 - Affichage Localisation au lieu des IDs Radar
-- **Problem**: Toutes les pages événements affichaient device_id, sensor_id ou serial_product au lieu de la localisation
-- **Fix**: Prioriser `location_path` (ex: "FCC > Résidence Amaraggi > 1er Étage > 113") sur toutes les pages
-- **Fix**: Suppression des contraintes de troncature (max-w, truncate) pour afficher le texte complet
-- **Pages modifiées**: DashboardPage, HistoryPage, LivePage, EventDetailPage, LiveEventCard, GlobalAlertBanner, ReportsPage, FloorPlanPage
-- **Files modified**: `DashboardPage.js`, `HistoryPage.js`, `LivePage.js`, `EventDetailPage.js`, `LiveEventCard.jsx`, `GlobalAlertBanner.jsx`, `ReportsPage.js`, `FloorPlanPage.js`
-
-### 2026-02-11 - Page Utilisateurs intégrée dans Paramètres + Formulaire Fiche de Contact
-- **Feature**: Fusionné la page /users dans la page /settings sous l'onglet "Utilisateurs"
-- **Formulaire de création**: Fiche de contact complète avec sections Identité (nom, email, téléphone), Professionnel (fonction, service, rôle), Accès (mot de passe), Observations
-- **Validation email**: Frontend regex + backend EmailStr
-- **Fiche contact (Sheet)**: Slide panel pour consulter/modifier un utilisateur avec toutes les infos contact, gestion du rôle, réinitialisation mot de passe
-- **Backend étendu**: Modèle CreateClientUserRequest enrichi avec phone, job_title, department, notes. list_client_users enrichi avec les champs contact
-- **Sidebar**: Lien "Users" supprimé, /users redirige vers /settings
-- **Tests**: 100% backend (12/12), 100% frontend (17/17)
-- **Files modified**: `SettingsPage.js` (rewrite), `Sidebar.js`, `App.js`, `rbac_routes.py`, `rbac_service.py`
-
-### 2026-02-11 - Intégration SENSITIVE_FALL (type 8)
-- **Backend**: Modèle `SensitiveFallEventPayload` + `normalize_sensitive_fall_event()` dans `radar_event_models.py`
-- **Backend**: Handler MQTT `_handle_sensitive_fall_event()` avec lifecycle tracking (fall_suspected → calling → finished/fall_exit) dans `mqtt_service.py`
-- **Backend**: Endpoint test `POST /api/create-sensitive-fall-event` dans `server.py`
-- **Frontend**: Labels FR ("Chute suspecte") via `getEventTypeLabel()` dans `utils.js`, utilisé sur Dashboard + History
-- **Frontend**: Page détail affiche indicateurs de confiance (confidence_level, suspected_events_counter, last_event_confidence)
-- **Frontend**: AlertContext charge FALL + SENSITIVE_FALL + BED_EXIT au démarrage
-- **Frontend**: FALL_STATUS_CONFIG inclut `fall_suspected` pour la timeline
-- **Tests**: 100% backend (8/8), 100% frontend (20/20)
-- **Files modified**: `radar_event_models.py`, `mqtt_service.py`, `server.py`, `utils.js`, `AlertContext.js`, `EventDetailPage.js`, `DashboardPage.js`, `HistoryPage.js`
-
