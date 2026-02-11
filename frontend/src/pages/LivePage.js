@@ -16,6 +16,22 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn, formatDate } from '@/lib/utils';
+
+/* Inject blink animation once */
+if (typeof document !== 'undefined' && !document.getElementById('alert-blink-css')) {
+  const style = document.createElement('style');
+  style.id = 'alert-blink-css';
+  style.textContent = `
+    @keyframes alert-blink {
+      0%, 100% { opacity: 1; border-color: inherit; }
+      50% { opacity: 0.7; border-color: transparent; }
+    }
+    .animate-alert-blink {
+      animation: alert-blink 1.2s ease-in-out infinite;
+    }
+  `;
+  document.head.appendChild(style);
+}
 import { toast } from 'sonner';
 import {
   Radio,
