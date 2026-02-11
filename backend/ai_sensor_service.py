@@ -307,8 +307,10 @@ class AISensorService:
         return " > ".join(parts) if parts else None
     
     async def get_or_create_sensor(self, channel: str, channel_name: str) -> Dict:
-        """Get existing sensor or create new one"""
-        sensor = await self.get_sensor_by_channel(channel)
+        """Get existing sensor or create new one. Uses channel first, falls back to channel_name."""
+        sensor = await self.get_sensor_by_channel(channel) if channel else None
+        if not sensor and channel_name:
+            sensor = await self.get_sensor_by_channel_name(channel_name)
         if not sensor:
             sensor = await self.create_sensor({
                 "channel": channel,

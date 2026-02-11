@@ -1196,9 +1196,10 @@ class MQTTService:
     
     async def _handle_seedoo_event(self, topic: str, payload: Dict):
         """Handle Seedoo AI camera events from /seedoo/{channel} topic"""
-        # Extract channel from topic: /seedoo/{channel}
+        # Extract channel from topic, fallback to channel_name from payload
         parts = topic.split('/')
-        channel = parts[2] if len(parts) >= 3 else payload.get("channel", "unknown")
+        channel = parts[2] if len(parts) >= 3 else ""
+        channel_name = payload.get("channel_name") or channel or "unknown"
         
         logger.info(f"SEEDOO AI event received on {topic}: warning_type={payload.get('warning_type')}, confidence={payload.get('confidence')}")
         
@@ -1210,8 +1211,7 @@ class MQTTService:
             logger.error(f"Failed to get AI sensor service: {e}")
             return
         
-        # Get or create the AI sensor
-        channel_name = payload.get("channel_name", "")
+        # Get or create the AI sensor (channel from topic, channel_name from payload)
         sensor = await ai_service.get_or_create_sensor(channel, channel_name)
         
         # Check confidence threshold (per warning type or global)

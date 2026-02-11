@@ -115,9 +115,10 @@ class SeedooMQTTService:
     
     async def _handle_seedoo_event(self, topic: str, payload: Dict):
         """Handle Seedoo AI camera events"""
-        # Extract channel from topic or payload
+        # Extract channel from topic, fallback to channel_name from payload
         parts = topic.split('/')
-        channel = parts[2] if len(parts) >= 3 else payload.get("channel", "unknown")
+        channel = parts[2] if len(parts) >= 3 else ""
+        channel_name = payload.get("channel_name") or channel or "unknown"
         
         # Import AI sensor service
         try:
