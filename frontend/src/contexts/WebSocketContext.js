@@ -131,6 +131,15 @@ export function WebSocketProvider({ children }) {
       });
     });
 
+    // Listen for fall event status updates
+    socket.on('fall_event_update', (data) => {
+      console.log('Fall event update:', data);
+      notifyListeners({
+        type: 'fall_event_update',
+        ...data
+      });
+    });
+
     // Cleanup on unmount
     return () => {
       console.log('Disconnecting Socket.IO...');
