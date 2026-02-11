@@ -1195,6 +1195,313 @@ export function RadarsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Config Dialog */}
+      <Dialog open={bulkConfigDialogOpen} onOpenChange={setBulkConfigDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5" />
+              Envoyer une configuration
+            </DialogTitle>
+            <DialogDescription>
+              Envoyer une configuration à {selectedRadars.size} radar(s) sélectionné(s)
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Template Selection */}
+            <div className="space-y-2">
+              <Label>Sélectionner un template</Label>
+              {templatesLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="h-6 w-6 animate-spin" />
+                </div>
+              ) : templates.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileJson className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>Aucun template disponible</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-2"
+                    onClick={() => {
+                      setBulkConfigDialogOpen(false);
+                      setTemplateManageDialogOpen(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Créer un template
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid gap-2 max-h-[300px] overflow-y-auto">
+                  {templates.map(template => (
+                    <div
+                      key={template.id}
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        selectedTemplate?.id === template.id 
+                          ? 'border-primary bg-primary/5' 
+                          : 'hover:border-primary/50'
+                      }`}
+                      onClick={() => setSelectedTemplate(template)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{template.name}</p>
+                          {template.description && (
+                            <p className="text-sm text-muted-foreground">{template.description}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {template.isSystem && (
+                            <Badge variant="secondary">Système</Badge>
+                          )}
+                          {selectedTemplate?.id === template.id && (
+                            <CheckSquare className="h-5 w-5 text-primary" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* Manage Templates Link */}
+            <div className="flex justify-end">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => {
+                  setBulkConfigDialogOpen(false);
+                  setTemplateManageDialogOpen(true);
+                }}
+              >
+                <Settings2 className="h-4 w-4 mr-2" />
+                Gérer les templates
+              </Button>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkConfigDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={handleBulkSendConfig} 
+              disabled={bulkOperationLoading || !selectedTemplate}
+            >
+              {bulkOperationLoading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Envoi en cours...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Envoyer à {selectedRadars.size} radar(s)
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Template Management Dialog */}
+      <Dialog open={templateManageDialogOpen} onOpenChange={setTemplateManageDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileJson className="h-5 w-5" />
+              Gestion des templates de configuration
+            </DialogTitle>
+            <DialogDescription>
+              Créer, modifier ou supprimer des templates de configuration
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Create New Template */}
+            <Card>
+              <CardContent className="pt-4">
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Créer un nouveau template
+                </h4>
+                <div className="grid gap-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="templateName">Nom du template</Label>
+                      <Input
+                        id="templateName"
+                        value={newTemplateName}
+                        onChange={(e) => setNewTemplateName(e.target.value)}
+                        placeholder="Ex: Config Standard EHPAD"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="templateDesc">Description (optionnel)</Label>
+                      <Input
+                        id="templateDesc"
+                        value={newTemplateDescription}
+                        onChange={(e) => setNewTemplateDescription(e.target.value)}
+                        placeholder="Description du template..."
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        // Create from default config
+                        handleCreateTemplate({
+                          appConfig: {
+                            silentMode: false,
+                            ledMode: 0,
+                            volume: 50,
+                            confirmedToAlertTimeoutSec: 40,
+                            callingDurationSec: 30
+                          },
+                          walabotConfig: {
+                            xMin: -1.8,
+                            xMax: 1.8,
+                            yMin: 0.3,
+                            yMax: 3.5,
+                            zMin: 0,
+                            zMax: 1.8,
+                            sensorHeight: 2.5,
+                            sensorMounting: 3,
+                            fallingSensitivity: 1,
+                            enterDuration: 120,
+                            exitDuration: 120
+                          },
+                          rfProfile: {
+                            rfRegulationZone: "WW",
+                            rfBandWidth: "BW500"
+                          },
+                          productType: "Falling"
+                        });
+                      }}
+                      disabled={!newTemplateName.trim()}
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      Créer avec config par défaut
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Existing Templates */}
+            <div>
+              <h4 className="font-medium mb-3">Templates existants</h4>
+              {templatesLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="h-6 w-6 animate-spin" />
+                </div>
+              ) : templates.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground border rounded-lg">
+                  <FileJson className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>Aucun template créé</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {templates.map(template => (
+                    <Card key={template.id}>
+                      <CardContent className="py-3">
+                        {editingTemplate?.id === template.id ? (
+                          <div className="space-y-2">
+                            <Input
+                              value={editingTemplate.name}
+                              onChange={(e) => setEditingTemplate({...editingTemplate, name: e.target.value})}
+                              placeholder="Nom"
+                            />
+                            <Input
+                              value={editingTemplate.description || ''}
+                              onChange={(e) => setEditingTemplate({...editingTemplate, description: e.target.value})}
+                              placeholder="Description"
+                            />
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm"
+                                onClick={() => handleUpdateTemplate(template.id, {
+                                  name: editingTemplate.name,
+                                  description: editingTemplate.description
+                                })}
+                              >
+                                <Save className="h-4 w-4 mr-1" />
+                                Sauvegarder
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => setEditingTemplate(null)}
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                Annuler
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">{template.name}</p>
+                                {template.isSystem && (
+                                  <Badge variant="secondary" className="text-xs">Système</Badge>
+                                )}
+                              </div>
+                              {template.description && (
+                                <p className="text-sm text-muted-foreground">{template.description}</p>
+                              )}
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Créé le {new Date(template.createdAt).toLocaleDateString('fr-FR')}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => setEditingTemplate({...template})}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteTemplate(template.id)}
+                                disabled={template.isSystem}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTemplateManageDialogOpen(false)}>
+              Fermer
+            </Button>
+            <Button onClick={() => {
+              setTemplateManageDialogOpen(false);
+              setBulkConfigDialogOpen(true);
+            }}>
+              <Send className="h-4 w-4 mr-2" />
+              Envoyer une config
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
