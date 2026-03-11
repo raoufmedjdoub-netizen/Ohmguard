@@ -5,7 +5,7 @@ Handles transformation of raw Vayyar MQTT payloads into normalized platform even
 
 from enum import Enum
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime, timezone
 import uuid
 
@@ -103,6 +103,14 @@ class FallEventPayload(BaseModel):
     fallLocZ_cm: Optional[float] = None
     tarHeightEst: Optional[float] = None
     idOfTrigger: Optional[str] = None
+    fallingMitigatorPrediction: Optional[float] = None
+
+    @field_validator("exitReason", "idOfTrigger", mode="before")
+    @classmethod
+    def coerce_to_str(cls, v):
+        if v is None:
+            return v
+        return str(v)
 
 
 class SensitiveFallEventPayload(BaseModel):
