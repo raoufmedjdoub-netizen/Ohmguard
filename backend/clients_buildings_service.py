@@ -340,6 +340,8 @@ class ClientsBuildingsService:
         await self.db.sensors.update_many(
             {"floor_id": floor_id},
             {"$set": {
+                "client_id": None,
+                "building_id": None,
                 "floor_id": None,
                 "room_id": None,
                 "room_space_id": None,
@@ -497,7 +499,14 @@ class ClientsBuildingsService:
         # Unassign radars
         await self.db.sensors.update_many(
             {"room_id": room_id},
-            {"$set": {"room_id": None, "room_space_id": None}}
+            {"$set": {
+                "client_id": None,
+                "building_id": None,
+                "floor_id": None,
+                "room_id": None,
+                "room_space_id": None,
+                "zone_id": None
+            }}
         )
         
         # Delete room
@@ -557,7 +566,14 @@ class ClientsBuildingsService:
         # Unassign radars
         await self.db.sensors.update_many(
             {"room_space_id": space_id},
-            {"$set": {"room_space_id": None}}
+            {"$set": {
+                "client_id": None,
+                "building_id": None,
+                "floor_id": None,
+                "room_id": None,
+                "room_space_id": None,
+                "zone_id": None
+            }}
         )
         
         result = await self.db.room_spaces.delete_one({"id": space_id})
@@ -626,7 +642,14 @@ class ClientsBuildingsService:
         # Unassign radars
         await self.db.sensors.update_many(
             {"zone_id": zone_id},
-            {"$set": {"zone_id": None}}
+            {"$set": {
+                "client_id": None,
+                "building_id": None,
+                "floor_id": None,
+                "room_id": None,
+                "room_space_id": None,
+                "zone_id": None
+            }}
         )
         
         result = await self.db.zones_new.delete_one({"id": zone_id})
