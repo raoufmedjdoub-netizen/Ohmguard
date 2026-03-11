@@ -148,7 +148,7 @@ function AlertFeedItem({ alert, onAction, onView }) {
         {isAcked && <Badge variant="outline" className="text-sm py-0.5 px-2 border-blue-400 text-blue-500">ACK</Badge>}
         <span className="mx-1 text-muted-foreground">|</span>
         <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-        <span className="text-sm font-semibold truncate max-w-[280px]">{location}</span>
+        <span className="text-sm font-semibold truncate flex-1 min-w-0">{location}</span>
         {isAI && alert.warning_text && <span className="text-xs text-muted-foreground italic truncate max-w-[180px] hidden xl:inline">{alert.warning_text}</span>}
         <div className="flex items-center gap-1 text-sm text-muted-foreground flex-shrink-0">
           <Clock className="h-4 w-4" />

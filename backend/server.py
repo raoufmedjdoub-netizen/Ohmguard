@@ -2024,6 +2024,24 @@ async def create_radar_event(request: RadarEventRequest):
             {"$set": {"status": "ONLINE", "last_seen": datetime.now(timezone.utc).isoformat()}}
         )
     
+    # Enrich with location path for WebSocket broadcast
+    location_path_str = None
+    location_dict = None
+    if sensor and sensor_id:
+        try:
+            cb_service = get_clients_buildings_service()
+            loc = await cb_service.get_event_location_path(sensor_id)
+            location_path_str = loc.full_path
+            location_dict = {
+                "client_name": loc.client_name,
+                "building_name": loc.building_name,
+                "floor_name": loc.floor_name,
+                "room_number": loc.room_number,
+                "zone_name": loc.zone_name
+            }
+        except Exception:
+            pass
+
     # Broadcast to WebSocket if tenant known
     if tenant_id:
         await manager.broadcast_to_tenant(tenant_id, {
@@ -2032,7 +2050,9 @@ async def create_radar_event(request: RadarEventRequest):
                 **event_doc,
                 "sensor_name": sensor.get('name') if sensor else None,
                 "active_regions_display": format_active_regions_display(normalized.activeRegions),
-                "target_count_display": format_target_count_display(normalized.targetCount)
+                "target_count_display": format_target_count_display(normalized.targetCount),
+                "location_path": location_path_str,
+                "location": location_dict
             }
         })
     
