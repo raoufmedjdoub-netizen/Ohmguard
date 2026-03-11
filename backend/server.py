@@ -1,8 +1,11 @@
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, Query, WebSocket, WebSocketDisconnect, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import StreamingResponse, Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import io
@@ -143,7 +146,9 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[db_name]
 
 # JWT Configuration
-SECRET_KEY = os.environ.get('JWT_SECRET', 'ohmguard-super-secret-key-change-in-production')
+SECRET_KEY = os.environ.get('JWT_SECRET')
+if not SECRET_KEY:
+    raise ValueError("JWT_SECRET environment variable is required and must be set before starting the server")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
@@ -151,8 +156,13 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 # Security
 security = HTTPBearer()
 
+# Rate limiter (uses client IP)
+limiter = Limiter(key_func=get_remote_address)
+
 # Create the main app
 app = FastAPI(title="OhmGuard API", version="1.0.0")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -579,7 +589,8 @@ async def register(user_create: UserCreate):
     return User(**user_dict, id=user_in_db.id, created_at=user_in_db.created_at)
 
 @api_router.post("/auth/login", response_model=Token)
-async def login(login_data: LoginRequest):
+@limiter.limit("10/minute")
+async def login(request: Request, login_data: LoginRequest):
     user = await db.users.find_one({"email": login_data.email}, {"_id": 0})
     if not user or not verify_password(login_data.password, user['hashed_password']):
         raise HTTPException(
@@ -1359,7 +1370,8 @@ async def delete_sensor(sensor_id: str, current_user: UserInDB = Depends(get_cur
 # ==================== SENSOR DEVICE API ====================
 
 @api_router.post("/device/heartbeat")
-async def device_heartbeat(api_key: str = Query(...)):
+@limiter.limit("60/minute")
+async def device_heartbeat(request: Request, api_key: str = Query(...)):
     sensor = await db.sensors.find_one({"api_key": api_key}, {"_id": 0})
     if not sensor:
         raise HTTPException(status_code=401, detail="Invalid API key")
@@ -1373,7 +1385,8 @@ async def device_heartbeat(api_key: str = Query(...)):
     return {"status": "ok", "timestamp": now.isoformat()}
 
 @api_router.post("/device/event", response_model=Event)
-async def device_create_event(event: EventCreate, api_key: str = Query(...)):
+@limiter.limit("30/minute")
+async def device_create_event(request: Request, event: EventCreate, api_key: str = Query(...)):
     sensor = await db.sensors.find_one({"api_key": api_key}, {"_id": 0})
     if not sensor:
         raise HTTPException(status_code=401, detail="Invalid API key")
@@ -1886,7 +1899,11 @@ async def update_event(event_id: str, update: EventUpdate, current_user: UserInD
                                 recipients.append(a["email"])
                     for email in recipients:
                         try:
-                            email_svc._send_email_sync(config=config, to_email=email, subject=subject, html_body=html_body)
+                            loop = asyncio.get_event_loop()
+                            await loop.run_in_executor(
+                                None,
+                                lambda e=email: email_svc._send_email_sync(config=config, to_email=e, subject=subject, html_body=html_body)
+                            )
                         except Exception as e:
                             logger.warning(f"Failed to send assignment email to {email}: {e}")
         except Exception as e:
@@ -4079,10 +4096,19 @@ app.include_router(api_router)
 # Mount Socket.IO at /api/socket.io path
 app.mount("/api/socket.io", socket_app)
 
+_cors_origins_raw = os.environ.get('CORS_ORIGINS', '')
+if not _cors_origins_raw or _cors_origins_raw.strip() == '*':
+    logger.warning(
+        "SECURITY WARNING: CORS is configured to allow ALL origins ('*'). "
+        "Set the CORS_ORIGINS environment variable to a comma-separated list of allowed origins "
+        "before deploying to production (e.g. CORS_ORIGINS=https://app.ohmguard.fr)."
+    )
+_cors_origins = _cors_origins_raw.split(',') if _cors_origins_raw else ['*']
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=_cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
