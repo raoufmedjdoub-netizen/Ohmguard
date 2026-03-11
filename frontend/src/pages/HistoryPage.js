@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 
 const FALL_STATUS_LABELS = {
-  fall_detected: { label: 'Detectee', color: 'bg-red-600 text-white' },
+  fall_detected: { label: 'Suspectée', color: 'bg-orange-500 text-white' },
   fall_confirmed: { label: 'Confirmee', color: 'bg-red-700 text-white' },
   calling: { label: 'Appel', color: 'bg-orange-500 text-white' },
   on_call: { label: 'En comm.', color: 'bg-yellow-500 text-black' },

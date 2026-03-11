@@ -43,7 +43,7 @@ const AI_WARNING_LABELS = {
 };
 
 const FALL_STATUS_LABELS = {
-  fall_detected: 'Detectee',
+  fall_detected: 'Suspectée',
   fall_confirmed: 'Confirmee',
   calling: 'Appel en cours',
   on_call: 'En communication',

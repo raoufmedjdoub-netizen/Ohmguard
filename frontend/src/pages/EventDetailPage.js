@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 
 const FALL_STATUS_CONFIG = {
-  fall_detected: { label: 'Chute detectee', color: 'bg-red-600 text-white', icon: AlertTriangle },
+  fall_detected: { label: 'Chute suspectée', color: 'bg-orange-500 text-white', icon: AlertTriangle },
   fall_confirmed: { label: 'Chute confirmee', color: 'bg-red-700 text-white', icon: CheckCircle },
   fall_suspected: { label: 'Chute suspectee', color: 'bg-orange-600 text-white', icon: AlertTriangle },
   calling: { label: 'Appel en cours', color: 'bg-orange-500 text-white', icon: Phone },

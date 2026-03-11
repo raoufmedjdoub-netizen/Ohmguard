@@ -64,8 +64,8 @@ import { EventActionDialog } from '@/components/EventActionDialog';
 import { useNavigate } from 'react-router-dom';
 
 const FALL_STATUS_LABELS = {
-  fall_detected: { label: 'Detectee', color: 'bg-red-600 text-white' },
-  fall_confirmed: { label: 'Confirmee', color: 'bg-red-700 text-white' },
+  fall_detected: { label: 'Suspectée', color: 'bg-orange-500 text-white' },
+  fall_confirmed: { label: 'Confirmée', color: 'bg-red-700 text-white' },
   calling: { label: 'Appel en cours', color: 'bg-orange-500 text-white' },
   on_call: { label: 'En communication', color: 'bg-yellow-500 text-black' },
   finished: { label: 'Termine', color: 'bg-green-600 text-white' },
@@ -499,9 +499,9 @@ export function LivePage() {
         
         // Alerte pour chutes
         if (newEvent.type === 'FALL') {
-          toast.error('🚨 Chute détectée!', {
+          toast.warning('⚠️ Chute suspectée', {
             description: newEvent.location_path || newEvent.radar_name || 'Localisation inconnue',
-            duration: 10000
+            duration: 8000
           });
         }
       }
@@ -541,6 +541,18 @@ export function LivePage() {
             } : undefined
           });
         }
+      }
+      else if (message.type === 'fall_event_update') {
+        const { event_id, fall_status, sensor_name } = message;
+        if (fall_status === 'fall_confirmed') {
+          toast.error('🚨 Chute confirmée!', {
+            description: sensor_name || 'Intervention requise',
+            duration: 10000
+          });
+        }
+        setEvents(prev => prev.map(e =>
+          e.id === event_id ? { ...e, fall_status } : e
+        ));
       }
       else if (message.type === 'event_updated') {
         setEvents(prev => prev.map(e => 

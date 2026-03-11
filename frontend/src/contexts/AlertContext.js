@@ -123,7 +123,11 @@ export function AlertProvider({ children }) {
       return [{ ...event, addedAt: Date.now(), updatedAt: Date.now() }, ...prev];
     });
 
-    playAlertSound();
+    // Ne pas jouer le son sur fall_detected (chute suspectée non confirmée)
+    const isSuspectedOnly = event.type === 'FALL' && event.fall_status === 'fall_detected';
+    if (!isSuspectedOnly) {
+      playAlertSound();
+    }
   }, [playAlertSound]);
 
   const updateAlert = useCallback((eventId, updates) => {
