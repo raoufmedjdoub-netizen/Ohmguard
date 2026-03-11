@@ -844,7 +844,7 @@ class MQTTService:
             )
             
             logger.info(f"Updated fall event {existing['id']} with status={fall_status}")
-            
+
             # Broadcast update to WebSocket
             if self.broadcast_callback:
                 await self.broadcast_callback(sensor['tenant_id'], {
@@ -862,6 +862,13 @@ class MQTTService:
                     "fall_loc_z_cm": fall_payload.fallLocZ_cm,
                     "timestamp": status_update_at
                 })
+
+            # Trigger alerts (email + push) only on fall_confirmed
+            if fall_status == "fall_confirmed":
+                updated_event = {**existing, **update_data}
+                await self._process_alert_rules(updated_event, sensor)
+                await self._send_fall_push_notification(updated_event, sensor, "FALL")
+                await self._send_fall_email(updated_event, sensor)
             return
         
         # NEW fall event - create initial document
@@ -926,11 +933,7 @@ class MQTTService:
                 }
             })
         
-        # Trigger alerts (email + push) for initial fall_detected
-        if fall_status in ("fall_detected", "fall_confirmed"):
-            await self._process_alert_rules(event, sensor)
-            await self._send_fall_push_notification(event, sensor, "FALL")
-            await self._send_fall_email(event, sensor)
+        # Alerts (email + push) are triggered on fall_confirmed (handled in the update block above)
 
     async def _handle_sensitive_fall_event(self, device_id: str, event_payload: Dict, sensor: Dict):
         """
