@@ -212,6 +212,21 @@ class MQTTService:
         
         return sensor
     
+    def _build_location_path(self, sensor: Dict) -> Optional[str]:
+        """Build human-readable location path from cached name fields in sensor document."""
+        parts = []
+        if sensor.get("client_name"):
+            parts.append(sensor["client_name"])
+        if sensor.get("building_name"):
+            parts.append(sensor["building_name"])
+        if sensor.get("floor_name"):
+            parts.append(sensor["floor_name"])
+        if sensor.get("room_number"):
+            parts.append(f"Ch. {sensor['room_number']}")
+        elif sensor.get("room_name"):
+            parts.append(sensor["room_name"])
+        return " > ".join(parts) if parts else None
+
     async def _auto_register_sensor(self, device_id: str, payload: Dict) -> Optional[Dict[str, Any]]:
         """Auto-register a new sensor from MQTT device
         
@@ -745,13 +760,14 @@ class MQTTService:
         if self.broadcast_callback:
             # Create a clean copy of event without MongoDB _id
             event_for_broadcast = {k: v for k, v in event.items() if k != '_id'}
-            
+
             # Send new event notification
             await self.broadcast_callback(sensor['tenant_id'], {
                 "type": "new_radar_event",
                 "event": {
                     **event_for_broadcast,
                     "sensor_name": sensor.get('name'),
+                    "location_path": self._build_location_path(sensor),
                     "active_regions_display": format_active_regions_display(normalized.activeRegions),
                     "target_count_display": format_target_count_display(normalized.targetCount),
                     "presence_display": "Présence détectée" if normalized.presenceDetected else "Aucune présence",
@@ -929,6 +945,7 @@ class MQTTService:
                 "event": {
                     **event_for_broadcast,
                     "sensor_name": sensor.get('name'),
+                    "location_path": self._build_location_path(sensor),
                     "urgent": True
                 }
             })
@@ -1087,6 +1104,7 @@ class MQTTService:
                 "event": {
                     **event_for_broadcast,
                     "sensor_name": sensor.get('name'),
+                    "location_path": self._build_location_path(sensor),
                     "urgent": True
                 }
             })

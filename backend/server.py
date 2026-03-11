@@ -1296,17 +1296,27 @@ async def assign_radar(radar_id: str, assignment: RadarAssignment, current_user:
     client = await db.clients.find_one({"id": assignment.client_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
-    
-    # Update sensor with assignment
+
+    # Resolve human-readable names for location caching
+    building = await db.buildings.find_one({"id": assignment.building_id}, {"name": 1}) if assignment.building_id else None
+    floor = await db.floors.find_one({"id": assignment.floor_id}, {"name": 1}) if assignment.floor_id else None
+    room = await db.rooms.find_one({"id": assignment.room_id}, {"room_number": 1, "name": 1}) if assignment.room_id else None
+
+    # Update sensor with assignment (IDs + cached names for fast location_path)
     update_data = {
         "client_id": assignment.client_id,
+        "client_name": client.get("name"),
         "building_id": assignment.building_id,
+        "building_name": building.get("name") if building else None,
         "floor_id": assignment.floor_id,
+        "floor_name": floor.get("name") if floor else None,
         "room_id": assignment.room_id,
+        "room_number": room.get("room_number") if room else None,
+        "room_name": room.get("name") if room else None,
         "room_space_id": assignment.room_space_id,
         "assignment_status": "ASSIGNED"
     }
-    
+
     await db.sensors.update_one({"id": radar_id}, {"$set": update_data})
     
     await log_audit(current_user.id, sensor['tenant_id'], "assign", "sensor", radar_id)
