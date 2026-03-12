@@ -148,6 +148,32 @@ class ApiClient {
     }
   }
 
+  // Get notification settings for a token
+  async getNotificationSettings(pushToken: string): Promise<{ registered: boolean; notifications_enabled: boolean } | null> {
+    try {
+      return await this.request<{ registered: boolean; notifications_enabled: boolean }>(
+        `/push-tokens/settings?token=${encodeURIComponent(pushToken)}`
+      );
+    } catch (err) {
+      console.log('[API] Get notification settings failed:', err);
+      return null;
+    }
+  }
+
+  // Enable or disable push notifications for a token
+  async setNotificationsEnabled(pushToken: string, enabled: boolean): Promise<boolean> {
+    try {
+      await this.request('/push-tokens/settings', {
+        method: 'PATCH',
+        body: JSON.stringify({ token: pushToken, enabled }),
+      });
+      return true;
+    } catch (err) {
+      console.log('[API] Set notification settings failed:', err);
+      return false;
+    }
+  }
+
   // Get base URL (for WebSocket)
   getBaseUrl() {
     // Remove /api suffix for WebSocket URL

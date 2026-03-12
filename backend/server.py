@@ -707,6 +707,54 @@ async def delete_push_token(
     
     return {"message": "Token deleted"}
 
+
+class NotificationSettingsRequest(BaseModel):
+    """Request model for toggling push notifications"""
+    token: str
+    enabled: bool
+
+
+@api_router.get("/push-tokens/settings")
+async def get_notification_settings(
+    token: str = Query(..., description="The Expo push token"),
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Get the current push notification enabled/disabled status for a token.
+    Called by the mobile app on startup to restore the toggle state.
+    """
+    push_service = get_push_notification_service()
+    if not push_service:
+        raise HTTPException(status_code=503, detail="Push notification service not available")
+
+    return await push_service.get_notifications_status(current_user.id, token)
+
+
+@api_router.patch("/push-tokens/settings")
+async def update_notification_settings(
+    settings: NotificationSettingsRequest,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Enable or disable push notifications for a specific device token.
+    When disabled, this device will no longer receive fall alerts.
+    """
+    push_service = get_push_notification_service()
+    if not push_service:
+        raise HTTPException(status_code=503, detail="Push notification service not available")
+
+    result = await push_service.set_notifications_enabled(
+        user_id=current_user.id,
+        token=settings.token,
+        enabled=settings.enabled
+    )
+
+    if not result.get("success"):
+        raise HTTPException(status_code=404, detail=result.get("error", "Token not found"))
+
+    return result
+
+
 @api_router.post("/test-notification")
 async def test_notification(current_user: UserInDB = Depends(get_current_user)):
     """

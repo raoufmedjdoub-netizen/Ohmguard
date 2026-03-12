@@ -1286,8 +1286,11 @@ class MQTTService:
         try:
             from push_notification_service import send_expo_push_notification
             
-            # Get all push tokens
-            tokens_cursor = self.db.push_tokens.find({}, {"_id": 0, "token": 1})
+            # Get all active push tokens (notifications_enabled != false)
+            tokens_cursor = self.db.push_tokens.find(
+                {"notifications_enabled": {"$ne": False}},
+                {"_id": 0, "token": 1}
+            )
             tokens = [doc['token'] async for doc in tokens_cursor if doc.get('token')]
 
             if not tokens:
@@ -1401,16 +1404,17 @@ class MQTTService:
         try:
             from push_notification_service import send_expo_push_notification
             
-            # Get all push tokens for this tenant
+            # Get all active push tokens for this tenant (notifications_enabled != false)
+            enabled_filter = {"notifications_enabled": {"$ne": False}}
             tokens_cursor = self.db.push_tokens.find(
-                {"tenant_id": event.get('tenant_id')},
+                {"tenant_id": event.get('tenant_id'), **enabled_filter},
                 {"_id": 0, "token": 1}
             )
             tokens = [doc['token'] async for doc in tokens_cursor if doc.get('token')]
 
-            # If no tenant-specific tokens, get all tokens
+            # If no tenant-specific tokens, get all active tokens
             if not tokens:
-                tokens_cursor = self.db.push_tokens.find({}, {"_id": 0, "token": 1})
+                tokens_cursor = self.db.push_tokens.find(enabled_filter, {"_id": 0, "token": 1})
                 tokens = [doc['token'] async for doc in tokens_cursor if doc.get('token')]
             
             if not tokens:

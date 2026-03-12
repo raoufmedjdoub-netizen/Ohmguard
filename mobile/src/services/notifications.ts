@@ -2,8 +2,11 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import apiClient from '../api/client';
+
+export const PUSH_TOKEN_KEY = 'push_token';
 
 // Configuration des notifications
 Notifications.setNotificationHandler({
@@ -50,6 +53,9 @@ export async function registerForPushNotifications(): Promise<string | null> {
   const token = await Notifications.getExpoPushTokenAsync(
     projectId ? { projectId } : undefined
   );
+
+  // Persister le token localement pour le hook useNotificationSettings
+  await SecureStore.setItemAsync(PUSH_TOKEN_KEY, token.data);
 
   return token.data;
 }

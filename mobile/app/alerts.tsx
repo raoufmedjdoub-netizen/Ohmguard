@@ -5,6 +5,7 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
+  Switch,
   StyleSheet,
   RefreshControl,
   ActivityIndicator,
@@ -13,20 +14,22 @@ import { router } from 'expo-router';
 import { useAlerts } from '../src/hooks/useAlerts';
 import { useWebSocket } from '../src/hooks/useWebSocket';
 import { useAuth } from '../src/hooks/useAuth';
+import { useNotificationSettings } from '../src/hooks/useNotificationSettings';
 import { sendLocalNotification } from '../src/services/notifications';
 import type { Alert } from '../src/types';
 
 export default function AlertsScreen() {
   const { user, logout } = useAuth();
-  const { 
-    activeAlerts, 
-    acknowledgedAlerts, 
-    loading, 
-    refreshing, 
-    error, 
-    refresh, 
-    addAlert 
+  const {
+    activeAlerts,
+    acknowledgedAlerts,
+    loading,
+    refreshing,
+    error,
+    refresh,
+    addAlert
   } = useAlerts();
+  const { enabled: notificationsEnabled, toggling, toggle: toggleNotifications } = useNotificationSettings();
 
   // Callback pour nouvelles alertes WebSocket
   const handleNewAlert = useCallback((alert: Alert) => {
@@ -117,9 +120,24 @@ export default function AlertsScreen() {
             {connected ? 'Connecté' : 'Hors ligne'}
           </Text>
         </View>
-        <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
-          <Text style={styles.logoutText}>Déconnexion</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          {/* Toggle notifications */}
+          <View style={styles.notifToggle}>
+            <Text style={styles.notifToggleLabel}>
+              {notificationsEnabled ? '🔔' : '🔕'}
+            </Text>
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={toggleNotifications}
+              disabled={toggling}
+              trackColor={{ false: '#444', true: '#DC2626' }}
+              thumbColor={notificationsEnabled ? '#fff' : '#888'}
+            />
+          </View>
+          <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
+            <Text style={styles.logoutText}>Déconnexion</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Compteur alertes actives */}
@@ -195,6 +213,19 @@ const styles = StyleSheet.create({
   headerStatus: {
     color: '#888',
     fontSize: 14,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  notifToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  notifToggleLabel: {
+    fontSize: 16,
   },
   logoutBtn: {
     padding: 8,
