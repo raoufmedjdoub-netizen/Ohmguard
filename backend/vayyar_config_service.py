@@ -825,11 +825,20 @@ vayyar_config_service: Optional[VayyarConfigService] = None
 async def init_vayyar_config_service(
     db: AsyncIOMotorDatabase,
     broker_host: str,
-    broker_port: int
+    broker_port: int,
+    start_listener: bool = True
 ) -> VayyarConfigService:
-    """Initialize the Vayyar config service"""
+    """Initialize the Vayyar config service.
+
+    Args:
+        db: MongoDB database instance
+        broker_host: MQTT broker host
+        broker_port: MQTT broker port
+        start_listener: If False, only initialize DB/template operations without
+                        starting the MQTT ACK listener (use when MQTT is disabled)
+    """
     global vayyar_config_service
-    
+
     vayyar_config_service = VayyarConfigService(
         db=db,
         broker_host=broker_host,
@@ -841,8 +850,12 @@ async def init_vayyar_config_service(
         default_qos=int(os.environ.get("MQTT_QOS", "1")),
         ack_timeout_sec=int(os.environ.get("MQTT_ACK_TIMEOUT", "60"))
     )
-    
-    await vayyar_config_service.start()
+
+    if start_listener:
+        await vayyar_config_service.start()
+    else:
+        logger.info("Vayyar Config service initialized in DB-only mode (MQTT listener not started)")
+
     return vayyar_config_service
 
 

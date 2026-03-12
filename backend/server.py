@@ -4363,6 +4363,19 @@ async def startup_event():
         else:
             await broadcast_new_event(tenant_id, message)
     
+    # Always initialize Vayyar Config service (DB/template ops available even without MQTT)
+    try:
+        config_svc = await init_vayyar_config_service(
+            db=db,
+            broker_host=MQTT_BROKER_HOST,
+            broker_port=MQTT_BROKER_PORT,
+            start_listener=MQTT_ENABLED
+        )
+        config_svc.set_broadcast_callback(socketio_broadcast)
+        logger.info(f"Vayyar Config service initialized (MQTT listener: {MQTT_ENABLED})")
+    except Exception as e:
+        logger.error(f"Failed to initialize Vayyar Config service: {e}")
+
     if MQTT_ENABLED:
         try:
             # Initialize main MQTT service for events with Socket.IO broadcast
@@ -4373,20 +4386,10 @@ async def startup_event():
                 broker_port=MQTT_BROKER_PORT
             )
             logger.info(f"MQTT service initialized - connected to {MQTT_BROKER_HOST}:{MQTT_BROKER_PORT}")
-            
-            # Initialize Vayyar Config service
-            config_svc = await init_vayyar_config_service(
-                db=db,
-                broker_host=MQTT_BROKER_HOST,
-                broker_port=MQTT_BROKER_PORT
-            )
-            config_svc.set_broadcast_callback(socketio_broadcast)  # Use Socket.IO
-            logger.info("Vayyar Config service initialized")
-            
         except Exception as e:
-            logger.error(f"Failed to initialize MQTT services: {e}")
+            logger.error(f"Failed to initialize MQTT service: {e}")
     else:
-        logger.info("MQTT services disabled")
+        logger.info("MQTT event service disabled")
     
     # Initialize Seedoo MQTT service (separate broker for AI cameras)
     if SEEDOO_MQTT_ENABLED:
@@ -4407,9 +4410,9 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     """Cleanup on shutdown"""
+    await stop_vayyar_config_service()
     if MQTT_ENABLED:
         await stop_mqtt_service()
-        await stop_vayyar_config_service()
     
     if SEEDOO_MQTT_ENABLED:
         from seedoo_mqtt_service import stop_seedoo_mqtt_service
