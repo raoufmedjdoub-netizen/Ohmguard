@@ -963,7 +963,7 @@ class MQTTService:
         except Exception as e:
             logger.error(f"Failed to parse sensitive fall event payload from {device_id}: {e}")
             return
-        
+
         fall_status = sf_payload.status
         logger.info(f"SENSITIVE_FALL event from {device_id}: status={fall_status}, "
                     f"confidence={sf_payload.confidenceLevel}, "
@@ -971,45 +971,65 @@ class MQTTService:
                     f"simulated={sf_payload.isSimulated}, "
                     f"loc=({sf_payload.fallLocX_cm}, {sf_payload.fallLocY_cm}, {sf_payload.fallLocZ_cm}), "
                     f"timestamp={sf_payload.timestamp}")
-        
-        # Check if there's an existing event for this flow (same device + same timestamp)
-        existing = await self.db.events.find_one({
-            "device_id": device_id,
-            "type": "SENSITIVE_FALL",
-            "raw_timestamp": sf_payload.timestamp
-        }, {"_id": 0})
-        
+
+        # Guard: raw_timestamp=0 means the firmware sent no timestamp.
+        # Events with timestamp=0 cannot be reliably grouped into the same flow —
+        # treat each as an isolated new event to avoid merging unrelated incidents.
+        if sf_payload.timestamp == 0:
+            logger.warning(
+                f"SENSITIVE_FALL from {device_id} has timestamp=0 (missing firmware timestamp). "
+                "Assigning current time to prevent false grouping."
+            )
+            sf_payload = sf_payload.model_copy(update={"timestamp": int(time.time() * 1000)})
+
         now = datetime.now(timezone.utc).isoformat()
-        
-        if existing:
-            # UPDATE existing event with new status
+
+        # Build normalized event document for potential insert
+        new_event = normalize_sensitive_fall_event(
+            device_id=device_id,
+            payload=sf_payload,
+            sensor_id=sensor['id'],
+            site_id=sensor.get('site_id'),
+            zone_id=sensor.get('zone_id'),
+            tenant_id=sensor.get('tenant_id')
+        )
+
+        # Atomic upsert: insert if no matching flow exists, otherwise return existing document.
+        # Using find_one_and_update with $setOnInsert prevents the TOCTOU race condition
+        # where two simultaneous MQTT messages for the same (device_id, raw_timestamp)
+        # could both pass a find_one check and create duplicate events.
+        pre_doc = await self.db.events.find_one_and_update(
+            {
+                "device_id": device_id,
+                "type": "SENSITIVE_FALL",
+                "raw_timestamp": sf_payload.timestamp
+            },
+            {"$setOnInsert": new_event},
+            upsert=True,
+            return_document=False  # Returns pre-update document; None if newly inserted
+        )
+
+        is_new = pre_doc is None
+
+        if not is_new:
+            # UPDATE existing event with new lifecycle status
             update_data = {
                 "fall_status": fall_status,
                 "confidence_level": sf_payload.confidenceLevel,
                 "suspected_events_counter": sf_payload.suspectedEventsCounter,
                 "last_event_confidence": sf_payload.lastEventConfidence,
+                "fall_loc_x_cm": sf_payload.fallLocX_cm,
+                "fall_loc_y_cm": sf_payload.fallLocY_cm,
+                "fall_loc_z_cm": sf_payload.fallLocZ_cm,
+                "raw_payload": {"type": 8, "payload": sf_payload.model_dump()}
             }
-            
-            # Update location
-            update_data["fall_loc_x_cm"] = sf_payload.fallLocX_cm
-            update_data["fall_loc_y_cm"] = sf_payload.fallLocY_cm
-            update_data["fall_loc_z_cm"] = sf_payload.fallLocZ_cm
-            
-            # Update raw_payload with latest
-            update_data["raw_payload"] = {
-                "type": 8,
-                "payload": sf_payload.model_dump()
-            }
-            
-            # Downgrade severity for terminal statuses
-            if fall_status == "fall_exit":
+
+            # Terminal statuses close the incident — reduce severity
+            if fall_status in (SensitiveFallEventStatus.FALL_EXIT, SensitiveFallEventStatus.FINISHED):
                 update_data["severity"] = "MED"
-            elif fall_status == "finished":
-                update_data["severity"] = "HIGH"
-            
-            # Append to status history
+
             await self.db.events.update_one(
-                {"id": existing["id"]},
+                {"id": pre_doc["id"]},
                 {
                     "$set": update_data,
                     "$push": {
@@ -1021,14 +1041,14 @@ class MQTTService:
                     }
                 }
             )
-            
-            logger.info(f"Updated sensitive fall event {existing['id']} with status={fall_status}")
-            
-            # Broadcast update to WebSocket
+
+            logger.info(f"Updated sensitive fall event {pre_doc['id']} with status={fall_status}")
+
+            # Broadcast lifecycle update to WebSocket
             if self.broadcast_callback:
                 await self.broadcast_callback(sensor['tenant_id'], {
                     "type": "fall_event_update",
-                    "event_id": existing["id"],
+                    "event_id": pre_doc["id"],
                     "fall_status": fall_status,
                     "event_type": "SENSITIVE_FALL",
                     "sensor_id": sensor['id'],
@@ -1045,19 +1065,9 @@ class MQTTService:
                     "timestamp": now
                 })
             return
-        
-        # NEW sensitive fall event - create initial document
-        event = normalize_sensitive_fall_event(
-            device_id=device_id,
-            payload=sf_payload,
-            sensor_id=sensor['id'],
-            site_id=sensor.get('site_id'),
-            zone_id=sensor.get('zone_id'),
-            tenant_id=sensor.get('tenant_id')
-        )
-        
-        await self.db.events.insert_one(event)
-        
+
+        # --- NEW event was just inserted ---
+
         # Update sensor last_seen
         await self.db.sensors.update_one(
             {"id": sensor['id']},
@@ -1066,7 +1076,7 @@ class MQTTService:
                 "last_seen": datetime.now(timezone.utc).isoformat()
             }}
         )
-        
+
         # Update Last State in Redis
         try:
             from last_state_service import get_last_state_service
@@ -1092,13 +1102,14 @@ class MQTTService:
             )
         except Exception as e:
             logger.warning(f"Failed to update last state in Redis for sensitive fall: {e}")
-        
-        logger.info(f"Created SENSITIVE_FALL event {event['id']} from device {device_id}, "
-                    f"fall_status={fall_status}, confidence={sf_payload.confidenceLevel}, simulated={sf_payload.isSimulated}")
-        
-        # Broadcast new sensitive fall event
+
+        logger.info(f"Created SENSITIVE_FALL event {new_event['id']} from device {device_id}, "
+                    f"fall_status={fall_status}, confidence={sf_payload.confidenceLevel}, "
+                    f"simulated={sf_payload.isSimulated}")
+
+        # Broadcast new event to WebSocket
         if self.broadcast_callback:
-            event_for_broadcast = {k: v for k, v in event.items() if k != '_id'}
+            event_for_broadcast = {k: v for k, v in new_event.items() if k != '_id'}
             await self.broadcast_callback(sensor['tenant_id'], {
                 "type": "new_radar_event",
                 "event": {
@@ -1108,12 +1119,21 @@ class MQTTService:
                     "urgent": True
                 }
             })
-        
-        # Trigger alerts for initial fall_suspected
-        if fall_status == "fall_suspected":
-            await self._process_alert_rules(event, sensor)
-            await self._send_fall_push_notification(event, sensor, "SENSITIVE_FALL")
-            await self._send_fall_email(event, sensor)
+
+        # Skip alert notifications for calibration or silenced events
+        if sf_payload.isLearning:
+            logger.info(f"Skipping alerts for SENSITIVE_FALL {new_event['id']}: isLearning=True")
+            return
+        if sf_payload.isSilent:
+            logger.info(f"Skipping alerts for SENSITIVE_FALL {new_event['id']}: isSilent=True")
+            return
+
+        # Trigger alerts for fall_suspected (normal case) OR calling (if fall_suspected was lost).
+        # Without this fallback, a missed fall_suspected MQTT message would silently drop the alert.
+        if fall_status in (SensitiveFallEventStatus.FALL_SUSPECTED, SensitiveFallEventStatus.CALLING):
+            await self._process_alert_rules(new_event, sensor)
+            await self._send_fall_push_notification(new_event, sensor, "SENSITIVE_FALL")
+            await self._send_fall_email(new_event, sensor)
 
     async def _handle_device_event_legacy(self, device_id: str, payload: Dict, sensor: Dict):
         """Legacy event handler for non-standard payloads"""

@@ -116,7 +116,7 @@ class FallEventPayload(BaseModel):
 class SensitiveFallEventPayload(BaseModel):
     """Payload structure for Vayyar Sensitive Fall Events (type=8)"""
     timestamp: int = 0  # Epoch ms
-    status: str = "fall_suspected"  # SensitiveFallEventStatus
+    status: SensitiveFallEventStatus = SensitiveFallEventStatus.FALL_SUSPECTED
     isSimulated: bool = False
     isLearning: bool = False
     isSilent: bool = False
@@ -395,12 +395,11 @@ def normalize_sensitive_fall_event(
     occurred_at = epoch_ms_to_iso(payload.timestamp)
 
     fall_status = payload.status
-    if fall_status in ("fall_suspected", "calling"):
+    if fall_status in (SensitiveFallEventStatus.FALL_SUSPECTED, SensitiveFallEventStatus.CALLING):
         severity = EventSeverity.HIGH.value
-    elif fall_status == "fall_exit":
-        severity = EventSeverity.MED.value
     else:
-        severity = EventSeverity.HIGH.value
+        # fall_exit and finished → incident clos, severité réduite
+        severity = EventSeverity.MED.value
 
     return {
         "id": str(uuid.uuid4()),
@@ -412,7 +411,6 @@ def normalize_sensitive_fall_event(
         "type": RadarEventType.SENSITIVE_FALL.value,
         "severity": severity,
         "status": EventStatus.NEW.value,
-        "confidence": payload.confidenceLevel,
         "timestamp": now,
         "occurred_at": occurred_at,
         "raw_timestamp": payload.timestamp,
