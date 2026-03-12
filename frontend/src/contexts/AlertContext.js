@@ -15,7 +15,44 @@ const AlertContext = createContext(null);
 const ALERT_TYPES = ['FALL', 'SENSITIVE_FALL', 'BED_EXIT'];
 const CRITICAL_AI_TYPES = ['Fall_Detected', 'Violence', 'Fire', 'Smoke', 'Intrusion'];
 
-const ALERT_SOUND_URL = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JkJONiYaDfHl5foWMk5eTjoiDfXd0dn+IkJiXkYuFf3l0c3d/iZGYmJKMhn93c3R4gYyUmpiSioR9d3N0eIGMlJqZk42Hf3lzdHiBjJWampSTjYeAenV1eYKNlpuak5CKg312dXmCjpabnJWRi4WAfHd2eoOPl5ydl5KNiIJ8d3Z7hJCYnZ2Xk46JhIF8eHd7hJGZnp6Yk4+LiIR/ent8hpObn5+ZlI+LiYWBe3t8hpOcoJ+ZlJCMiYWBfHx9h5SdoaCal5GPi4eDfn1+iJWeop+amJKQjoqGg39+f4eVnqGgnJmUkY+LiIWCgICHlZ2hnpyZlZKQjYqHhIGBh5Wdn5ybmpeTkY+NioeEgoGHlZ2fnZuamJaTkY+OjIiEgoGHlZ2enJqZmJeTkZCOjImGhIKIlZ2enJqZmJeTkZCPjouIhYOJlp2fnZuZmJeUkpGQj42KiIaEiZadn56cm5qYl5WUkpGQj42LiYeGipednp2cm5qYl5aUk5KRkI6MiomIi5eenp2cm5qZmJeWlZSTkpGQjo2LiomLl56enZybmpqZmJeWlZSTkpGQj46NjIuMl56enZybm5qZmJeXlpWUk5KRkZCPjo2NjJednjw=';
+/**
+ * Joue un chime d'urgence 4 notes descendantes via Web Audio API.
+ * DO - SI - SOL - MI (880 → 660 → 550 → 440 Hz)
+ */
+function playUrgencyChime(volume = 0.8) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [880, 660, 550, 440];
+    const noteDuration = 0.18;
+    const gapDuration = 0.04;
+
+    notes.forEach((freq, i) => {
+      const startTime = ctx.currentTime + i * (noteDuration + gapDuration);
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime);
+
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(volume, startTime + 0.02);
+      gain.gain.setValueAtTime(volume, startTime + noteDuration - 0.04);
+      gain.gain.linearRampToValueAtTime(0, startTime + noteDuration);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(startTime);
+      osc.stop(startTime + noteDuration);
+    });
+
+    const totalDuration = notes.length * (noteDuration + gapDuration) + 0.1;
+    setTimeout(() => ctx.close(), totalDuration * 1000);
+  } catch (e) {
+    // Web Audio API non disponible
+  }
+}
 
 export function AlertProvider({ children }) {
   const { subscribe } = useWebSocket();
@@ -23,14 +60,10 @@ export function AlertProvider({ children }) {
   const [activeAlerts, setActiveAlerts] = useState([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [bannerEnabled, setBannerEnabled] = useState(true);
-  const audioRef = useRef(null);
   const alertTimersRef = useRef({});
   const loadedRef = useRef(false);
 
-  // Initialize audio
   useEffect(() => {
-    audioRef.current = new Audio(ALERT_SOUND_URL);
-    audioRef.current.volume = 0.8;
     return () => {
       Object.values(alertTimersRef.current).forEach(clearInterval);
     };
@@ -103,9 +136,8 @@ export function AlertProvider({ children }) {
   }, [isAuthenticated]);
 
   const playAlertSound = useCallback(() => {
-    if (!soundEnabled || !audioRef.current) return;
-    audioRef.current.currentTime = 0;
-    audioRef.current.play().catch(() => {});
+    if (!soundEnabled) return;
+    playUrgencyChime(0.8);
   }, [soundEnabled]);
 
   const addAlert = useCallback((event) => {
