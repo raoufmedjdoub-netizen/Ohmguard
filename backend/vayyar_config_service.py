@@ -859,6 +859,11 @@ async def init_vayyar_config_service(
     return vayyar_config_service
 
 
+def get_vayyar_config_service() -> Optional[VayyarConfigService]:
+    """Return the current global service instance (avoids stale import binding)."""
+    return vayyar_config_service
+
+
 async def stop_vayyar_config_service():
     """Stop the Vayyar config service"""
     global vayyar_config_service

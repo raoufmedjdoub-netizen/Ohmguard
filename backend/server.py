@@ -90,7 +90,7 @@ from socketio_service import (
 # Vayyar Config Service import
 from vayyar_config_service import (
     init_vayyar_config_service, stop_vayyar_config_service,
-    vayyar_config_service, VayyarConfigService
+    get_vayyar_config_service, VayyarConfigService
 )
 from vayyar_config_schema import (
     VayyarConfig, MqttPublishOptions, ConfigVersionResponse,
@@ -3708,7 +3708,7 @@ async def get_latest_config(
 ):
     """Get the latest configuration version for a sensor"""
 
-    if not vayyar_config_service:
+    if not get_vayyar_config_service():
         raise HTTPException(status_code=503, detail="Config service not available")
 
     # Récupérer les infos du capteur
@@ -3735,7 +3735,7 @@ async def get_latest_config(
             else:
                 raise HTTPException(status_code=403, detail="Accès refusé")
 
-    version = await vayyar_config_service.get_latest_config(device_id)
+    version = await get_vayyar_config_service().get_latest_config(device_id)
     if not version:
         return {
             "config": get_default_config_dict(),
@@ -3782,7 +3782,7 @@ async def send_config(
     check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN", "SUPERVISOR"])
     
     
-    if not vayyar_config_service:
+    if not get_vayyar_config_service():
         raise HTTPException(status_code=503, detail="Config service not available")
     
     # Validate config
@@ -3795,7 +3795,7 @@ async def send_config(
     mqtt_opts = MqttPublishOptions(**(payload.mqttOptions or {}))
     
     try:
-        result = await vayyar_config_service.publish_config(
+        result = await get_vayyar_config_service().publish_config(
             sensor_id=device_id,  # Platform sensor ID
             config=validated.model_dump(),
             options=mqtt_opts,
@@ -3824,10 +3824,10 @@ async def get_config_versions(
 ):
     """Get configuration version history"""
     
-    if not vayyar_config_service:
+    if not get_vayyar_config_service():
         raise HTTPException(status_code=503, detail="Config service not available")
     
-    return await vayyar_config_service.get_config_versions(device_id, limit, skip)
+    return await get_vayyar_config_service().get_config_versions(device_id, limit, skip)
 
 @api_router.post("/devices/{device_id}/config/rollback/{version_number}")
 async def rollback_config(
@@ -3839,11 +3839,11 @@ async def rollback_config(
     check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
     
     
-    if not vayyar_config_service:
+    if not get_vayyar_config_service():
         raise HTTPException(status_code=503, detail="Config service not available")
     
     try:
-        result = await vayyar_config_service.rollback_to_version(
+        result = await get_vayyar_config_service().rollback_to_version(
             device_id=device_id,
             version_number=version_number,
             tenant_id=current_user.tenant_id
@@ -3872,11 +3872,11 @@ async def retry_config(
     check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
     
     
-    if not vayyar_config_service:
+    if not get_vayyar_config_service():
         raise HTTPException(status_code=503, detail="Config service not available")
     
     try:
-        result = await vayyar_config_service.retry_send(version_id)
+        result = await get_vayyar_config_service().retry_send(version_id)
         return result.model_dump()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -3886,10 +3886,10 @@ async def retry_config(
 async def get_templates(current_user: UserInDB = Depends(get_current_user)):
     """Get all configuration templates"""
     
-    if not vayyar_config_service:
+    if not get_vayyar_config_service():
         raise HTTPException(status_code=503, detail="Config service not available")
     
-    return await vayyar_config_service.get_templates(current_user.tenant_id)
+    return await get_vayyar_config_service().get_templates(current_user.tenant_id)
 
 @api_router.post("/config/templates")
 async def create_template(
@@ -3902,10 +3902,10 @@ async def create_template(
     check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
     
     
-    if not vayyar_config_service:
+    if not get_vayyar_config_service():
         raise HTTPException(status_code=503, detail="Config service not available")
     
-    return await vayyar_config_service.create_template(
+    return await get_vayyar_config_service().create_template(
         name=name,
         config=payload.config,
         description=description,
@@ -3919,10 +3919,10 @@ async def get_template(
 ):
     """Get a specific template"""
     
-    if not vayyar_config_service:
+    if not get_vayyar_config_service():
         raise HTTPException(status_code=503, detail="Config service not available")
     
-    template = await vayyar_config_service.get_template(template_id)
+    template = await get_vayyar_config_service().get_template(template_id)
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
     return template
@@ -3936,10 +3936,10 @@ async def delete_template(
     check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
     
     
-    if not vayyar_config_service:
+    if not get_vayyar_config_service():
         raise HTTPException(status_code=503, detail="Config service not available")
     
-    if await vayyar_config_service.delete_template(template_id):
+    if await get_vayyar_config_service().delete_template(template_id):
         return {"status": "ok"}
     raise HTTPException(status_code=404, detail="Template not found")
 
@@ -3962,10 +3962,10 @@ async def update_template(
     check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
     
     
-    if not vayyar_config_service:
+    if not get_vayyar_config_service():
         raise HTTPException(status_code=503, detail="Config service not available")
     
-    result = await vayyar_config_service.update_template(
+    result = await get_vayyar_config_service().update_template(
         template_id=template_id,
         name=payload.name,
         description=payload.description,
@@ -3995,7 +3995,7 @@ async def send_bulk_config(
     
     from vayyar_config_service import MqttPublishOptions
     
-    if not vayyar_config_service:
+    if not get_vayyar_config_service():
         raise HTTPException(status_code=503, detail="Config service not available")
     
     if not payload.device_ids:
@@ -4003,7 +4003,7 @@ async def send_bulk_config(
     
     options = MqttPublishOptions(**(payload.mqttOptions or {}))
     
-    result = await vayyar_config_service.send_bulk_config(
+    result = await get_vayyar_config_service().send_bulk_config(
         device_ids=payload.device_ids,
         config=payload.config,
         options=options,
@@ -4030,7 +4030,7 @@ async def create_template_v2(
     check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
     
     
-    if not vayyar_config_service:
+    if not get_vayyar_config_service():
         raise HTTPException(status_code=503, detail="Config service not available")
     
     template = {
@@ -4079,11 +4079,11 @@ async def send_device_command(
     check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN", "SUPERVISOR"])
     
     
-    if not vayyar_config_service:
+    if not get_vayyar_config_service():
         raise HTTPException(status_code=503, detail="Config service not available")
     
     try:
-        result = await vayyar_config_service.send_command(
+        result = await get_vayyar_config_service().send_command(
             sensor_id=device_id,
             command_type=request.command_type,
             params=request.params,
@@ -4116,10 +4116,10 @@ async def send_bulk_device_command(
     check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN", "SUPERVISOR"])
     
     
-    if not vayyar_config_service:
+    if not get_vayyar_config_service():
         raise HTTPException(status_code=503, detail="Config service not available")
     
-    bulk_results = await vayyar_config_service.send_bulk_commands(
+    bulk_results = await get_vayyar_config_service().send_bulk_commands(
         sensor_ids=request.device_ids,
         command_type=request.command_type,
         params=request.params,
@@ -4144,10 +4144,10 @@ async def get_command_history(
 ):
     """Get command history for a device"""
     
-    if not vayyar_config_service:
+    if not get_vayyar_config_service():
         raise HTTPException(status_code=503, detail="Config service not available")
     
-    return await vayyar_config_service.get_command_history(device_id, limit, skip)
+    return await get_vayyar_config_service().get_command_history(device_id, limit, skip)
 
 
 @api_router.get("/devices/{device_id}/state")
@@ -4160,11 +4160,11 @@ async def get_device_state(
     Returns the last received state message from the device.
     """
     
-    if not vayyar_config_service:
+    if not get_vayyar_config_service():
         raise HTTPException(status_code=503, detail="Config service not available")
     
     # First try to get from cache
-    state = vayyar_config_service.get_device_state(device_id)
+    state = get_vayyar_config_service().get_device_state(device_id)
     
     if not state:
         # Try to get sensor info from database
