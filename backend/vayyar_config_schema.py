@@ -165,8 +165,8 @@ FlexibleValue = Union[bool, int, float, str, None]
 
 class DryContactConfig(BaseModel):
     """Dry contact configuration"""
-    mode: int = 0
-    policy: int = 0
+    mode: int = 1
+    policy: int = 4
 
 
 class DryContacts(BaseModel):
@@ -180,16 +180,16 @@ class TrackerSubRegion(BaseModel):
     Tracker sub-region for zone-based detection.
     Defines a 3D zone within the radar's field of view.
     """
-    xMin: float = 0
-    xMax: float = 1
-    yMin: float = 0.3
-    yMax: float = 1
+    xMin: float = -2.0
+    xMax: float = 2.0
+    yMin: float = -2.0
+    yMax: float = 2.0
     zMin: float = 0
-    zMax: float = 1.2
+    zMax: float = 1.8
     mode: int = 0
-    enterDuration: int = 10
+    enterDuration: int = 30
     exitDuration: int = 30
-    isFallingDetection: bool = False
+    isFallingDetection: bool = True
     isPresenceDetection: bool = True
     isLowSnr: bool = True
     isHorizontal: bool = True
@@ -217,6 +217,17 @@ class LoggerStats(BaseModel):
     msgsLogged: int = 0
 
 
+# ==================== RF PROFILE ====================
+
+class RfProfile(BaseModel):
+    """RF regulation profile"""
+    rfRegulationZone: str = "WW"
+    rfBandWidth: str = "BW500"
+
+    class Config:
+        extra = "allow"
+
+
 # ==================== APP CONFIG (NUMERIC ENUMS with backward compatibility) ====================
 
 class AppConfig(BaseModel):
@@ -228,102 +239,126 @@ class AppConfig(BaseModel):
     """
     # Mode settings
     silentMode: bool = False
-    demoMode: bool = False
+    demoMode: bool = True
     enableTestMode: Union[bool, str] = False
     offlineMode: bool = True
-    
+
     # LED configuration (NUMERIC: 0=AllOff, 1=AllOn, 2=StatusOnly)
-    ledMode: Union[int, str] = 0
-    
+    ledMode: Union[int, str] = 1
+    ledPolicy: str = "AllEvents"
+
     # Audio
     volume: int = 100
-    
+
     # Logging (NUMERIC: -1=Verbose, 0=Debug, 1=Info, 2=Warning, 3=Error)
-    logLevel: Union[int, str] = -1
-    
+    logLevel: Union[int, str] = 0
+    appLogAutoLevel: str = "Disable"
+    appLogOnDemandLevel: str = "Disable"
+    legacyLogFileUpload: bool = True
+
     # Alert timing
-    confirmedToAlertTimeoutSec: int = 40
+    confirmedToAlertTimeoutSec: int = 20
     callingDurationSec: int = 30
-    
+    suspendDuration_sec: int = 900
+
     # Presence reporting
-    presenceReportMinRateMills: int = 60000
-    
-    # Learning mode timestamps (can be 0 or timestamp)
-    learningModeEndTs: Union[int, str] = 0
-    learningModeStartTs: Union[int, str] = 0
-    
+    presenceReportMinRateMills: int = 1000
+    enablePresencePeriodicReport: bool = False
+
+    # Learning mode timestamps (can be 0, bool or timestamp)
+    learningModeEndTs: Union[int, str, bool] = False
+    learningModeStartTs: Union[int, str, bool] = False
+
     # DSP records
     dspRecordsPublishPolicy: bool = False
-    
+    dspRecordsPublishMaxLatency_sec: int = 10
+
     # Analytics
-    enableAnalytics: bool = True
-    
+    enableAnalytics: bool = False
+
     # Telemetry settings (NUMERIC: 0=Off, 1=On, 2=OnDemand)
     telemetryPolicy: Union[int, str] = 0
     telemetryTransport: Union[int, str] = 0
-    telemetryEnabled: bool = False
-    
+    telemAlwaysON: bool = False
+    telemOnBedExit: bool = True
+    telemOnFall: bool = True
+    telemOnSensitiveFall: bool = True
+    telemOnDoorEvents: bool = False
+    telemOnOutOfBed: bool = False
+    enableTelemetriesOnEventDuringSuspend: bool = True
+
     # Dry contacts
     dryContacts: DryContacts = Field(default_factory=DryContacts)
-    dryContactActivationDuration_sec: Union[int, float, str] = 30
-    
+    dryContactActivationDuration_sec: Union[int, float, str] = "30.0"
+
     # Tracker debug (NUMERIC: 0=Off, 1=On, 2=Verbose)
     trackerTargetsDebugPolicy: Union[int, str] = 0
-    
+
     # Door events
     enableDoorEvents: bool = False
-    
+
     # Bed exit / Out of bed
     enableOutOfBed: bool = False
-    
+
     # Sensitive mode (sensitive falls)
     enableSensitiveMode: bool = False
-    sensitivityLevel: float = 0.78
-    
+    sensitivityLevel: float = 0.7
+
     # Falling detection thresholds
-    thMinEventsForFirstDecision: int = 12
-    thNumOfDetectionsInChain: int = 11
-    
-    # Max time in buffer
-    max_time_in_buffer: int = 600
-    
+    thMinEventsForFirstDecision: int = 5
+    thNumOfDetectionsInChain: int = 4
+
     # BLE configuration
     enableBeaconScanner: bool = False
     bleBeaconRssiThreshold: int = -80
-    
+    bleBeaconMacs: List[Dict[str, Any]] = Field(default_factory=lambda: [{}])
+    bleServerType: str = "OFF"
+    bleCustomDeviceName: str = "VC000"
+
     # RSSI monitoring
-    enableRssiMonitor: bool = False
+    enableRssiMonitor: bool = True
     rssiThresholdRssiMonitor: int = -70
     samplesNumRssiMonitor: int = 30
-    
+
     # WiFi health monitoring
-    enableWifiHealthMonitor: bool = False
-    
+    enableWifiHealthMonitor: bool = True
+    maxDisconnetionDurationSecWifiHealthMonitor: int = 240
+    disconnectionsBurstLimitWifiHealthMonitor: int = 15
+    maxDisconnectionsPerHourAverageWifiHealthMonitor: int = 15
+
     # MQTT reporting
     reportFallsToMqtt: bool = True
     reportPresenceToMqtt: bool = True
+
+    # Algorithm profile
+    algoProfile: str = "FALLING"
+
+    # System
+    smartReboot: bool = False
+    ntpPrimaryBackupServer: str = "europe.pool.ntp.org"
+    ntpSecondaryBackupServer: str = "us.pool.ntp.org"
 
     # Validators to convert string enums to int
     @field_validator('ledMode', mode='before')
     @classmethod
     def convert_led_mode(cls, v):
-        return convert_enum_value(v, LED_MODE_MAP, 0)
-    
+        return convert_enum_value(v, LED_MODE_MAP, 1)
+
     @field_validator('logLevel', mode='before')
     @classmethod
     def convert_log_level(cls, v):
-        return convert_enum_value(v, LOG_LEVEL_MAP, -1)
-    
+        return convert_enum_value(v, LOG_LEVEL_MAP, 0)
+
     @field_validator('telemetryPolicy', mode='before')
     @classmethod
     def convert_telemetry_policy(cls, v):
         return convert_enum_value(v, TELEMETRY_POLICY_MAP, 0)
-    
+
     @field_validator('telemetryTransport', mode='before')
     @classmethod
     def convert_telemetry_transport(cls, v):
         return convert_enum_value(v, TELEMETRY_TRANSPORT_MAP, 0)
-    
+
     @field_validator('trackerTargetsDebugPolicy', mode='before')
     @classmethod
     def convert_tracker_debug(cls, v):
@@ -343,54 +378,77 @@ class WalabotConfig(BaseModel):
     Supports string values for backward compatibility.
     """
     # Arena boundaries (meters)
-    xMin: float = -1.8
-    xMax: float = 1.8
-    yMin: float = 0.3
-    yMax: float = 3.5
+    xMin: float = -2.0
+    xMax: float = 2.0
+    yMin: float = -2.0
+    yMax: float = 2.0
     zMin: float = 0
     zMax: float = 1.8
-    
+
     # Sensor position
-    sensorHeight: float = 1.5
-    
+    sensorHeight: float = 2.5
+
     # Sensor mounting (NUMERIC: 0=Wall, 1=Ceiling, 2=Corner)
-    sensorMounting: Union[int, str] = 0
-    
+    sensorMounting: Union[int, str] = 2
+
     # Tracker sub-regions (zones)
-    trackerSubRegions: List[TrackerSubRegion] = Field(default_factory=list)
-    
+    trackerSubRegions: List[TrackerSubRegion] = Field(
+        default_factory=lambda: [TrackerSubRegion()]
+    )
+
     # Falling detection (NUMERIC: 0=Low, 1=Medium, 2=High)
-    fallingSensitivity: Union[int, str] = 0
-    maxTargetsForFallingTrigger: int = 0
-    durationUntilConfirm_sec: Union[int, float] = 52
-    minTimeOfTarInFallLoc_sec: Union[int, float] = 30
-    fallingMitigatorEnabled: bool = False
-    
+    fallingSensitivity: Union[int, str] = 1
+    maxTargetsForFallingTrigger: int = 1
+    durationUntilConfirm_sec: Union[int, float] = 30
+    minTimeOfTarInFallLoc_sec: Union[int, float] = 10
+    fallingMitigatorEnabled: bool = True
+    fallingMitigatorThreshold: int = 10
+
     # Presence detection
     performHeatup: bool = True
     performAgc: bool = True
-    enterDuration: int = 10
-    exitDuration: int = 30
-    
-    # Bed exit detection (can be bool or "false" string as per API)
-    bedExitEnabled: Union[bool, str] = "false"
-    
-    # Dry contact
-    dryContactActivationDuration_sec: Union[int, float] = 30
-    
-    # Telemetry
+    enterDuration: int = 120
+    exitDuration: int = 120
+
+    # Bed exit detection
+    bedExitEnabled: Union[bool, str] = True
+    bedExitPredictionThreshold: float = 0.9
+    bedExitNFramesToReset: int = 100
+
+    # Telemetry flags
+    enableBedExitTelemetry: bool = False
+    enableBedExitStateTelemetry: bool = False
+    enableTrackerTargetTelemetry: bool = True
+    enableDoorEventTelemetry: bool = False
+    enablePeakTelemetry: bool = True
     enableAboveThPointTelemetry: bool = False
+    enableIslandPointTelemetry: bool = False
+    enableHeightProfileTelemetry: bool = True
+    enableOtfPointTelemetry: bool = True
+    enableFallingTelemetry: bool = True
+    enableSensitiveFallingTelemetry: bool = True
+    enablePresenceTelemetry: bool = True
+    enableImageParamsTelemetry: bool = True
+    enableInterfererLocHistoryTelemetry: bool = True
+    enableMtiParamsTelemetry: bool = True
+    enableReferenceTelemetry: bool = True
+    enableSuiteTelemetry: bool = False
+    enableClustersTelemetry: bool = True
+    enableSubRegionStateTelemetry: bool = True
+
+    # Dry contact
+    dryContactActivationDuration_sec: Union[int, float, str] = "30.0"
 
     # Validators to convert string enums to int
     @field_validator('sensorMounting', mode='before')
     @classmethod
     def convert_sensor_mounting(cls, v):
-        return convert_enum_value(v, SENSOR_MOUNTING_MAP, 0)
-    
+        return convert_enum_value(v, SENSOR_MOUNTING_MAP, 2)
+
     @field_validator('fallingSensitivity', mode='before')
     @classmethod
     def convert_falling_sensitivity(cls, v):
-        return convert_enum_value(v, FALLING_SENSITIVITY_MAP, 0)
+        return convert_enum_value(v, FALLING_SENSITIVITY_MAP, 1)
 
     class Config:
         extra = "allow"
@@ -402,6 +460,8 @@ class VayyarConfig(BaseModel):
     """Complete Vayyar radar configuration payload (downstream config)"""
     appConfig: AppConfig = Field(default_factory=AppConfig)
     walabotConfig: WalabotConfig = Field(default_factory=WalabotConfig)
+    rfProfile: RfProfile = Field(default_factory=RfProfile)
+    productType: str = "Falling"
 
     class Config:
         extra = "allow"
@@ -527,7 +587,9 @@ class CommandResponse(BaseModel):
 
 DEFAULT_CONFIG = VayyarConfig(
     appConfig=AppConfig(),
-    walabotConfig=WalabotConfig()
+    walabotConfig=WalabotConfig(),
+    rfProfile=RfProfile(),
+    productType="Falling"
 )
 
 
