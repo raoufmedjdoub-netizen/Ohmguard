@@ -16,7 +16,8 @@ import api from '@/lib/api';
 import {
   Sun, Moon, Globe, User, Mail, Send, Loader2, CheckCircle2, Server,
   Users, UserPlus, Search, Shield, MapPin, Eye, Check, X, Trash2,
-  RefreshCw, Key, Phone, Briefcase, Building2, FileText, ChevronRight, Bell, BellOff
+  RefreshCw, Key, Phone, Briefcase, Building2, FileText, ChevronRight, Bell, BellOff,
+  Smartphone
 } from 'lucide-react';
 import {
   Tabs, TabsContent, TabsList, TabsTrigger
@@ -104,12 +105,38 @@ function GeneralSettingsTab() {
   const [bannerEnabled, setBannerEnabled] = useState(true);
   const [bannerLoading, setBannerLoading] = useState(false);
 
+  // Push mobile
+  const [pushDevices, setPushDevices] = useState([]);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushToggling, setPushToggling] = useState(false);
+
+  const allPushEnabled = pushDevices.length > 0 && pushDevices.every(d => d.notifications_enabled !== false);
+
+  const loadPushDevices = useCallback(() => {
+    setPushLoading(true);
+    api.get('/push-tokens').then(r => setPushDevices(r.data)).catch(() => {}).finally(() => setPushLoading(false));
+  }, []);
+
   useEffect(() => {
     api.get('/users/me/notifications').then(r => {
       setEmailNotif(r.data.email_notifications || false);
       setBannerEnabled(r.data.alert_banner_enabled !== false);
     }).catch(() => {});
-  }, []);
+    loadPushDevices();
+  }, [loadPushDevices]);
+
+  const toggleAllPush = async (val) => {
+    setPushToggling(true);
+    try {
+      await api.patch('/push-tokens/settings/all', { enabled: val });
+      setPushDevices(prev => prev.map(d => ({ ...d, notifications_enabled: val })));
+      toast.success(val ? 'Notifications push activées sur tous les appareils' : 'Notifications push désactivées sur tous les appareils');
+    } catch {
+      toast.error('Erreur lors de la mise à jour');
+    } finally {
+      setPushToggling(false);
+    }
+  };
 
   const toggleLanguage = () => {
     i18n.changeLanguage(i18n.language === 'fr' ? 'en' : 'fr');
@@ -260,6 +287,81 @@ function GeneralSettingsTab() {
               data-testid="banner-toggle-switch"
             />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Smartphone className="h-5 w-5" />
+            Notifications Push Mobile
+          </CardTitle>
+          <CardDescription>Gérer les alertes envoyées vers l'application mobile OhmGuard</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Toggle global */}
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-base">Activer les notifications sur tous les appareils</Label>
+              <p className="text-sm text-muted-foreground">
+                {pushDevices.length === 0
+                  ? 'Aucun appareil enregistré — connectez-vous sur l\'appli mobile'
+                  : `${pushDevices.length} appareil${pushDevices.length > 1 ? 's' : ''} enregistré${pushDevices.length > 1 ? 's' : ''}`}
+              </p>
+            </div>
+            <Switch
+              checked={allPushEnabled}
+              onCheckedChange={toggleAllPush}
+              disabled={pushToggling || pushDevices.length === 0}
+              data-testid="push-notif-switch"
+            />
+          </div>
+
+          {/* Liste des appareils */}
+          {pushLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Chargement des appareils…
+            </div>
+          ) : pushDevices.length > 0 ? (
+            <div className="space-y-2 border-t pt-3">
+              {pushDevices.map((device, i) => (
+                <div key={i} className="flex items-center justify-between text-sm py-1">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-mono text-xs text-muted-foreground">…{device.token_preview}</span>
+                    <Badge variant="outline" className="text-xs capitalize">
+                      {device.device_type === 'ios' ? 'iOS' : device.device_type === 'android' ? 'Android' : device.device_type}
+                    </Badge>
+                  </div>
+                  <Badge variant={device.notifications_enabled !== false ? 'default' : 'secondary'}>
+                    {device.notifications_enabled !== false ? 'Actif' : 'Désactivé'}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {/* Bouton test */}
+          {pushDevices.some(d => d.notifications_enabled !== false) && (
+            <div className="border-t pt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    await api.post('/test-notification');
+                    toast.success('Notification test envoyée sur vos appareils mobiles');
+                  } catch {
+                    toast.error('Erreur lors de l\'envoi du test');
+                  }
+                }}
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Envoyer une notification test
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

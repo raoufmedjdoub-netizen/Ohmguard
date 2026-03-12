@@ -755,6 +755,60 @@ async def update_notification_settings(
     return result
 
 
+@api_router.get("/push-tokens")
+async def list_push_tokens(current_user: UserInDB = Depends(get_current_user)):
+    """
+    List all push-notification devices registered for the current user.
+    Used by the web platform to display and manage mobile devices.
+    """
+    cursor = db.push_tokens.find(
+        {"user_id": current_user.id},
+        {"_id": 0, "token": 1, "device_type": 1, "notifications_enabled": 1,
+         "created_at": 1, "updated_at": 1}
+    )
+    docs = await cursor.to_list(length=50)
+    return [
+        {
+            "token_preview": d["token"][-8:] if d.get("token") else "—",
+            "device_type": d.get("device_type") or "unknown",
+            "notifications_enabled": d.get("notifications_enabled", True),
+            "created_at": d.get("created_at"),
+            "updated_at": d.get("updated_at"),
+        }
+        for d in docs
+    ]
+
+
+class BulkNotificationSettingsRequest(BaseModel):
+    """Enable or disable push notifications on all devices for the current user"""
+    enabled: bool
+
+
+@api_router.patch("/push-tokens/settings/all")
+async def update_all_notification_settings(
+    settings: BulkNotificationSettingsRequest,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Enable or disable push notifications on ALL devices of the current user.
+    Used from the web platform settings page.
+    """
+    result = await db.push_tokens.update_many(
+        {"user_id": current_user.id},
+        {"$set": {
+            "notifications_enabled": settings.enabled,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    status_label = "activées" if settings.enabled else "désactivées"
+    logger.info(f"[Push] Notifications {status_label} sur {result.modified_count} appareil(s) pour {current_user.id}")
+    return {
+        "success": True,
+        "notifications_enabled": settings.enabled,
+        "devices_updated": result.modified_count
+    }
+
+
 @api_router.post("/test-notification")
 async def test_notification(current_user: UserInDB = Depends(get_current_user)):
     """
