@@ -62,6 +62,8 @@ export function AlertProvider({ children }) {
   const [bannerEnabled, setBannerEnabled] = useState(true);
   const alertTimersRef = useRef({});
   const loadedRef = useRef(false);
+  // SENSITIVE_FALL events reçus en fall_suspected : stockés ici en attente de calling
+  const pendingSensitiveFallsRef = useRef({});
 
   useEffect(() => {
     return () => {
@@ -98,12 +100,19 @@ export function AlertProvider({ children }) {
               params: { event_type: eventType, status: 'NEW', limit: 50 }
             });
             if (res.data?.length) {
-              allAlerts.push(...res.data.map(e => ({
-                ...e,
-                alertSource: 'radar',
-                addedAt: new Date(e.timestamp || e.occurred_at).getTime() || Date.now(),
-                updatedAt: Date.now()
-              })));
+              res.data.forEach(e => {
+                // SENSITIVE_FALL : n'alerter que si la chute est confirmée (calling)
+                if (e.type === 'SENSITIVE_FALL' && e.fall_status !== 'calling') {
+                  pendingSensitiveFallsRef.current[e.id] = { ...e, alertSource: 'radar' };
+                  return;
+                }
+                allAlerts.push({
+                  ...e,
+                  alertSource: 'radar',
+                  addedAt: new Date(e.timestamp || e.occurred_at).getTime() || Date.now(),
+                  updatedAt: Date.now()
+                });
+              });
             }
           } catch {}
         }
@@ -230,25 +239,44 @@ export function AlertProvider({ children }) {
     const unsubscribe = subscribe('global-alerts', (message) => {
       if (message.type === 'new_radar_event' || message.type === 'new_event') {
         const event = message.event;
-        if (event && ALERT_TYPES.includes(event.type)) {
+        if (!event || !ALERT_TYPES.includes(event.type)) return;
+
+        if (event.type === 'SENSITIVE_FALL') {
+          if (event.fall_status === 'calling') {
+            // Premier message reçu déjà en calling (fall_suspected perdu) → alerter
+            addAlert({ ...event, alertSource: 'radar' });
+          } else {
+            // fall_suspected → mise en attente silencieuse, pas d'alerte
+            pendingSensitiveFallsRef.current[event.id] = { ...event, alertSource: 'radar' };
+          }
+        } else {
           addAlert({ ...event, alertSource: 'radar' });
         }
       }
       else if (message.type === 'new_ai_event') {
         const event = message.event;
         if (event) {
-          addAlert({
-            ...event,
-            type: 'AI_ALERT',
-            alertSource: 'ai_camera',
-          });
+          addAlert({ ...event, type: 'AI_ALERT', alertSource: 'ai_camera' });
         }
       }
       else if (message.type === 'fall_event_update') {
         const { event_id, fall_status, ...rest } = message;
-        if (event_id) {
+        if (!event_id) return;
+
+        if (fall_status === 'calling') {
+          // Chute confirmée : promouvoir le SENSITIVE_FALL en attente dans le fil d'alertes
+          const pending = pendingSensitiveFallsRef.current[event_id];
+          if (pending) {
+            delete pendingSensitiveFallsRef.current[event_id];
+            addAlert({ ...pending, fall_status, ...rest });
+          } else {
+            // Déjà dans le fil ou pas de pending → mise à jour + son
+            updateAlert(event_id, { fall_status, ...rest });
+            playAlertSound();
+          }
+        } else {
           updateAlert(event_id, { fall_status, ...rest });
-          if (['fall_confirmed', 'calling'].includes(fall_status)) {
+          if (fall_status === 'fall_confirmed') {
             playAlertSound();
           }
         }
@@ -257,6 +285,7 @@ export function AlertProvider({ children }) {
         const { event_id, update } = message;
         if (update?.status === 'RESOLVED' || update?.status === 'FALSE_ALARM') {
           dismissAlert(event_id);
+          delete pendingSensitiveFallsRef.current[event_id];
         } else if (update?.status === 'ACK') {
           updateAlert(event_id, { status: 'ACK' });
         }
