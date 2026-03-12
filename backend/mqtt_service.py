@@ -1403,30 +1403,31 @@ class MQTTService:
             
             # Get all push tokens for this tenant
             tokens_cursor = self.db.push_tokens.find(
-                {"tenant_id": event.get('tenant_id')}, 
-                {"_id": 0, "push_token": 1}
+                {"tenant_id": event.get('tenant_id')},
+                {"_id": 0, "token": 1}
             )
-            tokens = [doc['push_token'] async for doc in tokens_cursor]
-            
+            tokens = [doc['token'] async for doc in tokens_cursor if doc.get('token')]
+
             # If no tenant-specific tokens, get all tokens
             if not tokens:
-                tokens_cursor = self.db.push_tokens.find({}, {"_id": 0, "push_token": 1})
-                tokens = [doc['push_token'] async for doc in tokens_cursor]
+                tokens_cursor = self.db.push_tokens.find({}, {"_id": 0, "token": 1})
+                tokens = [doc['token'] async for doc in tokens_cursor if doc.get('token')]
             
             if not tokens:
                 logger.debug("No push tokens found for fall notification")
                 return
             
             # Build notification message based on event type
+            location = self._build_location_path(sensor) or sensor.get('name', 'Radar')
             if event_type == "FALL":
                 title = "🚨 CHUTE DÉTECTÉE"
-                body = f"Chute détectée par {sensor.get('name', 'Radar')} - Intervention requise!"
+                body = f"{location} — Intervention requise!"
             elif event_type == "SENSITIVE_FALL":
                 title = "⚠️ Chute suspectée"
-                body = f"Chute possible détectée par {sensor.get('name', 'Radar')} - Vérification recommandée"
+                body = f"{location} — Vérification recommandée"
             else:
                 title = "⚠️ Alerte Radar"
-                body = f"Alerte {event_type} de {sensor.get('name', 'Radar')}"
+                body = f"Alerte {event_type} — {location}"
             
             # Send push notification
             result = await send_expo_push_notification(

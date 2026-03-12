@@ -126,15 +126,25 @@ class ApiClient {
   }
 
   // Register push token
-  async registerPushToken(pushToken: string) {
+  async registerPushToken(pushToken: string, deviceType?: string) {
     try {
-      return await this.request('/auth/push-token', {
+      return await this.request('/push-tokens', {
         method: 'POST',
-        body: JSON.stringify({ push_token: pushToken }),
+        body: JSON.stringify({ token: pushToken, device_type: deviceType }),
       });
     } catch (err) {
-      console.log('[API] Push token registration failed (endpoint may not exist):', err);
-      // Silently fail if endpoint doesn't exist
+      console.log('[API] Push token registration failed:', err);
+    }
+  }
+
+  // Delete push token (on logout)
+  async deletePushToken(pushToken: string) {
+    try {
+      return await this.request(`/push-tokens?token=${encodeURIComponent(pushToken)}`, {
+        method: 'DELETE',
+      });
+    } catch (err) {
+      console.log('[API] Push token deletion failed:', err);
     }
   }
 

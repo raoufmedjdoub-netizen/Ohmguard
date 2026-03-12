@@ -26,19 +26,24 @@ export function useWebSocket(onNewAlert: (alert: Alert) => void) {
     console.log('[WS] Connecting to:', wsUrl);
 
     socketRef.current = io(wsUrl, {
-      path: '/socket.io/',
-      transports: ['websocket', 'polling'],
+      path: '/api/socket.io',
+      transports: ['polling', 'websocket'],
       auth: { token },
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
 
     socketRef.current.on('connect', () => {
       console.log('[WS] Connected!');
       setConnected(true);
-      // Subscribe to alerts channel
-      socketRef.current?.emit('subscribe', { channel: 'alerts' });
+      // Rejoindre la room tenant (même protocole que le frontend web)
+      socketRef.current?.emit('join_tenant', { token });
+    });
+
+    socketRef.current.on('joined', (data: any) => {
+      console.log('[WS] Joined rooms:', data.rooms);
     });
 
     socketRef.current.on('disconnect', (reason) => {

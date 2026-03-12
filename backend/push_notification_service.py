@@ -42,7 +42,7 @@ async def send_expo_push_notification(
             continue
         message = {
             "to": token,
-            "sound": "notification_alert.wav",
+            "sound": "alert.wav",
             "title": title,
             "body": body,
             "priority": "high",

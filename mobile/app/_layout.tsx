@@ -2,22 +2,29 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { 
+import {
   registerForPushNotifications,
-  addNotificationResponseListener 
+  sendPushTokenToServer,
+  addNotificationResponseListener
 } from '../src/services/notifications';
 import { router } from 'expo-router';
 
 export default function RootLayout() {
   useEffect(() => {
-    // Initialiser les notifications push
-    registerForPushNotifications();
+    // Initialiser les notifications push et enregistrer le token
+    registerForPushNotifications().then((token) => {
+      if (token) {
+        sendPushTokenToServer(token);
+      }
+    });
 
-    // Gérer le tap sur une notification
+    // Gérer le tap sur une notification (ouvre le détail de l'alerte)
+    // Le backend envoie event_id dans data
     const subscription = addNotificationResponseListener((response) => {
-      const alertId = response.notification.request.content.data?.alertId;
-      if (alertId) {
-        router.push(`/alert/${alertId}`);
+      const data = response.notification.request.content.data;
+      const eventId = data?.event_id || data?.alertId;
+      if (eventId) {
+        router.push(`/alert/${eventId}`);
       }
     });
 

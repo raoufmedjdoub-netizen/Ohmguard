@@ -1,6 +1,7 @@
 // Service de notifications push
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import apiClient from '../api/client';
 
@@ -33,14 +34,9 @@ export async function registerForPushNotifications(): Promise<string | null> {
     return null;
   }
 
-  // Obtenir le token Expo Push
-  const token = await Notifications.getExpoPushTokenAsync({
-    projectId: 'your-project-id', // Remplacer par votre projectId EAS
-  });
-
-  // Configuration Android
+  // Configuration Android (avant d'obtenir le token)
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('alerts', {
+    await Notifications.setNotificationChannelAsync('fall-alerts', {
       name: 'Alertes de chute',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 500, 250, 500],
@@ -49,14 +45,19 @@ export async function registerForPushNotifications(): Promise<string | null> {
     });
   }
 
+  // Obtenir le token Expo Push
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+  const token = await Notifications.getExpoPushTokenAsync(
+    projectId ? { projectId } : undefined
+  );
+
   return token.data;
 }
 
 export async function sendPushTokenToServer(pushToken: string) {
   try {
-    // Envoyer le token au backend pour les notifications
-    // À implémenter côté backend si nécessaire
-    console.log('Push token:', pushToken);
+    await apiClient.registerPushToken(pushToken);
+    console.log('Push token registered with server:', pushToken.slice(0, 30) + '...');
   } catch (error) {
     console.error('Error sending push token:', error);
   }
