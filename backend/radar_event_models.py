@@ -395,10 +395,14 @@ def normalize_sensitive_fall_event(
     occurred_at = epoch_ms_to_iso(payload.timestamp)
 
     fall_status = payload.status
-    if fall_status in (SensitiveFallEventStatus.FALL_SUSPECTED, SensitiveFallEventStatus.CALLING):
+    if fall_status == SensitiveFallEventStatus.CALLING:
+        # Calling = chute confirmée → alerte réelle
         severity = EventSeverity.HIGH.value
+    elif fall_status == SensitiveFallEventStatus.FALL_SUSPECTED:
+        # Chute suspectée → affichage seulement, pas encore confirmée
+        severity = EventSeverity.LOW.value
     else:
-        # fall_exit and finished → incident clos, severité réduite
+        # fall_exit / finished → incident clos
         severity = EventSeverity.MED.value
 
     return {

@@ -1024,9 +1024,11 @@ class MQTTService:
                 "raw_payload": {"type": 8, "payload": sf_payload.model_dump()}
             }
 
-            # Terminal statuses close the incident — reduce severity
-            if fall_status in (SensitiveFallEventStatus.FALL_EXIT, SensitiveFallEventStatus.FINISHED):
-                update_data["severity"] = "MED"
+            # Escalade de sévérité selon le statut
+            if fall_status == SensitiveFallEventStatus.CALLING:
+                update_data["severity"] = "HIGH"  # Chute confirmée → alerte réelle
+            elif fall_status in (SensitiveFallEventStatus.FALL_EXIT, SensitiveFallEventStatus.FINISHED):
+                update_data["severity"] = "MED"   # Incident clos
 
             await self.db.events.update_one(
                 {"id": pre_doc["id"]},
@@ -1064,6 +1066,16 @@ class MQTTService:
                     "fall_loc_z_cm": sf_payload.fallLocZ_cm,
                     "timestamp": now
                 })
+
+            # Calling = chute confirmée → déclencher alertes push/email sur l'événement existant
+            # (le document mis à jour n'est pas retourné par find_one_and_update, on le relit)
+            if fall_status == SensitiveFallEventStatus.CALLING and not sf_payload.isLearning and not sf_payload.isSilent:
+                full_event = await self.db.events.find_one({"id": pre_doc["id"]}, {"_id": 0})
+                if full_event:
+                    await self._process_alert_rules(full_event, sensor)
+                    await self._send_fall_push_notification(full_event, sensor, "SENSITIVE_FALL")
+                    await self._send_fall_email(full_event, sensor)
+
             return
 
         # --- NEW event was just inserted ---
@@ -1128,12 +1140,16 @@ class MQTTService:
             logger.info(f"Skipping alerts for SENSITIVE_FALL {new_event['id']}: isSilent=True")
             return
 
-        # Trigger alerts for fall_suspected (normal case) OR calling (if fall_suspected was lost).
-        # Without this fallback, a missed fall_suspected MQTT message would silently drop the alert.
-        if fall_status in (SensitiveFallEventStatus.FALL_SUSPECTED, SensitiveFallEventStatus.CALLING):
+        # fall_suspected → affichage seulement, la chute n'est pas encore confirmée.
+        # calling → chute confirmée : déclencher push + email.
+        #   (cas rare où le message fall_suspected a été perdu par le broker MQTT
+        #    et calling est le premier message reçu pour ce flow)
+        if fall_status == SensitiveFallEventStatus.CALLING:
             await self._process_alert_rules(new_event, sensor)
             await self._send_fall_push_notification(new_event, sensor, "SENSITIVE_FALL")
             await self._send_fall_email(new_event, sensor)
+        # fall_suspected : aucune notification — l'interface affiche l'événement
+        # mais l'alerte sonore et les push attendent la confirmation calling.
 
     async def _handle_device_event_legacy(self, device_id: str, payload: Dict, sensor: Dict):
         """Legacy event handler for non-standard payloads"""
