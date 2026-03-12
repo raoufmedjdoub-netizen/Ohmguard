@@ -1287,9 +1287,9 @@ class MQTTService:
             from push_notification_service import send_expo_push_notification
             
             # Get all push tokens
-            tokens_cursor = self.db.push_tokens.find({}, {"_id": 0, "push_token": 1})
-            tokens = [doc['push_token'] async for doc in tokens_cursor]
-            
+            tokens_cursor = self.db.push_tokens.find({}, {"_id": 0, "token": 1})
+            tokens = [doc['token'] async for doc in tokens_cursor if doc.get('token')]
+
             if not tokens:
                 logger.debug("No push tokens found for AI notification")
                 return
