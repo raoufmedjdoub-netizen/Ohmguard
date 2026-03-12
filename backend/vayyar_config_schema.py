@@ -165,13 +165,13 @@ FlexibleValue = Union[bool, int, float, str, None]
 
 class DryContactConfig(BaseModel):
     """Dry contact configuration"""
-    mode: int = 1
-    policy: int = 4
+    mode: int = 0
+    policy: int = 0
 
 
 class DryContacts(BaseModel):
     """Dry contacts configuration (primary and secondary)"""
-    primary: DryContactConfig = Field(default_factory=DryContactConfig)
+    primary: DryContactConfig = Field(default_factory=lambda: DryContactConfig(mode=1, policy=4))
     secondary: DryContactConfig = Field(default_factory=DryContactConfig)
 
 
@@ -185,7 +185,7 @@ class TrackerSubRegion(BaseModel):
     yMin: float = -2.0
     yMax: float = 2.0
     zMin: float = 0
-    zMax: float = 1.8
+    zMax: float = 2.5
     mode: int = 0
     enterDuration: int = 30
     exitDuration: int = 30
@@ -245,10 +245,10 @@ class AppConfig(BaseModel):
 
     # LED configuration (NUMERIC: 0=AllOff, 1=AllOn, 2=StatusOnly)
     ledMode: Union[int, str] = 1
-    ledPolicy: str = "AllEvents"
+    ledPolicy: str = "ErrorsOnly"
 
     # Audio
-    volume: int = 100
+    volume: int = 0
 
     # Logging (NUMERIC: -1=Verbose, 0=Debug, 1=Info, 2=Warning, 3=Error)
     logLevel: Union[int, str] = 0
@@ -263,7 +263,7 @@ class AppConfig(BaseModel):
 
     # Presence reporting
     presenceReportMinRateMills: int = 1000
-    enablePresencePeriodicReport: bool = False
+    enablePresencePeriodicReport: bool = True
 
     # Learning mode timestamps (can be 0, bool or timestamp)
     learningModeEndTs: Union[int, str, bool] = False
@@ -289,7 +289,7 @@ class AppConfig(BaseModel):
 
     # Dry contacts
     dryContacts: DryContacts = Field(default_factory=DryContacts)
-    dryContactActivationDuration_sec: Union[int, float, str] = "30.0"
+    dryContactActivationDuration_sec: int = 30
 
     # Tracker debug (NUMERIC: 0=Off, 1=On, 2=Verbose)
     trackerTargetsDebugPolicy: Union[int, str] = 0
@@ -311,8 +311,8 @@ class AppConfig(BaseModel):
     # BLE configuration
     enableBeaconScanner: bool = False
     bleBeaconRssiThreshold: int = -80
-    bleBeaconMacs: List[Dict[str, Any]] = Field(default_factory=lambda: [{}])
-    bleServerType: str = "OFF"
+    bleBeaconMacs: List[Dict[str, Any]] = Field(default_factory=list)
+    bleServerType: int = 0
     bleCustomDeviceName: str = "VC000"
 
     # RSSI monitoring
@@ -331,7 +331,7 @@ class AppConfig(BaseModel):
     reportPresenceToMqtt: bool = True
 
     # Algorithm profile
-    algoProfile: str = "FALLING"
+    algoProfile: str = "TRACKING"
 
     # System
     smartReboot: bool = False
@@ -383,7 +383,7 @@ class WalabotConfig(BaseModel):
     yMin: float = -2.0
     yMax: float = 2.0
     zMin: float = 0
-    zMax: float = 1.8
+    zMax: float = 2.5
 
     # Sensor position
     sensorHeight: float = 2.5
@@ -402,7 +402,7 @@ class WalabotConfig(BaseModel):
     durationUntilConfirm_sec: Union[int, float] = 30
     minTimeOfTarInFallLoc_sec: Union[int, float] = 10
     fallingMitigatorEnabled: bool = True
-    fallingMitigatorThreshold: int = 10
+    fallingMitigatorThreshold: int = 0
 
     # Presence detection
     performHeatup: bool = True
@@ -437,7 +437,7 @@ class WalabotConfig(BaseModel):
     enableSubRegionStateTelemetry: bool = True
 
     # Dry contact
-    dryContactActivationDuration_sec: Union[int, float, str] = "30.0"
+    dryContactActivationDuration_sec: int = 30
 
     # Validators to convert string enums to int
     @field_validator('sensorMounting', mode='before')

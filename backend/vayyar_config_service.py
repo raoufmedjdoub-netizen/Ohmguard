@@ -547,17 +547,9 @@ class VayyarConfigService:
         # Track pending ACK
         self._pending_acks[correlation_id] = version_id
         
-        # Prepare MQTT payload (add correlationId to envelope if desired)
-        mqtt_payload = {
-            **config,
-            "_meta": {
-                "correlationId": correlation_id,
-                "sentAt": now,
-                "versionNumber": version_number,
-                "serialProduct": serial_product
-            }
-        }
-        
+        # Send clean config to the device (no platform metadata injected)
+        mqtt_payload = config
+
         # Publish via MQTT
         try:
             async with aiomqtt.Client(
