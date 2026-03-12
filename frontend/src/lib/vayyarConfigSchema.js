@@ -28,7 +28,7 @@ const dryContactConfigSchema = z.object({
 }).passthrough();
 
 const dryContactsSchema = z.object({
-  primary: dryContactConfigSchema.default({ mode: 0, policy: 0 }),
+  primary: dryContactConfigSchema.default({ mode: 1, policy: 4 }),
   secondary: dryContactConfigSchema.default({ mode: 0, policy: 0 })
 }).passthrough();
 
@@ -54,23 +54,23 @@ const trackerSubRegionSchema = z.object({
 const appConfigSchema = z.object({
   // Modes
   silentMode: flexBool(false),
-  demoMode: flexBool(false),
-  enableTestMode: flexBool(true),
+  demoMode: flexBool(true),
+  enableTestMode: flexBool(false),
   offlineMode: flexBool(true),
 
   // LED
-  ledMode: flexNum(0),
+  ledMode: flexNum(1),
   ledPolicy: flexStr("ErrorsOnly"),
 
   // Audio
   volume: flexNum(0),
 
   // Alert timing
-  confirmedToAlertTimeoutSec: flexNum(40),
+  confirmedToAlertTimeoutSec: flexNum(20),
   callingDurationSec: flexNum(30),
 
   // Presence
-  presenceReportMinRateMills: flexNum(60000),
+  presenceReportMinRateMills: flexNum(1000),
   enablePresencePeriodicReport: flexBool(true),
 
   // Learning mode
@@ -83,7 +83,7 @@ const appConfigSchema = z.object({
   dspRecordsPublishMaxLatency_sec: flexNum(10),
 
   // Analytics
-  enableAnalytics: flexBool(true),
+  enableAnalytics: flexBool(false),
 
   // Telemetry
   telemetryPolicy: flexStr("Off"),
@@ -167,16 +167,16 @@ const appConfigSchema = z.object({
 
 const walabotConfigSchema = z.object({
   // Arena boundaries
-  xMin: flexNum(-1.8),
-  xMax: flexNum(1.8),
-  yMin: flexNum(0.3),
-  yMax: flexNum(3.5),
+  xMin: flexNum(-2.0),
+  xMax: flexNum(2.0),
+  yMin: flexNum(-2.0),
+  yMax: flexNum(2.0),
   zMin: flexNum(0),
-  zMax: flexNum(1.8),
+  zMax: flexNum(2.5),
 
   // Sensor
-  sensorHeight: flexNum(1.5),
-  sensorMounting: flexNum(3),
+  sensorHeight: flexNum(2.5),
+  sensorMounting: flexNum(2),
 
   // Sub-regions
   trackerSubRegions: z.array(trackerSubRegionSchema).default([]),
@@ -184,8 +184,8 @@ const walabotConfigSchema = z.object({
   // Falling
   fallingSensitivity: flexNum(1),
   maxTargetsForFallingTrigger: flexNum(1),
-  durationUntilConfirm_sec: flexNum(52),
-  minTimeOfTarInFallLoc_sec: flexNum(30),
+  durationUntilConfirm_sec: flexNum(30),
+  minTimeOfTarInFallLoc_sec: flexNum(10),
   fallingMitigatorEnabled: flexBool(true),
   fallingMitigatorThreshold: flexNum(0),
 
@@ -290,28 +290,28 @@ export const ENUM_VALUES = {
 export const DEFAULT_CONFIG = {
   appConfig: {
     silentMode: false,
-    ledMode: 0,
+    ledMode: 1,
     ledPolicy: "ErrorsOnly",
     volume: 0,
-    confirmedToAlertTimeoutSec: 40,
+    confirmedToAlertTimeoutSec: 20,
     callingDurationSec: 30,
-    presenceReportMinRateMills: 60000,
+    presenceReportMinRateMills: 1000,
     enablePresencePeriodicReport: true,
-    learningModeStartTs: 0,
-    learningModeEndTs: 0,
+    learningModeStartTs: false,
+    learningModeEndTs: false,
     dspRecordsPublishPolicy: false,
     dspRecordsPublishMaxLatencySec: 10,
     dspRecordsPublishMaxLatency_sec: 10,
-    enableAnalytics: true,
-    enableTestMode: true,
+    enableAnalytics: false,
+    enableTestMode: false,
     telemetryPolicy: "Off",
     telemetryTransport: "MqttQos0",
     dryContacts: {
-      primary: { mode: 0, policy: 0 },
+      primary: { mode: 1, policy: 4 },
       secondary: { mode: 0, policy: 0 }
     },
     trackerTargetsDebugPolicy: "OFF",
-    demoMode: false,
+    demoMode: true,
     enableDoorEvents: false,
     enableOutOfBed: false,
     enableSensitiveMode: false,
@@ -323,6 +323,8 @@ export const DEFAULT_CONFIG = {
     enableBeaconScanner: false,
     bleBeaconMacs: [],
     bleBeaconRssiThreshold: -80,
+    bleServerType: 0,
+    bleCustomDeviceName: "VC000",
     enableTelemetriesOnEventDuringSuspend: true,
     enableRssiMonitor: true,
     rssiThresholdRssiMonitor: -70,
@@ -336,7 +338,6 @@ export const DEFAULT_CONFIG = {
     appLogOnDemandLevel: "Disable",
     legacyLogFileUpload: true,
     smartReboot: false,
-    bleCustomDeviceName: "VC000",
     ntpPrimaryBackupServer: "europe.pool.ntp.org",
     ntpSecondaryBackupServer: "us.pool.ntp.org",
     dryContactActivationDuration_sec: 30,
@@ -355,21 +356,21 @@ export const DEFAULT_CONFIG = {
     reportPresenceToMqtt: true
   },
   walabotConfig: {
-    xMin: -1.8,
-    xMax: 1.8,
-    yMin: 0.3,
-    yMax: 3.5,
+    xMin: -2.0,
+    xMax: 2.0,
+    yMin: -2.0,
+    yMax: 2.0,
     zMin: 0,
-    zMax: 1.8,
-    sensorHeight: 1.5,
+    zMax: 2.5,
+    sensorHeight: 2.5,
     trackerSubRegions: [{
-      xMin: 0, xMax: 0, yMin: 0, yMax: 0, zMin: 0, zMax: 0,
-      enterDuration: 120, exitDuration: 120,
-      isFallingDetection: false, isPresenceDetection: false,
+      xMin: -2.0, xMax: 2.0, yMin: -2.0, yMax: 2.0, zMin: 0, zMax: 2.5,
+      enterDuration: 30, exitDuration: 30,
+      isFallingDetection: true, isPresenceDetection: false,
       isLowSnr: true, isHorizontal: true, isDoor: false, name: "string"
     }],
     fallingSensitivity: 1,
-    sensorMounting: 3,
+    sensorMounting: 2,
     maxTargetsForFallingTrigger: 1,
     performHeatup: true,
     performAgc: true,
@@ -398,8 +399,8 @@ export const DEFAULT_CONFIG = {
     enableSuiteTelemetry: false,
     enableClustersTelemetry: true,
     enableSubRegionStateTelemetry: true,
-    durationUntilConfirm_sec: 52,
-    minTimeOfTarInFallLoc_sec: 30,
+    durationUntilConfirm_sec: 30,
+    minTimeOfTarInFallLoc_sec: 10,
     fallingMitigatorEnabled: true,
     fallingMitigatorThreshold: 0,
     dryContactActivationDuration_sec: 30

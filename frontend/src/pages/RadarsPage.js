@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
@@ -47,6 +48,9 @@ export function RadarsPage() {
   
   // Bulk Config Dialog
   const [bulkConfigDialogOpen, setBulkConfigDialogOpen] = useState(false);
+  const [bulkConfigMode, setBulkConfigMode] = useState('default'); // 'default' | 'template' | 'json'
+  const [bulkConfigCustomJson, setBulkConfigCustomJson] = useState('');
+  const [bulkConfigJsonError, setBulkConfigJsonError] = useState(null);
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [templatesLoading, setTemplatesLoading] = useState(false);
@@ -195,6 +199,12 @@ export function RadarsPage() {
     if (bulkConfigDialogOpen || templateManageDialogOpen) {
       fetchTemplates();
     }
+    if (bulkConfigDialogOpen) {
+      setBulkConfigMode('default');
+      setBulkConfigCustomJson('');
+      setBulkConfigJsonError(null);
+      setSelectedTemplate(null);
+    }
   }, [bulkConfigDialogOpen, templateManageDialogOpen]);
 
   // Send bulk config to selected radars
@@ -203,36 +213,55 @@ export function RadarsPage() {
       toast.error('Veuillez sélectionner au moins un radar');
       return;
     }
-    
-    if (!selectedTemplate) {
-      toast.error('Veuillez sélectionner un template de configuration');
-      return;
+
+    let configToSend = null;
+
+    if (bulkConfigMode === 'default') {
+      configToSend = DEFAULT_CONFIG;
+    } else if (bulkConfigMode === 'template') {
+      if (!selectedTemplate) {
+        toast.error('Veuillez sélectionner un template de configuration');
+        return;
+      }
+      configToSend = selectedTemplate.config;
+    } else if (bulkConfigMode === 'json') {
+      try {
+        configToSend = JSON.parse(bulkConfigCustomJson);
+        setBulkConfigJsonError(null);
+      } catch (e) {
+        setBulkConfigJsonError('JSON invalide : ' + e.message);
+        toast.error('JSON invalide');
+        return;
+      }
     }
-    
+
+    if (!configToSend) return;
+
     setBulkOperationLoading(true);
-    
+
     try {
       const deviceIds = Array.from(selectedRadars);
-      
+
       const response = await api.post('/devices/bulk-config', {
         device_ids: deviceIds,
-        config: selectedTemplate.config,
+        config: configToSend,
         mqttOptions: { qos: 1, retain: false }
       });
-      
+
       const result = response.data;
-      
+
       if (result.success_count > 0) {
         toast.success(`Configuration envoyée à ${result.success_count}/${result.total} radars`);
       }
-      
+
       if (result.failed_count > 0) {
         toast.error(`Échec pour ${result.failed_count} radars`);
       }
-      
+
       setBulkConfigDialogOpen(false);
       setSelectedTemplate(null);
-      
+      setBulkConfigMode('default');
+
     } catch (error) {
       console.error('Bulk config error:', error);
       toast.error(error.response?.data?.detail || 'Erreur lors de l\'envoi des configurations');
@@ -1209,89 +1238,191 @@ export function RadarsPage() {
               Envoyer une configuration à {selectedRadars.size} radar(s) sélectionné(s)
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
-            {/* Template Selection */}
+            {/* Mode Selector */}
             <div className="space-y-2">
-              <Label>Sélectionner un template</Label>
-              {templatesLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <RefreshCw className="h-6 w-6 animate-spin" />
+              <Label>Source de la configuration</Label>
+              <div className="flex border rounded-lg overflow-hidden">
+                {[
+                  { id: 'default', label: 'Config par défaut', icon: <Settings2 className="h-3.5 w-3.5" /> },
+                  { id: 'template', label: 'Template', icon: <FileJson className="h-3.5 w-3.5" /> },
+                  { id: 'json', label: 'JSON personnalisé', icon: <Edit className="h-3.5 w-3.5" /> }
+                ].map(mode => (
+                  <button
+                    key={mode.id}
+                    onClick={() => setBulkConfigMode(mode.id)}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 text-sm transition-colors ${
+                      bulkConfigMode === mode.id
+                        ? 'bg-primary text-primary-foreground'
+                        : 'hover:bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {mode.icon}
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Mode: Default Config */}
+            {bulkConfigMode === 'default' && (
+              <div className="rounded-lg border p-4 bg-muted/30 space-y-2">
+                <p className="text-sm font-medium">Configuration par défaut Vayyar</p>
+                <p className="text-xs text-muted-foreground">
+                  Envoie la configuration officielle Vayyar avec les paramètres optimisés pour la détection de chute en EHPAD.
+                </p>
+                <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground mt-2">
+                  <span>• Arena: -2.0m → 2.0m</span>
+                  <span>• Sensibilité: Moyenne</span>
+                  <span>• Montage: Coin (Corner)</span>
+                  <span>• demoMode: activé</span>
+                  <span>• LED: AllOn</span>
+                  <span>• Hauteur capteur: 2.5m</span>
                 </div>
-              ) : templates.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <FileJson className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Aucun template disponible</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="mt-2"
+              </div>
+            )}
+
+            {/* Mode: Template */}
+            {bulkConfigMode === 'template' && (
+              <div className="space-y-2">
+                {templatesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <RefreshCw className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : templates.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileJson className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>Aucun template disponible</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => {
+                        setBulkConfigDialogOpen(false);
+                        setTemplateManageDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Créer un template
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid gap-2 max-h-[240px] overflow-y-auto">
+                    {templates.map(template => (
+                      <div
+                        key={template.id}
+                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                          selectedTemplate?.id === template.id
+                            ? 'border-primary bg-primary/5'
+                            : 'hover:border-primary/50'
+                        }`}
+                        onClick={() => setSelectedTemplate(template)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">{template.name}</p>
+                            {template.description && (
+                              <p className="text-sm text-muted-foreground">{template.description}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {template.isSystem && <Badge variant="secondary">Système</Badge>}
+                            {selectedTemplate?.id === template.id && (
+                              <CheckSquare className="h-5 w-5 text-primary" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
                       setBulkConfigDialogOpen(false);
                       setTemplateManageDialogOpen(true);
                     }}
                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Créer un template
+                    <Settings2 className="h-4 w-4 mr-2" />
+                    Gérer les templates
                   </Button>
                 </div>
-              ) : (
-                <div className="grid gap-2 max-h-[300px] overflow-y-auto">
-                  {templates.map(template => (
-                    <div
-                      key={template.id}
-                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                        selectedTemplate?.id === template.id 
-                          ? 'border-primary bg-primary/5' 
-                          : 'hover:border-primary/50'
-                      }`}
-                      onClick={() => setSelectedTemplate(template)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{template.name}</p>
-                          {template.description && (
-                            <p className="text-sm text-muted-foreground">{template.description}</p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {template.isSystem && (
-                            <Badge variant="secondary">Système</Badge>
-                          )}
-                          {selectedTemplate?.id === template.id && (
-                            <CheckSquare className="h-5 w-5 text-primary" />
-                          )}
-                        </div>
-                      </div>
+              </div>
+            )}
+
+            {/* Mode: Custom JSON */}
+            {bulkConfigMode === 'json' && (
+              <div className="space-y-2">
+                <Label htmlFor="bulkConfigJson">JSON de configuration</Label>
+                <Textarea
+                  id="bulkConfigJson"
+                  value={bulkConfigCustomJson}
+                  onChange={(e) => {
+                    setBulkConfigCustomJson(e.target.value);
+                    try {
+                      JSON.parse(e.target.value);
+                      setBulkConfigJsonError(null);
+                    } catch (err) {
+                      setBulkConfigJsonError(err.message);
+                    }
+                  }}
+                  placeholder='{"appConfig": {...}, "walabotConfig": {...}, "rfProfile": {...}}'
+                  className="font-mono text-xs h-48 resize-none"
+                />
+                {bulkConfigJsonError && (
+                  <p className="text-xs text-destructive">{bulkConfigJsonError}</p>
+                )}
+                <div className="flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setBulkConfigCustomJson(JSON.stringify(DEFAULT_CONFIG, null, 2));
+                      setBulkConfigJsonError(null);
+                    }}
+                  >
+                    <Settings2 className="h-3.5 w-3.5 mr-1.5" />
+                    Remplir avec config par défaut
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Selected radars list */}
+            <div className="rounded-lg border p-3 bg-muted/50">
+              <p className="text-sm font-medium mb-2">Radars sélectionnés ({selectedRadars.size}):</p>
+              <div className="max-h-28 overflow-y-auto space-y-1">
+                {radars
+                  .filter(r => selectedRadars.has(r.id))
+                  .slice(0, 10)
+                  .map(r => (
+                    <div key={r.id} className="text-xs flex items-center gap-2">
+                      <Radio className="h-3 w-3" />
+                      <span>{r.name}</span>
+                      <span className="text-muted-foreground">({r.device_id?.substring(0, 15)}...)</span>
                     </div>
                   ))}
-                </div>
-              )}
-            </div>
-            
-            {/* Manage Templates Link */}
-            <div className="flex justify-end">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => {
-                  setBulkConfigDialogOpen(false);
-                  setTemplateManageDialogOpen(true);
-                }}
-              >
-                <Settings2 className="h-4 w-4 mr-2" />
-                Gérer les templates
-              </Button>
+                {selectedRadars.size > 10 && (
+                  <p className="text-xs text-muted-foreground">... et {selectedRadars.size - 10} autres</p>
+                )}
+              </div>
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setBulkConfigDialogOpen(false)}>
               Annuler
             </Button>
-            <Button 
-              onClick={handleBulkSendConfig} 
-              disabled={bulkOperationLoading || !selectedTemplate}
+            <Button
+              onClick={handleBulkSendConfig}
+              disabled={
+                bulkOperationLoading ||
+                (bulkConfigMode === 'template' && !selectedTemplate) ||
+                (bulkConfigMode === 'json' && (!!bulkConfigJsonError || !bulkConfigCustomJson.trim()))
+              }
             >
               {bulkOperationLoading ? (
                 <>
