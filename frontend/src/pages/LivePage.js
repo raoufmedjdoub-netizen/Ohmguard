@@ -72,7 +72,9 @@ import {
   X,
   CheckSquare,
   XCircle,
-  CheckCheck
+  CheckCheck,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { EventActionDialog } from '@/components/EventActionDialog';
 import { useNavigate } from 'react-router-dom';
@@ -556,6 +558,7 @@ function ActiveAlertsSection() {
 
 export function LivePage() {
   const { subscribe, connected } = useWebSocket();
+  const { soundEnabled, setSoundEnabled } = useAlerts();
   
   // États
   const [events, setEvents] = useState([]);
@@ -813,15 +816,28 @@ export function LivePage() {
           </Badge>
         </div>
         
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={fetchData} 
-          disabled={loading}
-          data-testid="refresh-btn"
-        >
-          <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={soundEnabled ? 'outline' : 'secondary'}
+            size="sm"
+            onClick={() => setSoundEnabled(v => !v)}
+            title={soundEnabled ? 'Désactiver le son des alertes' : 'Activer le son des alertes'}
+            data-testid="sound-toggle-btn"
+          >
+            {soundEnabled
+              ? <Volume2 className="h-4 w-4 text-green-600" />
+              : <VolumeX className="h-4 w-4 text-muted-foreground" />}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchData}
+            disabled={loading}
+            data-testid="refresh-btn"
+          >
+            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+          </Button>
+        </div>
       </div>
 
       {/* Fil d'alertes en temps réel - source unique, pleine page */}
