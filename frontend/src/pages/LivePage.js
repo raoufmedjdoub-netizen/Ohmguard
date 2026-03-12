@@ -7,12 +7,23 @@
  * Supporte les événements des radars Vayyar ET des caméras IA Seedoo.
  */
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import api from '@/lib/api';
+import api, { eventsAPI, aiEventsAPI } from '@/lib/api';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useAlerts } from '@/contexts/AlertContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 /* Inject blink animation once */
@@ -58,7 +69,10 @@ import {
   Clock,
   MapPin,
   UserPlus,
-  X
+  X,
+  CheckSquare,
+  XCircle,
+  CheckCheck
 } from 'lucide-react';
 import { EventActionDialog } from '@/components/EventActionDialog';
 import { useNavigate } from 'react-router-dom';
@@ -108,7 +122,7 @@ function ElapsedTimer({ since }) {
   return <span className="font-mono">{elapsed}</span>;
 }
 
-function AlertFeedItem({ alert, onAction, onView }) {
+function AlertFeedItem({ alert, onAction, onView, selectionMode, isSelected, onToggleSelect }) {
   const isAI = alert.alertSource === 'ai_camera' || alert.type === 'AI_ALERT';
   const isAcked = alert.status === 'ACK' || alert.status === 'ACKNOWLEDGED';
   const radarConfig = EVENT_TYPE_CONFIG[alert.type];
@@ -133,12 +147,26 @@ function AlertFeedItem({ alert, onAction, onView }) {
       data-testid={`alert-feed-${alert.id}`}
       className={cn(
         'rounded-lg border px-5 py-3.5 mb-2.5 transition-all',
-        isAcked
+        selectionMode && isSelected
+          ? 'border-blue-400 bg-blue-50/60 dark:border-blue-600 dark:bg-blue-950/30 ring-1 ring-blue-400'
+          : isAcked
           ? 'border-gray-200 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-900/30 opacity-60'
           : `border-gray-200 shadow-md ${blinkClass}`
       )}
+      onClick={selectionMode ? () => onToggleSelect(alert.id) : undefined}
+      style={selectionMode ? { cursor: 'pointer' } : undefined}
     >
       <div className="flex items-center gap-2.5 min-w-0">
+        {/* Selection checkbox */}
+        {selectionMode && (
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={() => onToggleSelect(alert.id)}
+            onClick={(e) => e.stopPropagation()}
+            className="flex-shrink-0 h-4 w-4"
+          />
+        )}
+
         {/* Left: info */}
         {isAI ? <Camera className="h-5 w-5 text-violet-500 flex-shrink-0" /> : <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />}
         <Badge className={cn('text-sm font-bold text-white py-0.5 px-2.5', config.color)}>{config.label}</Badge>
@@ -155,13 +183,15 @@ function AlertFeedItem({ alert, onAction, onView }) {
           <ElapsedTimer since={alert.addedAt || Date.now()} />
         </div>
 
-        {/* Right: actions */}
-        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-          {!isAcked && <Button size="sm" variant="outline" className="h-8 text-sm px-3" onClick={() => onAction(alert, 'ACK')}>Acquitter</Button>}
-          <Button size="sm" variant="ghost" className="h-8 text-sm px-3" onClick={() => onAction(alert, 'FALSE_ALARM')}>Fausse alerte</Button>
-          {isAI && alert.video_url && <Button size="sm" variant="outline" className="h-8 text-sm px-3" onClick={() => window.open(alert.video_url, '_blank')}><Video className="h-4 w-4 mr-1" />Video</Button>}
-          <Button size="sm" variant="ghost" className="h-8 text-sm px-3" onClick={() => onView(alert)}><Eye className="h-4 w-4 mr-1" />Details</Button>
-        </div>
+        {/* Right: actions (hidden in selection mode) */}
+        {!selectionMode && (
+          <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+            {!isAcked && <Button size="sm" variant="outline" className="h-8 text-sm px-3" onClick={() => onAction(alert, 'ACK')}>Acquitter</Button>}
+            <Button size="sm" variant="ghost" className="h-8 text-sm px-3" onClick={() => onAction(alert, 'FALSE_ALARM')}>Fausse alerte</Button>
+            {isAI && alert.video_url && <Button size="sm" variant="outline" className="h-8 text-sm px-3" onClick={() => window.open(alert.video_url, '_blank')}><Video className="h-4 w-4 mr-1" />Video</Button>}
+            <Button size="sm" variant="ghost" className="h-8 text-sm px-3" onClick={() => onView(alert)}><Eye className="h-4 w-4 mr-1" />Details</Button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -175,6 +205,16 @@ function ActiveAlertsSection() {
   const [dialogEvent, setDialogEvent] = useState(null);
   const [filter, setFilter] = useState('all');
 
+  // Selection state
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+
+  // Bulk false alarm dialog
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkAction, setBulkAction] = useState('ACK');
+  const [bulkComment, setBulkComment] = useState('');
+  const [bulkLoading, setBulkLoading] = useState(false);
+
   const handleAction = (alert, action) => {
     setDialogEvent(alert);
     setDialogAction(action);
@@ -183,7 +223,6 @@ function ActiveAlertsSection() {
 
   const handleActionSuccess = (updatedEvent) => {
     if (!updatedEvent) return;
-    // Toute action (ACK, RESOLVED, FALSE_ALARM) retire l'alerte du fil
     dismissAlert(updatedEvent.id);
   };
 
@@ -198,6 +237,60 @@ function ActiveAlertsSection() {
   const toggleFilter = (f) => {
     const next = filter === f ? 'all' : f;
     setFilter(next);
+  };
+
+  const toggleSelectionMode = () => {
+    setSelectionMode(v => !v);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelectOne = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(sorted.map(a => a.id)));
+  };
+
+  const deselectAll = () => setSelectedIds(new Set());
+
+  const openBulkAction = (action) => {
+    setBulkAction(action);
+    setBulkComment('');
+    setBulkDialogOpen(true);
+  };
+
+  const executeBulkAction = async () => {
+    if (bulkAction === 'FALSE_ALARM' && !bulkComment.trim()) {
+      toast.error('Le commentaire est obligatoire pour une fausse alarme');
+      return;
+    }
+    setBulkLoading(true);
+    try {
+      const ids = [...selectedIds];
+      const res = await eventsAPI.bulkUpdate(ids, bulkAction, bulkComment.trim() || undefined);
+      const { success_count, failed_count } = res.data;
+      if (success_count > 0) {
+        ids.forEach(id => dismissAlert(id));
+        toast.success(`${success_count} alerte(s) traitée(s)`);
+      }
+      if (failed_count > 0) {
+        toast.warning(`${failed_count} alerte(s) non traitée(s)`);
+      }
+      setBulkDialogOpen(false);
+      setSelectionMode(false);
+      setSelectedIds(new Set());
+    } catch (e) {
+      const msg = e.response?.data?.detail || 'Erreur lors du traitement groupé';
+      toast.error(msg);
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   if (activeAlerts.length === 0) return null;
@@ -219,7 +312,6 @@ function ActiveAlertsSection() {
     if (filter === 'pending') return a.status !== 'ACK' && a.status !== 'ACKNOWLEDGED';
     if (filter === 'radar') return a.alertSource !== 'ai_camera';
     if (filter === 'ai') return a.alertSource === 'ai_camera';
-    // Filter by specific event type
     if (a.alertSource === 'ai_camera') return a.warning_type === filter;
     return a.type === filter;
   });
@@ -227,96 +319,156 @@ function ActiveAlertsSection() {
   // Sort by time - newest first
   const sorted = [...filtered].sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
 
+  const allSelected = sorted.length > 0 && sorted.every(a => selectedIds.has(a.id));
+
   return (
     <>
       <Card className="border-red-500/40 shadow-lg overflow-hidden flex flex-col" data-testid="active-alerts-section">
         <CardHeader className="border-b border-red-500/20 py-3 px-5 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/20">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold text-red-700 dark:text-red-400">
-            <div className="relative">
-              <AlertTriangle className="h-5 w-5" />
-              <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600" />
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold text-red-700 dark:text-red-400">
+              <div className="relative">
+                <AlertTriangle className="h-5 w-5" />
+                <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600" />
+                </span>
+              </div>
+              Fil d'alertes ({activeAlerts.length})
+            </CardTitle>
+            {/* Selection toggle */}
+            <Button
+              size="sm"
+              variant={selectionMode ? 'default' : 'outline'}
+              className={cn('h-7 text-xs px-2.5', selectionMode && 'bg-blue-600 hover:bg-blue-700')}
+              onClick={toggleSelectionMode}
+            >
+              <CheckSquare className="h-3.5 w-3.5 mr-1" />
+              {selectionMode ? 'Annuler' : 'Sélectionner'}
+            </Button>
+          </div>
+
+          {/* Bulk action bar (visible in selection mode) */}
+          {selectionMode && (
+            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-red-200/50 flex-wrap">
+              <Checkbox
+                checked={allSelected}
+                onCheckedChange={allSelected ? deselectAll : selectAll}
+                className="h-4 w-4"
+              />
+              <span className="text-xs text-muted-foreground">
+                {selectedIds.size === 0
+                  ? 'Aucune sélection'
+                  : `${selectedIds.size} sélectionnée(s)`}
               </span>
+              {sorted.length > 0 && (
+                <Button size="sm" variant="ghost" className="h-6 text-xs px-2 text-blue-600" onClick={allSelected ? deselectAll : selectAll}>
+                  {allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
+                </Button>
+              )}
+              {selectedIds.size > 0 && (
+                <>
+                  <span className="w-px h-4 bg-border" />
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs px-3 bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={() => openBulkAction('ACK')}
+                  >
+                    <CheckCheck className="h-3.5 w-3.5 mr-1" />
+                    Acquitter ({selectedIds.size})
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs px-3 border-gray-400 text-gray-700 hover:bg-gray-100"
+                    onClick={() => openBulkAction('FALSE_ALARM')}
+                  >
+                    <XCircle className="h-3.5 w-3.5 mr-1" />
+                    Fausse alarme ({selectedIds.size})
+                  </Button>
+                </>
+              )}
             </div>
-            Fil d'alertes ({activeAlerts.length})
-          </CardTitle>
+          )}
+
           {/* Filter badges */}
-          <div className="flex items-center gap-2 flex-wrap mt-2">
-            {unackedCount > 0 && (
-              <Badge
-                data-testid="filter-pending"
-                className={cn(
-                  'text-xs cursor-pointer transition-all select-none py-0.5 px-2',
-                  filter === 'pending'
-                    ? 'bg-red-600 text-white ring-2 ring-red-400 ring-offset-1'
-                    : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300'
-                )}
-                onClick={() => toggleFilter('pending')}
-              >
-                {unackedCount} en attente
-              </Badge>
-            )}
-            {radarCount > 0 && (
-              <Badge
-                data-testid="filter-radar"
-                className={cn(
-                  'text-xs cursor-pointer transition-all select-none py-0.5 px-2',
-                  filter === 'radar'
-                    ? 'bg-red-600 text-white ring-2 ring-red-400 ring-offset-1'
-                    : 'bg-transparent border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30'
-                )}
-                onClick={() => toggleFilter('radar')}
-              >
-                <Radio className="h-3 w-3 mr-0.5" />{radarCount} radar
-              </Badge>
-            )}
-            {aiCount > 0 && (
-              <Badge
-                data-testid="filter-ai"
-                className={cn(
-                  'text-xs cursor-pointer transition-all select-none py-0.5 px-2',
-                  filter === 'ai'
-                    ? 'bg-violet-600 text-white ring-2 ring-violet-400 ring-offset-1'
-                    : 'bg-transparent border border-violet-300 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30'
-                )}
-                onClick={() => toggleFilter('ai')}
-              >
-                <Camera className="h-3 w-3 mr-0.5" />{aiCount} IA
-              </Badge>
-            )}
-            <span className="w-px h-4 bg-border mx-0.5" />
-            {Object.entries(typeCounts).map(([type, count]) => {
-              const radarCfg = EVENT_TYPE_CONFIG[type];
-              const aiCfg = AI_WARNING_LABELS[type];
-              const label = radarCfg?.label || aiCfg?.label || type;
-              const isActive = filter === type;
-              return (
+          {!selectionMode && (
+            <div className="flex items-center gap-2 flex-wrap mt-2">
+              {unackedCount > 0 && (
                 <Badge
-                  key={type}
-                  data-testid={`filter-${type}`}
+                  data-testid="filter-pending"
                   className={cn(
                     'text-xs cursor-pointer transition-all select-none py-0.5 px-2',
-                    isActive
-                      ? cn('text-white ring-2 ring-offset-1', radarCfg?.color || aiCfg?.color || 'bg-gray-600', radarCfg ? 'ring-red-400' : 'ring-violet-400')
-                      : 'bg-transparent border border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-900'
+                    filter === 'pending'
+                      ? 'bg-red-600 text-white ring-2 ring-red-400 ring-offset-1'
+                      : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300'
                   )}
-                  onClick={() => toggleFilter(type)}
+                  onClick={() => toggleFilter('pending')}
                 >
-                  {label} ({count})
+                  {unackedCount} en attente
                 </Badge>
-              );
-            })}
-            {filter !== 'all' && (
-              <Badge
-                data-testid="filter-clear"
-                className="text-xs cursor-pointer bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-400 select-none py-0.5 px-2"
-                onClick={() => setFilter('all')}
-              >
-                <X className="h-3 w-3 mr-0.5" />Tout
-              </Badge>
-            )}
-          </div>
+              )}
+              {radarCount > 0 && (
+                <Badge
+                  data-testid="filter-radar"
+                  className={cn(
+                    'text-xs cursor-pointer transition-all select-none py-0.5 px-2',
+                    filter === 'radar'
+                      ? 'bg-red-600 text-white ring-2 ring-red-400 ring-offset-1'
+                      : 'bg-transparent border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30'
+                  )}
+                  onClick={() => toggleFilter('radar')}
+                >
+                  <Radio className="h-3 w-3 mr-0.5" />{radarCount} radar
+                </Badge>
+              )}
+              {aiCount > 0 && (
+                <Badge
+                  data-testid="filter-ai"
+                  className={cn(
+                    'text-xs cursor-pointer transition-all select-none py-0.5 px-2',
+                    filter === 'ai'
+                      ? 'bg-violet-600 text-white ring-2 ring-violet-400 ring-offset-1'
+                      : 'bg-transparent border border-violet-300 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30'
+                  )}
+                  onClick={() => toggleFilter('ai')}
+                >
+                  <Camera className="h-3 w-3 mr-0.5" />{aiCount} IA
+                </Badge>
+              )}
+              <span className="w-px h-4 bg-border mx-0.5" />
+              {Object.entries(typeCounts).map(([type, count]) => {
+                const radarCfg = EVENT_TYPE_CONFIG[type];
+                const aiCfg = AI_WARNING_LABELS[type];
+                const label = radarCfg?.label || aiCfg?.label || type;
+                const isActive = filter === type;
+                return (
+                  <Badge
+                    key={type}
+                    data-testid={`filter-${type}`}
+                    className={cn(
+                      'text-xs cursor-pointer transition-all select-none py-0.5 px-2',
+                      isActive
+                        ? cn('text-white ring-2 ring-offset-1', radarCfg?.color || aiCfg?.color || 'bg-gray-600', radarCfg ? 'ring-red-400' : 'ring-violet-400')
+                        : 'bg-transparent border border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-900'
+                    )}
+                    onClick={() => toggleFilter(type)}
+                  >
+                    {label} ({count})
+                  </Badge>
+                );
+              })}
+              {filter !== 'all' && (
+                <Badge
+                  data-testid="filter-clear"
+                  className="text-xs cursor-pointer bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-400 select-none py-0.5 px-2"
+                  onClick={() => setFilter('all')}
+                >
+                  <X className="h-3 w-3 mr-0.5" />Tout
+                </Badge>
+              )}
+            </div>
+          )}
         </CardHeader>
         <CardContent className="p-4 flex-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 260px)' }}>
           {sorted.length === 0 ? (
@@ -329,11 +481,15 @@ function ActiveAlertsSection() {
               alert={alert}
               onAction={handleAction}
               onView={handleView}
+              selectionMode={selectionMode}
+              isSelected={selectedIds.has(alert.id)}
+              onToggleSelect={toggleSelectOne}
             />
           ))}
         </CardContent>
       </Card>
 
+      {/* Single event action dialog */}
       <EventActionDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
@@ -349,6 +505,51 @@ function ActiveAlertsSection() {
         } : null}
         onSuccess={handleActionSuccess}
       />
+
+      {/* Bulk action dialog */}
+      <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {bulkAction === 'ACK'
+                ? <><CheckCheck className="h-5 w-5 text-blue-600" />Acquitter {selectedIds.size} alerte(s)</>
+                : <><XCircle className="h-5 w-5 text-gray-600" />Fausse alarme — {selectedIds.size} alerte(s)</>}
+            </DialogTitle>
+            <DialogDescription>
+              {bulkAction === 'ACK'
+                ? 'Toutes les alertes sélectionnées seront acquittées.'
+                : 'Toutes les alertes sélectionnées seront marquées comme fausses alarmes. Un commentaire est obligatoire.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="bulk-comment">
+                Commentaire {bulkAction === 'FALSE_ALARM' && <span className="text-red-500">*</span>}
+              </Label>
+              <Textarea
+                id="bulk-comment"
+                placeholder={bulkAction === 'FALSE_ALARM' ? 'Commentaire obligatoire...' : 'Commentaire optionnel...'}
+                value={bulkComment}
+                onChange={(e) => setBulkComment(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkDialogOpen(false)} disabled={bulkLoading}>
+              Annuler
+            </Button>
+            <Button
+              className={bulkAction === 'ACK' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-700 hover:bg-gray-800'}
+              onClick={executeBulkAction}
+              disabled={bulkLoading}
+            >
+              {bulkLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {bulkAction === 'ACK' ? 'Acquitter' : 'Confirmer fausse alarme'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

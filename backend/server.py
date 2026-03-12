@@ -371,6 +371,11 @@ class EventUpdate(BaseModel):
     comment: Optional[str] = None  # Comment text for the action
     cc_admin: Optional[bool] = None  # CC site admin on assignment email
 
+class BulkEventUpdate(BaseModel):
+    event_ids: List[str]
+    status: EventStatus
+    comment: Optional[str] = None
+
 # Push Notification Token Models
 class PushTokenRequest(BaseModel):
     """Request model for registering a push token"""
@@ -2023,6 +2028,72 @@ async def update_event(event_id: str, update: EventUpdate, current_user: UserInD
     
     updated = await db.events.find_one({"id": event_id}, {"_id": 0})
     return updated
+
+
+@api_router.post("/events/bulk-update")
+async def bulk_update_events(update: BulkEventUpdate, current_user: UserInDB = Depends(get_current_user)):
+    """Bulk update status for multiple events at once (ACK, RESOLVED, FALSE_ALARM)."""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN", "SUPERVISOR", "OPERATOR"])
+
+    if not update.event_ids:
+        raise HTTPException(status_code=400, detail="Aucun identifiant d'événement fourni")
+
+    if update.status in ("RESOLVED", "FALSE_ALARM") and not update.comment:
+        raise HTTPException(status_code=400, detail="Un commentaire est obligatoire pour cette action")
+
+    success_count = 0
+    failed_ids = []
+    tenant_ids = set()
+
+    for event_id in update.event_ids:
+        try:
+            event = await db.events.find_one({"id": event_id}, {"_id": 0})
+            if not event:
+                failed_ids.append(event_id)
+                continue
+            if not await check_event_access(event, current_user):
+                failed_ids.append(event_id)
+                continue
+
+            mongo_update: dict = {"$set": {"status": update.status}}
+            if update.comment:
+                comment_entry = {
+                    "id": str(uuid.uuid4()),
+                    "user_id": current_user.id,
+                    "user_name": current_user.full_name,
+                    "user_role": current_user.role,
+                    "text": update.comment,
+                    "action": update.status,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }
+                mongo_update["$push"] = {"comments": comment_entry}
+
+            await db.events.update_one({"id": event_id}, mongo_update)
+            tenant_ids.add(event.get("tenant_id", "unknown"))
+            success_count += 1
+
+            await manager.broadcast_to_tenant(event["tenant_id"], {
+                "type": "event_updated",
+                "event_id": event_id,
+                "update": {"status": update.status}
+            })
+        except Exception as e:
+            logger.warning(f"bulk_update_events: failed on event {event_id}: {e}")
+            failed_ids.append(event_id)
+
+    from config.event_cache import get_event_cache_service
+    cache_service = get_event_cache_service()
+    for tid in tenant_ids:
+        cache_service.invalidate_tenant_cache(tid)
+
+    await log_audit(
+        current_user.id, current_user.tenant_id,
+        f"bulk_update_{update.status}", "events",
+        ",".join(update.event_ids),
+        {"status": update.status, "count": success_count}
+    )
+
+    return {"success_count": success_count, "failed_count": len(failed_ids), "failed_ids": failed_ids}
 
 
 @api_router.get("/events/{event_id}/comments")
