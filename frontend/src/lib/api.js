@@ -193,7 +193,7 @@ export const deviceConfigAPI = {
   
   // Templates
   getTemplates: () => api.get('/config/templates'),
-  createTemplate: (name, config, description = null) => api.post('/config/templates', { name, config, description }),
+  createTemplate: (name, config, description = null) => api.post('/config/templates/create', { name, config, description, isSystem: false }),
   getTemplate: (templateId) => api.get(`/config/templates/${templateId}`),
   deleteTemplate: (templateId) => api.delete(`/config/templates/${templateId}`)
 };
