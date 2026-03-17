@@ -13,7 +13,7 @@ import api from '@/lib/api';
 const AlertContext = createContext(null);
 
 const ALERT_TYPES = ['FALL', 'SENSITIVE_FALL', 'BED_EXIT'];
-const CRITICAL_AI_TYPES = ['Fall_Detected', 'Violence', 'Fire', 'Smoke', 'Intrusion'];
+const CRITICAL_AI_TYPES = ['Fall_Detected', 'Violence_Detected'];
 
 /**
  * Joue un chime d'urgence 4 notes descendantes via Web Audio API.

@@ -11,15 +11,10 @@ from enum import Enum
 
 class AIWarningType(str, Enum):
     """Types of AI warnings/detections"""
-    NORMAL_ACTIVITY = "Normal_Activity"
     FALL_DETECTED = "Fall_Detected"
-    PERSON_DETECTED = "Person_Detected"
-    NO_ACTIVITY = "No_Activity"
-    INTRUSION = "Intrusion"
-    LOITERING = "Loitering"
-    VIOLENCE = "Violence"
-    FIRE = "Fire"
-    SMOKE = "Smoke"
+    VIOLENCE_DETECTED = "Violence_Detected"
+    UNATTENDED_BAG = "Unattended_Bag"
+    OPEN_DOOR = "Open_Door"
     UNKNOWN = "Unknown"
 
 
@@ -57,6 +52,7 @@ class AISensorUpdate(BaseModel):
     floor_id: Optional[str] = None
     room_id: Optional[str] = None
     confidence_threshold: Optional[float] = None
+    confidence_filter_enabled: Optional[bool] = None
     enabled_warnings: Optional[List[str]] = None
 
 
@@ -64,7 +60,8 @@ class AISensorInDB(AISensorBase):
     """AI Sensor as stored in database"""
     id: str
     status: AISensorStatus = AISensorStatus.OFFLINE
-    confidence_threshold: float = 0.7  # Default threshold
+    confidence_threshold: float = 0.5  # Default threshold
+    confidence_filter_enabled: bool = False  # Enable/disable confidence filtering
     enabled_warnings: List[str] = []  # Empty = all warnings enabled
     last_seen: Optional[str] = None
     last_event_id: Optional[str] = None
@@ -75,7 +72,7 @@ class AISensorInDB(AISensorBase):
 
 class AISensorConfig(BaseModel):
     """Configuration for AI Sensor alerts"""
-    confidence_threshold: float = Field(0.7, ge=0.0, le=1.0)
+    confidence_threshold: float = Field(0.5, ge=0.0, le=1.0)
     enabled_warnings: List[str] = []  # Empty list = all warnings enabled
     notification_enabled: bool = True
     video_retention_days: int = 7
@@ -137,8 +134,8 @@ class AIEventResponse(AIEventInDB):
     @property
     def calculated_severity(self) -> str:
         """Calculate severity based on warning type"""
-        high_severity = ["Fall_Detected", "Violence", "Fire", "Smoke", "Intrusion"]
-        medium_severity = ["Loitering", "Person_Detected"]
+        high_severity = ["Fall_Detected", "Violence_Detected"]
+        medium_severity = ["Unattended_Bag", "Open_Door"]
         
         if self.warning_type in high_severity:
             return "HIGH"

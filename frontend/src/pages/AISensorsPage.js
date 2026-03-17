@@ -28,15 +28,10 @@ import { usePageActions } from '@/contexts/PageActionsContext';
 
 // Warning types for AI detection
 const WARNING_TYPES = [
-  { value: 'Normal_Activity', label: 'Activité Normale', color: 'bg-green-500' },
   { value: 'Fall_Detected', label: 'Chute Détectée', color: 'bg-red-500' },
-  { value: 'Person_Detected', label: 'Personne Détectée', color: 'bg-blue-500' },
-  { value: 'No_Activity', label: 'Aucune Activité', color: 'bg-gray-500' },
-  { value: 'Intrusion', label: 'Intrusion', color: 'bg-orange-500' },
-  { value: 'Loitering', label: 'Rôdeur', color: 'bg-yellow-500' },
-  { value: 'Violence', label: 'Violence', color: 'bg-red-700' },
-  { value: 'Fire', label: 'Feu', color: 'bg-red-600' },
-  { value: 'Smoke', label: 'Fumée', color: 'bg-gray-600' },
+  { value: 'Violence_Detected', label: 'Violence Détectée', color: 'bg-red-700' },
+  { value: 'Unattended_Bag', label: 'Bagage Abandonné', color: 'bg-amber-500' },
+  { value: 'Open_Door', label: 'Porte Ouverte', color: 'bg-blue-500' },
 ];
 
 const getWarningBadge = (warningType) => {
@@ -96,7 +91,8 @@ export function AISensorsPage() {
     channel: '',
     channel_name: '',
     name: '',
-    confidence_threshold: 0.7,
+    confidence_threshold: 0.5,
+    confidence_filter_enabled: false,
     enabled_warnings: [],
     warning_thresholds: {},
     push_notifications_enabled: true
@@ -155,7 +151,7 @@ export function AISensorsPage() {
       await aiSensorsAPI.create(formData);
       toast.success('Capteur IA créé');
       setCreateDialogOpen(false);
-      setFormData({ channel: '', channel_name: '', name: '', confidence_threshold: 0.7, enabled_warnings: [], warning_thresholds: {}, push_notifications_enabled: true });
+      setFormData({ channel: '', channel_name: '', name: '', confidence_threshold: 0.5, confidence_filter_enabled: false, enabled_warnings: [], warning_thresholds: {}, push_notifications_enabled: true });
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erreur lors de la création');
@@ -168,6 +164,7 @@ export function AISensorsPage() {
       await aiSensorsAPI.update(selectedSensor.id, {
         name: formData.name,
         confidence_threshold: formData.confidence_threshold,
+        confidence_filter_enabled: formData.confidence_filter_enabled,
         enabled_warnings: formData.enabled_warnings,
         warning_thresholds: formData.warning_thresholds,
         push_notifications_enabled: formData.push_notifications_enabled
@@ -199,7 +196,8 @@ export function AISensorsPage() {
       channel: sensor.channel,
       channel_name: sensor.channel_name,
       name: sensor.name || '',
-      confidence_threshold: sensor.confidence_threshold || 0.7,
+      confidence_threshold: sensor.confidence_threshold || 0.5,
+      confidence_filter_enabled: sensor.confidence_filter_enabled === true,
       enabled_warnings: sensor.enabled_warnings || [],
       warning_thresholds: sensor.warning_thresholds || {},
       push_notifications_enabled: sensor.push_notifications_enabled !== false
@@ -615,14 +613,24 @@ export function AISensorsPage() {
             </TabsContent>
             
             <TabsContent value="thresholds" className="space-y-4 mt-4">
+              <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                <div>
+                  <p className="text-sm font-medium">Filtrage par confiance</p>
+                  <p className="text-xs text-muted-foreground">Ignorer les alertes sous le seuil de confiance</p>
+                </div>
+                <Switch
+                  checked={formData.confidence_filter_enabled}
+                  onCheckedChange={(checked) => setFormData({ ...formData, confidence_filter_enabled: checked })}
+                />
+              </div>
               <p className="text-sm text-muted-foreground mb-4">
-                Définissez un seuil de confiance spécifique pour chaque type d&apos;alerte. 
+                Définissez un seuil de confiance spécifique pour chaque type d&apos;alerte.
                 Les alertes en dessous du seuil seront ignorées.
               </p>
               <div className="space-y-4">
                 {WARNING_TYPES.map(type => {
                   const threshold = formData.warning_thresholds?.[type.value] ?? formData.confidence_threshold;
-                  const isCritical = ['Fall_Detected', 'Violence', 'Fire', 'Smoke', 'Intrusion'].includes(type.value);
+                  const isCritical = ['Fall_Detected', 'Violence_Detected'].includes(type.value);
                   return (
                     <div key={type.value} className="space-y-1">
                       <div className="flex items-center justify-between">

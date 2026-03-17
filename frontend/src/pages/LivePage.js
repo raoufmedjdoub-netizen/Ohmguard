@@ -97,15 +97,9 @@ const EVENT_TYPE_CONFIG = {
 
 const AI_WARNING_LABELS = {
   Fall_Detected: { label: 'Chute (IA)', icon: 'alert', color: 'bg-red-600', border: 'border-red-500' },
-  fall: { label: 'Chute (IA)', icon: 'alert', color: 'bg-red-600', border: 'border-red-500' },
-  Violence: { label: 'Violence', icon: 'alert', color: 'bg-red-700', border: 'border-red-600' },
-  Fire: { label: 'Feu', icon: 'flame', color: 'bg-orange-600', border: 'border-orange-500' },
-  Smoke: { label: 'Fumee', icon: 'flame', color: 'bg-gray-600', border: 'border-gray-500' },
-  Intrusion: { label: 'Intrusion', icon: 'eye', color: 'bg-purple-700', border: 'border-purple-600' },
-  Person_Detected: { label: 'Personne', icon: 'user', color: 'bg-blue-500', border: 'border-blue-400' },
-  Loitering: { label: 'Rodeur', icon: 'eye', color: 'bg-amber-600', border: 'border-amber-500' },
-  Normal_Activity: { label: 'Activite', icon: 'user', color: 'bg-green-500', border: 'border-green-400' },
-  'Incivilité': { label: 'Incivilite', icon: 'alert', color: 'bg-orange-700', border: 'border-orange-600' },
+  Violence_Detected: { label: 'Violence', icon: 'alert', color: 'bg-red-700', border: 'border-red-600' },
+  Unattended_Bag: { label: 'Bagage Abandonné', icon: 'alert', color: 'bg-amber-500', border: 'border-amber-400' },
+  Open_Door: { label: 'Porte Ouverte', icon: 'eye', color: 'bg-blue-500', border: 'border-blue-400' },
 };
 
 function ElapsedTimer({ since }) {
@@ -727,14 +721,11 @@ export function LivePage() {
         }, 3000);
         
         // Alertes critiques IA
-        const criticalTypes = ['Fall_Detected', 'Violence', 'Fire', 'Smoke', 'Intrusion'];
+        const criticalTypes = ['Fall_Detected', 'Violence_Detected'];
         if (criticalTypes.includes(aiEvent.warning_type)) {
           const alertMessages = {
             'Fall_Detected': '🚨 Chute détectée (IA)!',
-            'Violence': '⚠️ Violence détectée!',
-            'Fire': '🔥 Feu détecté!',
-            'Smoke': '💨 Fumée détectée!',
-            'Intrusion': '🚷 Intrusion détectée!'
+            'Violence_Detected': '⚠️ Violence détectée!',
           };
           toast.error(alertMessages[aiEvent.warning_type] || '⚠️ Alerte IA!', {
             description: aiEvent.channel_name || aiEvent.location_path || 'Caméra IA',

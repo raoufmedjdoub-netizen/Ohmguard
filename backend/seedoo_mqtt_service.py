@@ -77,8 +77,8 @@ class SeedooMQTTService:
                     logger.info(f"Connected to Seedoo MQTT broker {self.broker_host}:{self.broker_port}")
                     
                     # Subscribe to Seedoo AI camera topics
-                    await client.subscribe("/seedoo/#")
-                    logger.info("Subscribed to /seedoo/# (AI cameras)")
+                    await client.subscribe("seedoo/warnings/+/+")
+                    logger.info("Subscribed to seedoo/warnings/+/+ (AI cameras)")
                     
                     # Process messages
                     async for message in client.messages:
@@ -115,9 +115,10 @@ class SeedooMQTTService:
     
     async def _handle_seedoo_event(self, topic: str, payload: Dict):
         """Handle Seedoo AI camera events"""
-        # Extract channel from topic, fallback to channel_name from payload
+        # Extract channel and warning_type from topic: seedoo/warnings/{channel}/{warning_type}
         parts = topic.split('/')
-        channel = parts[2] if len(parts) >= 3 else ""
+        channel = parts[2] if len(parts) >= 3 else payload.get("channel", "")
+        topic_warning_type = parts[3] if len(parts) >= 4 else None
         channel_name = payload.get("channel_name") or channel or "unknown"
         
         # Import AI sensor service
@@ -134,15 +135,16 @@ class SeedooMQTTService:
         
         # Check confidence threshold (per warning type or global)
         confidence = payload.get("confidence", 0)
-        warning_type = payload.get("warning_type", "Unknown")
+        # Use warning_type from topic path first, fallback to payload
+        warning_type = topic_warning_type or payload.get("warning_type", "Unknown")
         
-        # Use per-type threshold if available, otherwise use global threshold
-        warning_thresholds = sensor.get("warning_thresholds", {})
-        threshold = warning_thresholds.get(warning_type, sensor.get("confidence_threshold", 0.7))
-        
-        if confidence < threshold:
-            logger.debug(f"Ignoring low confidence AI event: {confidence} < {threshold} (type: {warning_type})")
-            return
+        # Apply confidence filtering only if enabled on this sensor
+        if sensor.get("confidence_filter_enabled", False):
+            warning_thresholds = sensor.get("warning_thresholds", {})
+            threshold = warning_thresholds.get(warning_type, sensor.get("confidence_threshold", 0.5))
+            if confidence < threshold:
+                logger.debug(f"Ignoring low confidence AI event: {confidence} < {threshold} (type: {warning_type})")
+                return
         
         # Check if warning type is enabled
         enabled_warnings = sensor.get("enabled_warnings", [])
@@ -150,15 +152,21 @@ class SeedooMQTTService:
             logger.debug(f"Ignoring disabled warning type: {warning_type}")
             return
         
-        # Create the AI event (inject channel from topic into payload)
-        event_data = {**payload, "channel": channel}
+        # Normalize payload fields to internal model
+        # 'link' → 'video_url', 'note' → 'warning_text'
+        event_data = {
+            **payload,
+            "channel": channel,
+            "video_url": payload.get("video_url") or payload.get("link"),
+            "warning_text": payload.get("warning_text") or payload.get("note"),
+        }
         event = await ai_service.create_event(event_data)
         
         # Broadcast to WebSocket
         if self.broadcast_callback:
             # Determine severity
-            high_severity_types = ["Fall_Detected", "Violence", "Fire", "Smoke", "Intrusion"]
-            severity = "HIGH" if warning_type in high_severity_types else "MEDIUM" if warning_type != "Normal_Activity" else "LOW"
+            high_severity_types = ["Fall_Detected", "Violence_Detected"]
+            severity = "HIGH" if warning_type in high_severity_types else "MEDIUM"
             
             # Broadcast the AI event
             await self.broadcast_callback("all", {
@@ -174,7 +182,7 @@ class SeedooMQTTService:
             logger.info(f"Broadcasted AI event: {event['id']} (type: {warning_type}, severity: {severity})")
         
         # Send push notifications for critical AI alerts
-        critical_types = ['Fall_Detected', 'Violence', 'Fire', 'Smoke', 'Intrusion']
+        critical_types = ['Fall_Detected', 'Violence_Detected']
         if warning_type in critical_types and sensor.get("push_notifications_enabled", True):
             await self._send_ai_push_notification(event, sensor, warning_type)
     
@@ -194,10 +202,7 @@ class SeedooMQTTService:
             # Build notification message based on warning type
             alert_titles = {
                 'Fall_Detected': '🚨 Chute détectée (IA)',
-                'Violence': '⚠️ Violence détectée',
-                'Fire': '🔥 Feu détecté',
-                'Smoke': '💨 Fumée détectée',
-                'Intrusion': '🚷 Intrusion détectée'
+                'Violence_Detected': '⚠️ Violence détectée',
             }
             
             title = alert_titles.get(warning_type, '⚠️ Alerte IA')
