@@ -665,8 +665,13 @@ function CreateUserDialog({ open, onOpenChange, clientId, clientName, onSuccess 
     if (!validate()) return;
     setSaving(true);
     try {
-      await api.post(`/clients/${clientId}/users`, form);
-      toast.success('Utilisateur créé — un email avec le mot de passe temporaire a été envoyé');
+      const res = await api.post(`/clients/${clientId}/users`, form);
+      const data = res.data;
+      if (data.email_sent) {
+        toast.success('Utilisateur créé — un email avec le mot de passe temporaire a été envoyé');
+      } else {
+        toast.warning(`Utilisateur créé mais l'email n'a pas pu être envoyé${data.email_error ? ' : ' + data.email_error : ''}`);
+      }
       onOpenChange(false);
       setForm({ full_name: '', email: '', role: 'VIEWER', phone: '', job_title: '', department: '', notes: '' });
       setErrors({});

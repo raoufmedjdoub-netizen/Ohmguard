@@ -216,6 +216,8 @@ def create_rbac_routes(get_current_user, check_permission, db):
         )
 
         # Send welcome email with temporary password
+        email_sent = False
+        email_error = None
         if temp_password and not request.password:
             try:
                 from email_service import get_email_service
@@ -224,18 +226,28 @@ def create_rbac_routes(get_current_user, check_permission, db):
                     # Get client name for the email
                     client_doc = await db.clients.find_one({"id": client_id}, {"_id": 0, "name": 1})
                     org_name = client_doc.get("name", "") if client_doc else ""
+                    logger.info(f"[User Creation] Sending welcome email to {request.email}...")
                     await email_svc.send_welcome_email(
                         to_email=request.email,
                         full_name=request.full_name,
                         temp_password=temp_password,
                         org_name=org_name
                     )
+                    email_sent = True
+                    logger.info(f"[User Creation] Welcome email sent successfully to {request.email}")
+                else:
+                    email_error = "Email service not initialized"
+                    logger.warning(f"[User Creation] Email service not available")
             except Exception as e:
-                logger.warning(f"Failed to send welcome email to {request.email}: {e}")
+                email_error = str(e)
+                logger.error(f"[User Creation] Failed to send welcome email to {request.email}: {e}", exc_info=True)
 
         # Add user details
         client_user["user_email"] = request.email
         client_user["user_full_name"] = request.full_name
+        client_user["email_sent"] = email_sent
+        if email_error:
+            client_user["email_error"] = email_error
 
         return client_user
     

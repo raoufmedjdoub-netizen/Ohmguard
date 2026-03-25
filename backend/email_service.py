@@ -127,18 +127,20 @@ class EmailService:
     async def send_welcome_email(self, to_email: str, full_name: str, temp_password: str, org_name: str = ""):
         """Send welcome email with temporary password to new user."""
         config = await self.get_smtp_config()
-        if not config or not config.get("enabled"):
-            logger.warning(f"[Email] SMTP not configured - cannot send welcome email to {to_email}")
-            return
+        if not config:
+            raise Exception("Aucune configuration SMTP trouvée en base de données")
+        if not config.get("enabled"):
+            raise Exception(f"SMTP configuré mais désactivé (enabled=false)")
+
+        logger.info(f"[Email] SMTP config found: host={config.get('host')}, port={config.get('port')}, from={config.get('from_email')}")
 
         subject = f"[OhmGuard] Bienvenue — Votre compte a été créé"
         html_body = self._build_welcome_email_html(full_name, to_email, temp_password, org_name)
 
-        try:
-            self._send_email_sync(config=config, to_email=to_email, subject=subject, html_body=html_body)
-            logger.info(f"[Email] Welcome email sent to {to_email}")
-        except Exception as e:
-            logger.error(f"[Email] Failed to send welcome email to {to_email}: {e}")
+        result = self._send_email_sync(config=config, to_email=to_email, subject=subject, html_body=html_body)
+        if not result.get("success"):
+            raise Exception(result.get("error", "Erreur inconnue lors de l'envoi"))
+        logger.info(f"[Email] Welcome email sent to {to_email}")
 
     def _build_welcome_email_html(self, full_name: str, email: str, temp_password: str, org_name: str) -> str:
         org_line = f" pour <strong>{org_name}</strong>" if org_name else ""
