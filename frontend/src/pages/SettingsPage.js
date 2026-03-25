@@ -113,6 +113,36 @@ function GeneralSettingsTab() {
   const [bannerEnabled, setBannerEnabled] = useState(true);
   const [bannerLoading, setBannerLoading] = useState(false);
 
+  // Profile editing
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({});
+  const [profileSaving, setProfileSaving] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        full_name: user.full_name || '',
+        phone: user.phone || '',
+        job_title: user.job_title || '',
+        department: user.department || '',
+      });
+    }
+  }, [user]);
+
+  const handleProfileSave = async () => {
+    setProfileSaving(true);
+    try {
+      await authAPI.updateProfile(profileForm);
+      toast.success('Profil mis à jour');
+      setEditingProfile(false);
+      window.location.reload();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Erreur lors de la mise à jour');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
   // Push mobile
   const [pushDevices, setPushDevices] = useState([]);
   const [pushLoading, setPushLoading] = useState(false);
@@ -182,11 +212,21 @@ function GeneralSettingsTab() {
     <div className="space-y-6 mt-4">
       <div className="grid md:grid-cols-2 gap-6">
         <Card>
-          <CardHeader>
+          <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
               {t('settings.profile')}
             </CardTitle>
+            {!editingProfile ? (
+              <Button variant="ghost" size="sm" onClick={() => setEditingProfile(true)}>Modifier</Button>
+            ) : (
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm" onClick={() => setEditingProfile(false)}>Annuler</Button>
+                <Button size="sm" onClick={handleProfileSave} disabled={profileSaving}>
+                  {profileSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Enregistrer'}
+                </Button>
+              </div>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4">
@@ -195,12 +235,64 @@ function GeneralSettingsTab() {
                   {getInitials(user?.full_name)}
                 </AvatarFallback>
               </Avatar>
-              <div>
-                <h3 className="font-medium text-lg">{user?.full_name}</h3>
+              <div className="flex-1">
+                {editingProfile ? (
+                  <Input
+                    value={profileForm.full_name}
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, full_name: e.target.value }))}
+                    className="font-medium text-lg h-9"
+                    placeholder="Nom complet"
+                  />
+                ) : (
+                  <h3 className="font-medium text-lg">{user?.full_name}</h3>
+                )}
                 <p className="text-sm text-muted-foreground">{user?.email}</p>
                 <Badge className="mt-1">{user?.role}</Badge>
               </div>
             </div>
+            {editingProfile && (
+              <div className="grid grid-cols-1 gap-3 pt-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Téléphone</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={profileForm.phone}
+                      onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
+                      className="pl-9 h-8 text-sm"
+                      placeholder="+33 6 12 34 56 78"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Fonction</Label>
+                    <Input
+                      value={profileForm.job_title}
+                      onChange={(e) => setProfileForm(prev => ({ ...prev, job_title: e.target.value }))}
+                      className="h-8 text-sm"
+                      placeholder="Infirmière"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Service</Label>
+                    <Input
+                      value={profileForm.department}
+                      onChange={(e) => setProfileForm(prev => ({ ...prev, department: e.target.value }))}
+                      className="h-8 text-sm"
+                      placeholder="Soins"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            {!editingProfile && (user?.phone || user?.job_title || user?.department) && (
+              <div className="flex flex-wrap gap-3 text-sm text-muted-foreground pt-1">
+                {user?.phone && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{user.phone}</span>}
+                {user?.job_title && <span className="flex items-center gap-1"><Briefcase className="h-3.5 w-3.5" />{user.job_title}</span>}
+                {user?.department && <span className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" />{user.department}</span>}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -865,6 +957,18 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
   const [showResetPw, setShowResetPw] = useState(false);
   const [newPw, setNewPw] = useState('');
   const [resettingPw, setResettingPw] = useState(false);
+  const [activeSection, setActiveSection] = useState('contact'); // contact | permissions | scopes
+
+  // Permissions state
+  const [permissions, setPermissions] = useState([]);
+  const [permissionsLoading, setPermissionsLoading] = useState(false);
+  const [permSaving, setPermSaving] = useState(false);
+
+  // Scopes state
+  const [scopes, setScopes] = useState([]);
+  const [scopesLoading, setScopesLoading] = useState(false);
+  const [buildings, setBuildings] = useState([]);
+  const [floors, setFloors] = useState({});
 
   useEffect(() => {
     if (user) {
@@ -877,8 +981,118 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
         role: user.role
       });
       setEditing(false);
+      setActiveSection('contact');
     }
   }, [user]);
+
+  // Load permissions when tab is activated
+  useEffect(() => {
+    if (activeSection === 'permissions' && user) {
+      loadPermissions();
+    }
+  }, [activeSection, user]);
+
+  // Load scopes when tab is activated
+  useEffect(() => {
+    if (activeSection === 'scopes' && user) {
+      loadScopes();
+      loadBuildings();
+    }
+  }, [activeSection, user]);
+
+  const loadPermissions = async () => {
+    setPermissionsLoading(true);
+    try {
+      const res = await api.get(`/client-users/${user.id}/permissions`);
+      setPermissions(res.data);
+    } catch (e) {
+      toast.error('Erreur chargement permissions');
+    } finally {
+      setPermissionsLoading(false);
+    }
+  };
+
+  const loadScopes = async () => {
+    setScopesLoading(true);
+    try {
+      const res = await api.get(`/client-users/${user.id}/scopes`);
+      setScopes(res.data);
+    } catch (e) {
+      toast.error('Erreur chargement périmètres');
+    } finally {
+      setScopesLoading(false);
+    }
+  };
+
+  const loadBuildings = async () => {
+    try {
+      const res = await api.get(`/clients/${clientId}/buildings`);
+      setBuildings(res.data || []);
+      // Load floors for each building
+      const floorsMap = {};
+      for (const b of (res.data || [])) {
+        try {
+          const fRes = await api.get(`/buildings/${b.id}/floors`);
+          floorsMap[b.id] = fRes.data || [];
+        } catch { floorsMap[b.id] = []; }
+      }
+      setFloors(floorsMap);
+    } catch { setBuildings([]); }
+  };
+
+  const togglePermission = async (permKey, currentEffect) => {
+    setPermSaving(true);
+    try {
+      // Build overrides: toggle the permission
+      const currentOverrides = permissions
+        .filter(p => p.override !== null && p.override !== undefined)
+        .map(p => ({ client_user_id: user.id, permission_key: p.key, effect: p.override }));
+
+      let newOverrides;
+      if (currentEffect === null || currentEffect === undefined) {
+        // No override — check if role_default is true or false
+        const perm = permissions.find(p => p.key === permKey);
+        const newEffect = perm?.role_default ? 'DENY' : 'ALLOW';
+        newOverrides = [...currentOverrides.filter(o => o.permission_key !== permKey), { client_user_id: user.id, permission_key: permKey, effect: newEffect }];
+      } else {
+        // Has override — remove it (revert to role default)
+        newOverrides = currentOverrides.filter(o => o.permission_key !== permKey);
+      }
+
+      await api.put(`/client-users/${user.id}/permissions`, { overrides: newOverrides });
+      await loadPermissions();
+      onUpdate();
+    } catch (e) {
+      toast.error('Erreur modification permission');
+    } finally {
+      setPermSaving(false);
+    }
+  };
+
+  const addScope = async (scopeType, locationId) => {
+    try {
+      const scopeData = { scope_type: scopeType, access_level: 'VIEW' };
+      if (scopeType === 'BUILDING') scopeData.building_id = locationId;
+      else if (scopeType === 'FLOOR') scopeData.floor_id = locationId;
+      await api.post(`/client-users/${user.id}/scopes`, scopeData);
+      toast.success('Périmètre ajouté');
+      await loadScopes();
+      onUpdate();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Erreur ajout périmètre');
+    }
+  };
+
+  const removeScope = async (scopeId) => {
+    try {
+      await api.delete(`/scopes/${scopeId}`);
+      toast.success('Périmètre retiré');
+      await loadScopes();
+      onUpdate();
+    } catch (e) {
+      toast.error('Erreur suppression périmètre');
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -912,7 +1126,7 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
     }
   };
 
-  const Field = ({ icon: Icon, label, value, field, editable = true }) => (
+  const ContactField = ({ icon: Icon, label, value, field, editable = true }) => (
     <div className="flex items-start gap-3 py-2">
       <Icon className="h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
       <div className="flex-1 min-w-0">
@@ -930,9 +1144,22 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
     </div>
   );
 
+  // Group permissions by group
+  const permissionsByGroup = useMemo(() => {
+    const groups = {};
+    for (const p of permissions) {
+      if (!groups[p.group]) groups[p.group] = [];
+      groups[p.group].push(p);
+    }
+    return groups;
+  }, [permissions]);
+
+  const GROUP_ICONS = { Pages: Globe, Events: Bell, Devices: Smartphone, Admin: Shield, System: Server };
+  const GROUP_LABELS = { Pages: 'Pages', Events: 'Événements', Devices: 'Capteurs', Admin: 'Administration', System: 'Système' };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
@@ -945,103 +1172,275 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
               <p className="text-sm font-normal text-muted-foreground">{user.user_email}</p>
             </div>
           </SheetTitle>
+          <SheetDescription className="sr-only">Détails de l'utilisateur</SheetDescription>
         </SheetHeader>
 
-        <div className="mt-6 space-y-5">
-          {/* Contact Card */}
-          <Card>
-            <CardHeader className="py-3 px-4 flex-row items-center justify-between">
-              <CardTitle className="text-sm">Fiche de contact</CardTitle>
-              {!editing ? (
-                <Button variant="ghost" size="sm" onClick={() => setEditing(true)} data-testid="edit-user-btn">
-                  Modifier
-                </Button>
-              ) : (
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>Annuler</Button>
-                  <Button size="sm" onClick={handleSave} disabled={saving} data-testid="save-user-btn">
-                    {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Enregistrer'}
-                  </Button>
-                </div>
+        {/* Section tabs */}
+        <div className="flex gap-1 mt-4 border-b">
+          {[
+            { key: 'contact', label: 'Profil', icon: User },
+            { key: 'permissions', label: 'Permissions', icon: Shield },
+            { key: 'scopes', label: 'Périmètres', icon: MapPin },
+          ].map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setActiveSection(key)}
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeSection === key
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 space-y-4">
+          {/* ==================== CONTACT / PROFILE ==================== */}
+          {activeSection === 'contact' && (
+            <>
+              <Card>
+                <CardHeader className="py-3 px-4 flex-row items-center justify-between">
+                  <CardTitle className="text-sm">Fiche de contact</CardTitle>
+                  {!editing ? (
+                    <Button variant="ghost" size="sm" onClick={() => setEditing(true)} data-testid="edit-user-btn">
+                      Modifier
+                    </Button>
+                  ) : (
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>Annuler</Button>
+                      <Button size="sm" onClick={handleSave} disabled={saving} data-testid="save-user-btn">
+                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Enregistrer'}
+                      </Button>
+                    </div>
+                  )}
+                </CardHeader>
+                <CardContent className="px-4 pb-4 divide-y divide-border">
+                  <ContactField icon={User} label="Nom complet" value={user.user_full_name} field="full_name" />
+                  <ContactField icon={Mail} label="Email" value={user.user_email} field="email" editable={false} />
+                  <ContactField icon={Phone} label="Téléphone" value={user.phone} field="phone" />
+                  <ContactField icon={Briefcase} label="Fonction" value={user.job_title} field="job_title" />
+                  <ContactField icon={Building2} label="Service" value={user.department} field="department" />
+                  <ContactField icon={FileText} label="Observations" value={user.notes} field="notes" />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="py-3 px-4">
+                  <CardTitle className="text-sm">Rôle & Accès</CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Rôle</span>
+                    <Select
+                      value={form.role || user.role}
+                      onValueChange={async (val) => {
+                        try {
+                          await api.patch(`/client-users/${user.id}`, { role: val });
+                          toast.success('Rôle mis à jour');
+                          setForm(prev => ({ ...prev, role: val }));
+                          onUpdate();
+                        } catch (e) { toast.error('Erreur'); }
+                      }}
+                    >
+                      <SelectTrigger className="w-44" data-testid="user-role-select">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CLIENT_ADMIN">Administrateur</SelectItem>
+                        <SelectItem value="SUPERVISOR">Superviseur</SelectItem>
+                        <SelectItem value="OPERATOR">Opérateur</SelectItem>
+                        <SelectItem value="VIEWER">Lecteur</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Compte actif</span>
+                    <Switch
+                      checked={user.is_active !== false}
+                      onCheckedChange={async (val) => {
+                        try {
+                          await api.patch(`/client-users/${user.id}`, { is_active: val });
+                          toast.success(val ? 'Activé' : 'Désactivé');
+                          onUpdate();
+                        } catch (e) { toast.error('Erreur'); }
+                      }}
+                      data-testid="user-active-switch"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Button variant="outline" className="w-full" onClick={() => setShowResetPw(true)} data-testid="reset-password-btn">
+                <Key className="h-4 w-4 mr-2" />
+                Réinitialiser le mot de passe
+              </Button>
+
+              {user.created_at && (
+                <p className="text-xs text-center text-muted-foreground">
+                  Créé le {new Date(user.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </p>
               )}
-            </CardHeader>
-            <CardContent className="px-4 pb-4 divide-y divide-border">
-              <Field icon={User} label="Nom complet" value={user.user_full_name} field="full_name" />
-              <Field icon={Mail} label="Email" value={user.user_email} field="email" editable={false} />
-              <Field icon={Phone} label="Téléphone" value={user.phone} field="phone" />
-              <Field icon={Briefcase} label="Fonction" value={user.job_title} field="job_title" />
-              <Field icon={Building2} label="Service" value={user.department} field="department" />
-              <Field icon={FileText} label="Observations" value={user.notes} field="notes" />
-            </CardContent>
-          </Card>
+            </>
+          )}
 
-          {/* Role */}
-          <Card>
-            <CardHeader className="py-3 px-4">
-              <CardTitle className="text-sm">Rôle & Accès</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Rôle</span>
-                <Select
-                  value={form.role || user.role}
-                  onValueChange={async (val) => {
-                    try {
-                      await api.patch(`/client-users/${user.id}`, { role: val });
-                      toast.success('Rôle mis à jour');
-                      setForm(prev => ({ ...prev, role: val }));
-                      onUpdate();
-                    } catch (e) { toast.error('Erreur'); }
-                  }}
-                >
-                  <SelectTrigger className="w-44" data-testid="user-role-select">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CLIENT_ADMIN">Administrateur</SelectItem>
-                    <SelectItem value="SUPERVISOR">Superviseur</SelectItem>
-                    <SelectItem value="OPERATOR">Opérateur</SelectItem>
-                    <SelectItem value="VIEWER">Lecteur</SelectItem>
-                  </SelectContent>
-                </Select>
+          {/* ==================== PERMISSIONS ==================== */}
+          {activeSection === 'permissions' && (
+            <>
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+                <Shield className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+                Les permissions par défaut dépendent du rôle (<strong>{ROLE_LABELS[form.role || user.role]?.label}</strong>).
+                Vous pouvez personnaliser en activant/désactivant individuellement.
               </div>
 
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Compte actif</span>
-                <Switch
-                  checked={user.is_active !== false}
-                  onCheckedChange={async (val) => {
-                    try {
-                      await api.patch(`/client-users/${user.id}`, { is_active: val });
-                      toast.success(val ? 'Activé' : 'Désactivé');
-                      onUpdate();
-                    } catch (e) { toast.error('Erreur'); }
-                  }}
-                  data-testid="user-active-switch"
-                />
+              {permissionsLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+              ) : (
+                Object.entries(permissionsByGroup).map(([group, perms]) => {
+                  const GroupIcon = GROUP_ICONS[group] || Shield;
+                  return (
+                    <Card key={group}>
+                      <CardHeader className="py-2.5 px-4">
+                        <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+                          <GroupIcon className="h-3.5 w-3.5" />
+                          {GROUP_LABELS[group] || group}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="px-4 pb-3 space-y-0 divide-y divide-border">
+                        {perms.map(p => {
+                          const isOverridden = p.override !== null && p.override !== undefined;
+                          const effective = p.effective;
+                          return (
+                            <div key={p.key} className="flex items-center justify-between py-2">
+                              <div className="flex-1 min-w-0 pr-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm">{p.label}</span>
+                                  {isOverridden && (
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-amber-300 text-amber-700 bg-amber-50">
+                                      personnalisé
+                                    </Badge>
+                                  )}
+                                </div>
+                                {p.description && <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>}
+                              </div>
+                              <Switch
+                                checked={effective}
+                                disabled={permSaving}
+                                onCheckedChange={() => togglePermission(p.key, p.override)}
+                              />
+                            </div>
+                          );
+                        })}
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              )}
+            </>
+          )}
+
+          {/* ==================== SCOPES ==================== */}
+          {activeSection === 'scopes' && (
+            <>
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+                <MapPin className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+                Définissez les bâtiments et étages auxquels cet utilisateur a accès.
+                Sans périmètre, l'utilisateur voit tout.
               </div>
 
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>Périmètres</span>
-                <span>{user.scopes_count || 0}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>Modifications permissions</span>
-                <span>{user.permissions_count || 0}</span>
-              </div>
-            </CardContent>
-          </Card>
+              {/* Current scopes */}
+              <Card>
+                <CardHeader className="py-3 px-4">
+                  <CardTitle className="text-sm">Périmètres actifs ({scopes.length})</CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  {scopesLoading ? (
+                    <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                  ) : scopes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      Aucun périmètre — accès complet à l'organisation
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {scopes.map(s => (
+                        <div key={s.id} className="flex items-center justify-between rounded-lg border px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">{s.display_path || s.building_name || s.floor_name || s.scope_type}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {s.scope_type === 'BUILDING' ? 'Bâtiment' : s.scope_type === 'FLOOR' ? 'Étage' : s.scope_type === 'ROOM' ? 'Chambre' : s.scope_type}
+                                {' — '}{s.access_level === 'MANAGE' ? 'Gestion' : 'Lecture'}
+                              </p>
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeScope(s.id)}>
+                            <X className="h-3.5 w-3.5 text-red-500" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-          {/* Actions */}
-          <Button variant="outline" className="w-full" onClick={() => setShowResetPw(true)} data-testid="reset-password-btn">
-            <Key className="h-4 w-4 mr-2" />
-            Réinitialiser le mot de passe
-          </Button>
-
-          {user.created_at && (
-            <p className="text-xs text-center text-muted-foreground">
-              Créé le {new Date(user.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-            </p>
+              {/* Add scopes */}
+              <Card>
+                <CardHeader className="py-3 px-4">
+                  <CardTitle className="text-sm">Ajouter un périmètre</CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4 space-y-3">
+                  {buildings.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-2">Aucun bâtiment disponible</p>
+                  ) : (
+                    buildings.map(b => {
+                      const bScoped = scopes.some(s => s.scope_type === 'BUILDING' && s.building_id === b.id);
+                      const bFloors = floors[b.id] || [];
+                      return (
+                        <div key={b.id} className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">{b.name}</span>
+                            {!bScoped && (
+                              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => addScope('BUILDING', b.id)}>
+                                + Bâtiment entier
+                              </Button>
+                            )}
+                            {bScoped && (
+                              <Badge variant="outline" className="text-xs border-green-300 text-green-700 bg-green-50">
+                                <Check className="h-3 w-3 mr-1" /> Ajouté
+                              </Badge>
+                            )}
+                          </div>
+                          {!bScoped && bFloors.length > 0 && (
+                            <div className="ml-4 space-y-1">
+                              {bFloors.map(f => {
+                                const fScoped = scopes.some(s => s.scope_type === 'FLOOR' && s.floor_id === f.id);
+                                return (
+                                  <div key={f.id} className="flex items-center justify-between py-0.5">
+                                    <span className="text-xs text-muted-foreground">{f.name}</span>
+                                    {!fScoped ? (
+                                      <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => addScope('FLOOR', f.id)}>
+                                        + Étage
+                                      </Button>
+                                    ) : (
+                                      <Badge variant="outline" className="text-[10px] border-green-300 text-green-700 bg-green-50">
+                                        <Check className="h-2.5 w-2.5 mr-0.5" /> Ajouté
+                                      </Badge>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </CardContent>
+              </Card>
+            </>
           )}
         </div>
 

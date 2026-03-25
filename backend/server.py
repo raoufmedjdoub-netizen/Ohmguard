@@ -252,6 +252,9 @@ class User(UserBase):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     is_active: bool = True
+    phone: Optional[str] = None
+    job_title: Optional[str] = None
+    department: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class UserInDB(User):
@@ -741,6 +744,38 @@ async def refresh_token(refresh_token: str):
 @api_router.get("/auth/me", response_model=User)
 async def get_me(current_user: UserInDB = Depends(get_current_user)):
     return User(**current_user.model_dump())
+
+
+class UpdateProfileRequest(BaseModel):
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    job_title: Optional[str] = None
+    department: Optional[str] = None
+    language: Optional[str] = None
+
+
+@api_router.put("/auth/profile")
+async def update_profile(
+    request: UpdateProfileRequest,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Update the current user's own profile."""
+    updates = {k: v for k, v in request.model_dump().items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=400, detail="Aucune modification fournie")
+
+    await db.users.update_one({"id": current_user.id}, {"$set": updates})
+
+    # Also update client_users if full_name changed
+    if "full_name" in updates:
+        await db.client_users.update_many(
+            {"user_id": current_user.id},
+            {"$set": {"user_full_name": updates["full_name"]}}
+        )
+
+    await log_audit(current_user.id, current_user.tenant_id, "update_profile", "user", current_user.id)
+    user = await db.users.find_one({"id": current_user.id}, {"_id": 0})
+    return User(**user)
 
 
 class ChangePasswordRequest(BaseModel):

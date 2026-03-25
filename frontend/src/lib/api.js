@@ -64,6 +64,7 @@ export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   refresh: (refreshToken) => api.post('/auth/refresh', null, { params: { refresh_token: refreshToken } }),
   me: () => api.get('/auth/me'),
+  updateProfile: (data) => api.put('/auth/profile', data),
   changePassword: (currentPassword, newPassword) => api.post('/auth/change-password', { current_password: currentPassword, new_password: newPassword }),
   logout: () => api.post('/auth/logout'),
   logoutAll: () => api.post('/auth/logout-all'),
