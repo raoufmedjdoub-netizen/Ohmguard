@@ -386,6 +386,46 @@ class RBACService:
         
         scope["display_path"] = " > ".join(path_parts) if path_parts else "Non défini"
     
+    async def _validate_scope_ownership(self, client_id: str, scope_data: dict):
+        """Validate that the location in the scope belongs to the client."""
+        scope_type = scope_data.get("scope_type")
+
+        if scope_type == ScopeType.BUILDING:
+            building_id = scope_data.get("building_id")
+            if building_id:
+                building = await self.db.buildings.find_one(
+                    {"id": building_id, "client_id": client_id}, {"_id": 0, "id": 1}
+                )
+                if not building:
+                    raise HTTPException(status_code=400, detail="Building does not belong to this client")
+
+        elif scope_type == ScopeType.FLOOR:
+            floor_id = scope_data.get("floor_id")
+            if floor_id:
+                floor = await self.db.floors.find_one({"id": floor_id}, {"_id": 0, "building_id": 1})
+                if not floor:
+                    raise HTTPException(status_code=400, detail="Floor not found")
+                building = await self.db.buildings.find_one(
+                    {"id": floor["building_id"], "client_id": client_id}, {"_id": 0, "id": 1}
+                )
+                if not building:
+                    raise HTTPException(status_code=400, detail="Floor does not belong to this client")
+
+        elif scope_type == ScopeType.ROOM:
+            room_id = scope_data.get("room_id")
+            if room_id:
+                room = await self.db.rooms.find_one({"id": room_id}, {"_id": 0, "floor_id": 1})
+                if not room:
+                    raise HTTPException(status_code=400, detail="Room not found")
+                floor = await self.db.floors.find_one({"id": room["floor_id"]}, {"_id": 0, "building_id": 1})
+                if not floor:
+                    raise HTTPException(status_code=400, detail="Room's floor not found")
+                building = await self.db.buildings.find_one(
+                    {"id": floor["building_id"], "client_id": client_id}, {"_id": 0, "id": 1}
+                )
+                if not building:
+                    raise HTTPException(status_code=400, detail="Room does not belong to this client")
+
     async def add_scope(
         self,
         client_user_id: str,
@@ -396,7 +436,10 @@ class RBACService:
         client_user = await self.get_client_user_by_id(client_user_id)
         if not client_user:
             raise HTTPException(status_code=404, detail="ClientUser not found")
-        
+
+        # Validate that the location belongs to the client
+        await self._validate_scope_ownership(client_user["client_id"], scope_data)
+
         scope = LocationScope(
             client_user_id=client_user_id,
             scope_type=scope_data["scope_type"],
@@ -409,7 +452,7 @@ class RBACService:
             access_level=scope_data.get("access_level", AccessLevel.VIEW),
             created_by=created_by
         )
-        
+
         await self.db.location_scopes.insert_one(scope.model_dump())
         
         # Audit log
@@ -463,12 +506,16 @@ class RBACService:
         client_user = await self.get_client_user_by_id(client_user_id)
         if not client_user:
             raise HTTPException(status_code=404, detail="ClientUser not found")
-        
+
+        # Validate all scopes belong to the client before deleting old ones
+        for scope_data in scopes:
+            await self._validate_scope_ownership(client_user["client_id"], scope_data)
+
         # Delete existing scopes
         await self.db.location_scopes.delete_many(
             {"client_user_id": client_user_id}
         )
-        
+
         # Insert new scopes
         for scope_data in scopes:
             scope = LocationScope(

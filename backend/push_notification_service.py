@@ -231,21 +231,119 @@ class PushNotificationService:
         tenant_id: str,
         event_id: str,
         location: str = "Localisation inconnue",
-        severity: str = "HIGH"
+        severity: str = "HIGH",
+        sensor_id: str = None
     ) -> Optional[Dict]:
-        """Envoie une alerte de chute."""
-        return await self.send_to_tenant(
-            tenant_id=tenant_id,
-            title="🚨 ALERTE CHUTE DÉTECTÉE",
-            body=f"Chute détectée - {location}",
-            data={
-                "type": "new_event",
-                "event_id": event_id,
-                "eventType": "FALL",
-                "location": location,
-                "severity": severity
-            }
+        """Envoie une alerte de chute aux utilisateurs scopés."""
+        tokens = await self.get_scoped_tokens(tenant_id, sensor_id)
+
+        if not tokens:
+            logger.info(f"[Push] Aucun appareil éligible pour l'alerte (tenant={tenant_id}, sensor={sensor_id})")
+            return None
+
+        title = "🚨 ALERTE CHUTE DÉTECTÉE"
+        body = f"Chute détectée - {location}"
+        data = {
+            "type": "new_event",
+            "event_id": event_id,
+            "eventType": "FALL",
+            "location": location,
+            "severity": severity
+        }
+
+        result = await send_expo_push_notification(tokens, title, body, data)
+        logger.info(f"[Push] Alerte envoyée à {len(tokens)} appareil(s) (tenant={tenant_id}, sensor={sensor_id})")
+        return result
+
+    async def get_scoped_tokens(self, tenant_id: str, sensor_id: str = None) -> List[str]:
+        """
+        Get push tokens for users who have access to the given sensor's location.
+        Falls back to all tenant tokens if sensor has no location or RBAC unavailable.
+        """
+        # Get all active push tokens for this tenant
+        all_tokens_docs = await self.db.push_tokens.find(
+            {"tenant_id": tenant_id, "notifications_enabled": {"$ne": False}},
+            {"_id": 0, "token": 1, "user_id": 1}
+        ).to_list(200)
+
+        if not all_tokens_docs or not sensor_id:
+            return [t["token"] for t in all_tokens_docs if t.get("token")]
+
+        # Get sensor location info
+        sensor = await self.db.sensors.find_one(
+            {"id": sensor_id},
+            {"_id": 0, "client_id": 1, "building_id": 1, "floor_id": 1, "room_id": 1}
         )
+
+        if not sensor or not sensor.get("building_id"):
+            # No location info - send to all tenant users
+            return [t["token"] for t in all_tokens_docs if t.get("token")]
+
+        sensor_building_id = sensor.get("building_id")
+        sensor_floor_id = sensor.get("floor_id")
+        sensor_room_id = sensor.get("room_id")
+        client_id = sensor.get("client_id", tenant_id)
+
+        eligible_tokens = []
+
+        for token_doc in all_tokens_docs:
+            user_id = token_doc.get("user_id")
+            token = token_doc.get("token")
+            if not user_id or not token:
+                continue
+
+            # Check user's role - admins always get notified
+            user = await self.db.users.find_one({"id": user_id}, {"_id": 0, "role": 1})
+            if not user:
+                continue
+
+            if user.get("role") in ("SUPER_ADMIN", "TENANT_ADMIN"):
+                eligible_tokens.append(token)
+                continue
+
+            # Check client_user and scopes
+            client_user = await self.db.client_users.find_one(
+                {"user_id": user_id, "client_id": client_id, "is_active": True},
+                {"_id": 0, "id": 1, "role": 1}
+            )
+
+            if not client_user:
+                # No client_user - legacy user, include them
+                eligible_tokens.append(token)
+                continue
+
+            if client_user.get("role") == "CLIENT_ADMIN":
+                eligible_tokens.append(token)
+                continue
+
+            # Check location_scopes
+            scopes = await self.db.location_scopes.find(
+                {"client_user_id": client_user["id"]},
+                {"_id": 0, "scope_type": 1, "building_id": 1, "floor_id": 1, "room_id": 1, "client_id": 1}
+            ).to_list(100)
+
+            if not scopes:
+                # No scopes defined - include (default behavior)
+                eligible_tokens.append(token)
+                continue
+
+            # Check if any scope matches the sensor's location
+            for scope in scopes:
+                st = scope.get("scope_type")
+                if st == "CLIENT":
+                    eligible_tokens.append(token)
+                    break
+                elif st == "BUILDING" and scope.get("building_id") == sensor_building_id:
+                    eligible_tokens.append(token)
+                    break
+                elif st == "FLOOR" and scope.get("floor_id") == sensor_floor_id:
+                    eligible_tokens.append(token)
+                    break
+                elif st == "ROOM" and scope.get("room_id") == sensor_room_id:
+                    eligible_tokens.append(token)
+                    break
+
+        return eligible_tokens
 
     async def send_test_notification(self, user_id: str) -> Optional[Dict]:
         """Envoie une notification de test à un utilisateur."""

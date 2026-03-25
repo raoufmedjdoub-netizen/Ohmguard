@@ -761,11 +761,13 @@ class MQTTService:
             # Create a clean copy of event without MongoDB _id
             event_for_broadcast = {k: v for k, v in event.items() if k != '_id'}
 
-            # Send new event notification
+            # Send new event notification (include building/floor for room-based routing)
             await self.broadcast_callback(sensor['tenant_id'], {
                 "type": "new_radar_event",
                 "event": {
                     **event_for_broadcast,
+                    "building_id": sensor.get('building_id'),
+                    "floor_id": sensor.get('floor_id'),
                     "sensor_name": sensor.get('name'),
                     "location_path": self._build_location_path(sensor),
                     "active_regions_display": format_active_regions_display(normalized.activeRegions),
@@ -937,13 +939,15 @@ class MQTTService:
         logger.info(f"Created FALL event {event['id']} from device {device_id}, "
                     f"fall_status={fall_status}, simulated={fall_payload.isSimulated}")
         
-        # Broadcast new fall event
+        # Broadcast new fall event (include building/floor for room-based routing)
         if self.broadcast_callback:
             event_for_broadcast = {k: v for k, v in event.items() if k != '_id'}
             await self.broadcast_callback(sensor['tenant_id'], {
                 "type": "new_radar_event",
                 "event": {
                     **event_for_broadcast,
+                    "building_id": sensor.get('building_id'),
+                    "floor_id": sensor.get('floor_id'),
                     "sensor_name": sensor.get('name'),
                     "location_path": self._build_location_path(sensor),
                     "urgent": True
@@ -1119,13 +1123,15 @@ class MQTTService:
                     f"fall_status={fall_status}, confidence={sf_payload.confidenceLevel}, "
                     f"simulated={sf_payload.isSimulated}")
 
-        # Broadcast new event to WebSocket
+        # Broadcast new event to WebSocket (include building/floor for room-based routing)
         if self.broadcast_callback:
             event_for_broadcast = {k: v for k, v in new_event.items() if k != '_id'}
             await self.broadcast_callback(sensor['tenant_id'], {
                 "type": "new_radar_event",
                 "event": {
                     **event_for_broadcast,
+                    "building_id": sensor.get('building_id'),
+                    "floor_id": sensor.get('floor_id'),
                     "sensor_name": sensor.get('name'),
                     "location_path": self._build_location_path(sensor),
                     "urgent": True
@@ -1405,58 +1411,101 @@ class MQTTService:
     
 
     async def _send_fall_email(self, event: Dict, sensor: Dict):
-        """Send email notification for FALL events to users with email_notifications enabled."""
+        """Send email notification for FALL events to scoped users with email_notifications enabled."""
         try:
             from email_service import get_email_service
             email_svc = get_email_service()
             if not email_svc:
                 return
-            
+
             config = await email_svc.get_smtp_config()
             if not config or not config.get("enabled"):
                 return
-            
+
             tenant_id = sensor.get('tenant_id')
-            
+            client_id = sensor.get('client_id', tenant_id)
+            sensor_building_id = sensor.get('building_id')
+            sensor_floor_id = sensor.get('floor_id')
+            sensor_room_id = sensor.get('room_id')
+
             # Get users with email_notifications enabled for this tenant
             query = {"email_notifications": True}
             if tenant_id:
                 query["$or"] = [{"tenant_id": tenant_id}, {"role": "SUPER_ADMIN"}]
             else:
                 query["role"] = "SUPER_ADMIN"
-            
-            users_cursor = self.db.users.find(query, {"_id": 0, "email": 1})
-            recipients = [u["email"] async for u in users_cursor]
-            
+
+            users = await self.db.users.find(query, {"_id": 0, "id": 1, "email": 1, "role": 1}).to_list(200)
+
+            recipients = []
+            for user in users:
+                if not user.get("email"):
+                    continue
+
+                # Admins always receive
+                if user.get("role") in ("SUPER_ADMIN", "TENANT_ADMIN"):
+                    recipients.append(user["email"])
+                    continue
+
+                # If no building info on sensor, include all
+                if not sensor_building_id:
+                    recipients.append(user["email"])
+                    continue
+
+                # Check client_user and scopes
+                client_user = await self.db.client_users.find_one(
+                    {"user_id": user["id"], "client_id": client_id, "is_active": True},
+                    {"_id": 0, "id": 1, "role": 1}
+                )
+
+                if not client_user:
+                    recipients.append(user["email"])
+                    continue
+
+                if client_user.get("role") == "CLIENT_ADMIN":
+                    recipients.append(user["email"])
+                    continue
+
+                # Check location scopes
+                scopes = await self.db.location_scopes.find(
+                    {"client_user_id": client_user["id"]},
+                    {"_id": 0, "scope_type": 1, "building_id": 1, "floor_id": 1, "room_id": 1, "client_id": 1}
+                ).to_list(100)
+
+                if not scopes:
+                    recipients.append(user["email"])
+                    continue
+
+                for scope in scopes:
+                    st = scope.get("scope_type")
+                    if st == "CLIENT":
+                        recipients.append(user["email"])
+                        break
+                    elif st == "BUILDING" and scope.get("building_id") == sensor_building_id:
+                        recipients.append(user["email"])
+                        break
+                    elif st == "FLOOR" and scope.get("floor_id") == sensor_floor_id:
+                        recipients.append(user["email"])
+                        break
+                    elif st == "ROOM" and scope.get("room_id") == sensor_room_id:
+                        recipients.append(user["email"])
+                        break
+
             if recipients:
                 await email_svc.send_fall_alert(event, sensor, recipients)
-                logger.info(f"Fall email sent to {len(recipients)} recipients for sensor {sensor.get('name')}")
+                logger.info(f"Fall email sent to {len(recipients)} scoped recipients for sensor {sensor.get('name')}")
         except Exception as e:
             logger.error(f"Failed to send fall email notification: {e}")
 
 
     async def _send_fall_push_notification(self, event: Dict, sensor: Dict, event_type: str):
-        """Send push notification for FALL and SENSITIVE_FALL events"""
+        """Send push notification for FALL and SENSITIVE_FALL events (scoped by location)"""
         try:
-            from push_notification_service import send_expo_push_notification
-            
-            # Get all active push tokens for this tenant (notifications_enabled != false)
-            enabled_filter = {"notifications_enabled": {"$ne": False}}
-            tokens_cursor = self.db.push_tokens.find(
-                {"tenant_id": event.get('tenant_id'), **enabled_filter},
-                {"_id": 0, "token": 1}
-            )
-            tokens = [doc['token'] async for doc in tokens_cursor if doc.get('token')]
+            from push_notification_service import get_push_notification_service, send_expo_push_notification
 
-            # If no tenant-specific tokens, get all active tokens
-            if not tokens:
-                tokens_cursor = self.db.push_tokens.find(enabled_filter, {"_id": 0, "token": 1})
-                tokens = [doc['token'] async for doc in tokens_cursor if doc.get('token')]
-            
-            if not tokens:
-                logger.debug("No push tokens found for fall notification")
-                return
-            
+            tenant_id = event.get('tenant_id')
+            sensor_id = sensor.get('id')
+
             # Build notification message based on event type
             location = self._build_location_path(sensor) or sensor.get('name', 'Radar')
             if event_type == "FALL":
@@ -1468,25 +1517,41 @@ class MQTTService:
             else:
                 title = "⚠️ Alerte Radar"
                 body = f"Alerte {event_type} — {location}"
-            
-            # Send push notification
+
+            data = {
+                "type": "fall_event",
+                "event_id": event.get("id"),
+                "event_type": event_type,
+                "sensor_id": sensor_id,
+                "sensor_name": sensor.get("name"),
+                "severity": event.get("severity", "HIGH")
+            }
+
+            # Use scoped token filtering via push service
+            push_svc = get_push_notification_service()
+            if push_svc and tenant_id:
+                tokens = await push_svc.get_scoped_tokens(tenant_id, sensor_id)
+            else:
+                # Fallback: get all tenant tokens
+                enabled_filter = {"notifications_enabled": {"$ne": False}}
+                query = {"tenant_id": tenant_id, **enabled_filter} if tenant_id else enabled_filter
+                tokens_cursor = self.db.push_tokens.find(query, {"_id": 0, "token": 1})
+                tokens = [doc['token'] async for doc in tokens_cursor if doc.get('token')]
+
+            if not tokens:
+                logger.debug("No push tokens found for fall notification")
+                return
+
             result = await send_expo_push_notification(
                 tokens=tokens,
                 title=title,
                 body=body,
-                data={
-                    "type": "fall_event",
-                    "event_id": event.get("id"),
-                    "event_type": event_type,
-                    "sensor_id": sensor.get("id"),
-                    "sensor_name": sensor.get("name"),
-                    "severity": event.get("severity", "HIGH")
-                }
+                data=data
             )
-            
+
             if result:
-                logger.info(f"Fall push notification sent for {event_type}: {len(tokens)} recipients")
-            
+                logger.info(f"Fall push notification sent for {event_type}: {len(tokens)} recipients (scoped)")
+
         except ImportError:
             logger.warning("push_notification_service not available for fall notifications")
         except Exception as e:

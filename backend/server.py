@@ -556,6 +556,7 @@ async def check_event_access(event: dict, current_user: UserInDB) -> bool:
     """
     Vérifie si l'utilisateur a accès à un événement.
     Gère les modèles tenant_id (ancien) et client_id (nouveau).
+    Vérifie aussi les location_scopes pour les utilisateurs scopés.
     Retourne True si l'accès est autorisé, False sinon.
     """
     if current_user.role == "SUPER_ADMIN":
@@ -563,34 +564,90 @@ async def check_event_access(event: dict, current_user: UserInDB) -> bool:
 
     event_tenant_id = event.get('tenant_id')
     user_tenant_id = current_user.tenant_id
-
-    # Correspondance directe tenant_id (ancien modèle)
-    if event_tenant_id and event_tenant_id == user_tenant_id:
-        return True
-
-    # Vérification via client_id du capteur (nouveau modèle)
     sensor_id = event.get('sensor_id')
-    if sensor_id:
+
+    # Check tenant/client membership first
+    has_tenant_access = False
+
+    if event_tenant_id and event_tenant_id == user_tenant_id:
+        has_tenant_access = True
+
+    if not has_tenant_access and sensor_id:
         sensor = await db.sensors.find_one({"id": sensor_id}, {"_id": 0, "client_id": 1, "tenant_id": 1})
         if sensor:
             sensor_client_id = sensor.get("client_id")
             sensor_tenant_id = sensor.get("tenant_id")
 
-            # Vérifier si le capteur appartient au tenant de l'utilisateur
             if sensor_tenant_id == user_tenant_id or sensor_client_id == user_tenant_id:
-                return True
-
-            # Vérifier l'accès via client_users
-            if sensor_client_id:
+                has_tenant_access = True
+            elif sensor_client_id:
                 client_user = await db.client_users.find_one({
                     "user_id": current_user.id,
                     "client_id": sensor_client_id,
                     "is_active": True
                 })
                 if client_user:
-                    return True
+                    has_tenant_access = True
+
+    if not has_tenant_access:
+        return False
+
+    # Now check location_scope for scoped users
+    scoped_ids = await get_scoped_sensor_ids(current_user)
+    if scoped_ids is None:
+        return True  # Full access (TENANT_ADMIN, CLIENT_ADMIN, or no scope set)
+
+    # User is scoped - check if the event's sensor is in their scope
+    if sensor_id and sensor_id in scoped_ids:
+        return True
 
     return False
+
+
+async def get_scoped_sensor_ids(current_user: UserInDB) -> Optional[list]:
+    """
+    Get the list of sensor IDs accessible to the user based on location_scopes.
+    Returns None if the user has full access (SUPER_ADMIN, TENANT_ADMIN, CLIENT_ADMIN).
+    Returns a list of sensor IDs if the user is scoped.
+    Returns an empty list if the user has no access.
+    """
+    if current_user.role in ("SUPER_ADMIN", "TENANT_ADMIN"):
+        return None  # Full access
+
+    user_client_id = current_user.tenant_id
+    if not user_client_id:
+        return []
+
+    # Find the client_user record
+    client_user = await db.client_users.find_one(
+        {"user_id": current_user.id, "client_id": user_client_id, "is_active": True},
+        {"_id": 0, "id": 1, "role": 1}
+    )
+
+    if not client_user:
+        # No client_user record - fall back to tenant-level access (legacy)
+        return None
+
+    if client_user.get("role") == "CLIENT_ADMIN":
+        return None  # Full access within client
+
+    # Get accessible locations via RBAC
+    rbac = get_rbac_service()
+    if not rbac:
+        return None  # Graceful degradation
+
+    accessible = await rbac.get_user_accessible_locations(client_user["id"])
+    if accessible.get("has_full_access"):
+        return None
+
+    # Build scope filter for sensors
+    scope_filter = rbac.build_scope_filter(accessible)
+    if scope_filter.get("_impossible"):
+        return []
+
+    sensor_query = {"client_id": user_client_id, **scope_filter}
+    sensors = await db.sensors.find(sensor_query, {"_id": 0, "id": 1}).to_list(10000)
+    return [s["id"] for s in sensors]
 
 
 # ==================== AUTH ENDPOINTS ====================
@@ -981,9 +1038,10 @@ async def create_fall_event(current_user: UserInDB = Depends(get_current_user)):
             tenant_id=current_user.tenant_id,
             event_id=event_id,
             location=location,
-            severity="HIGH"
+            severity="HIGH",
+            sensor_id=device_id
         )
-    
+
     logger.info(f"[Test] Fall event created: {event_id}")
     
     return {
@@ -1184,23 +1242,30 @@ async def list_sensors(
     
     query = {}
     if current_user.role != "SUPER_ADMIN":
-        query["tenant_id"] = current_user.tenant_id
+        # Apply location_scope filtering
+        scoped_ids = await get_scoped_sensor_ids(current_user)
+        if scoped_ids is not None:
+            if not scoped_ids:
+                return []
+            query["id"] = {"$in": scoped_ids}
+        else:
+            query["tenant_id"] = current_user.tenant_id
     elif tenant_id:
         query["tenant_id"] = tenant_id
-    
+
     if site_id:
         query["site_id"] = site_id
     if zone_id:
         query["zone_id"] = zone_id
     if status:
         query["status"] = status
-    
+
     sensors = await db.sensors.find(query, {"_id": 0}).to_list(1000)
-    
+
     # Cache result if no filters
     if not site_id and not zone_id and not status:
         cache.set_sensors_list(cache_tenant, sensors)
-    
+
     return sensors
 
 @api_router.get("/sensors/{sensor_id}", response_model=Sensor)
@@ -1735,24 +1800,29 @@ async def list_events(
         # Super admin sees everything - no filter
         cache_tenant_id = "super_admin"
     elif current_user.role in ["TENANT_ADMIN", "SUPERVISOR", "OPERATOR", "VIEWER"]:
-        # For RBAC users: filter by sensors assigned to their client
-        # First, check if tenant_id is actually a client_id (new model)
+        # Filter by client + location scope
         client_exists = await db.clients.find_one({"id": user_client_id})
-        
+
         if client_exists:
-            # User's tenant_id is a client_id - filter by sensors assigned to this client
             cache_client_id = user_client_id
-            client_sensors = await db.sensors.find(
-                {"client_id": user_client_id},
-                {"_id": 0, "id": 1}
-            ).to_list(10000)
-            client_sensor_ids = [s["id"] for s in client_sensors]
-            
-            if client_sensor_ids:
-                query["sensor_id"] = {"$in": client_sensor_ids}
+            # Apply location_scope filtering
+            scoped_ids = await get_scoped_sensor_ids(current_user)
+            if scoped_ids is not None:
+                # User is scoped to specific sensors
+                if not scoped_ids:
+                    return []
+                query["sensor_id"] = {"$in": scoped_ids}
             else:
-                # No sensors assigned to this client
-                return []
+                # Full access within client - filter by all client sensors
+                client_sensors = await db.sensors.find(
+                    {"client_id": user_client_id},
+                    {"_id": 0, "id": 1}
+                ).to_list(10000)
+                client_sensor_ids = [s["id"] for s in client_sensors]
+                if client_sensor_ids:
+                    query["sensor_id"] = {"$in": client_sensor_ids}
+                else:
+                    return []
         else:
             # Legacy mode: filter by tenant_id directly
             cache_tenant_id = user_client_id
@@ -2360,7 +2430,8 @@ async def create_radar_event(request: RadarEventRequest):
                 tenant_id=tenant_id,
                 event_id=normalized.id,
                 location=location,
-                severity=normalized.severity.value
+                severity=normalized.severity.value,
+                sensor_id=sensor.get('id') if sensor else None
             )
             logger.info(f"[Push] Fall alert sent for event {normalized.id}")
     
