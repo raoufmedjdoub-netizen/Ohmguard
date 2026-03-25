@@ -124,6 +124,60 @@ class EmailService:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    async def send_welcome_email(self, to_email: str, full_name: str, temp_password: str, org_name: str = ""):
+        """Send welcome email with temporary password to new user."""
+        config = await self.get_smtp_config()
+        if not config or not config.get("enabled"):
+            logger.warning(f"[Email] SMTP not configured - cannot send welcome email to {to_email}")
+            return
+
+        subject = f"[OhmGuard] Bienvenue — Votre compte a été créé"
+        html_body = self._build_welcome_email_html(full_name, to_email, temp_password, org_name)
+
+        try:
+            self._send_email_sync(config=config, to_email=to_email, subject=subject, html_body=html_body)
+            logger.info(f"[Email] Welcome email sent to {to_email}")
+        except Exception as e:
+            logger.error(f"[Email] Failed to send welcome email to {to_email}: {e}")
+
+    def _build_welcome_email_html(self, full_name: str, email: str, temp_password: str, org_name: str) -> str:
+        org_line = f" pour <strong>{org_name}</strong>" if org_name else ""
+        return f"""
+        <div style="font-family: -apple-system, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px;">
+            <div style="background: #1E3A5F; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+                <h2 style="margin: 0;">OhmGuard</h2>
+                <p style="margin: 8px 0 0; opacity: 0.8; font-size: 14px;">Bienvenue sur la plateforme</p>
+            </div>
+            <div style="background: #f8f9fa; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                <p style="color: #1f2937; margin-top: 0;">Bonjour <strong>{full_name}</strong>,</p>
+                <p style="color: #4b5563;">Un compte OhmGuard a été créé pour vous{org_line}. Voici vos identifiants de connexion :</p>
+                <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 6px 0; color: #6b7280; font-size: 14px;">Email</td>
+                            <td style="padding: 6px 0; font-weight: 600; font-size: 14px;">{email}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0; color: #6b7280; font-size: 14px;">Mot de passe temporaire</td>
+                            <td style="padding: 6px 0; font-weight: 600; font-size: 14px; font-family: monospace; letter-spacing: 1px;">{temp_password}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div style="background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; padding: 12px; margin: 16px 0;">
+                    <p style="color: #92400E; margin: 0; font-size: 13px;">
+                        <strong>Important :</strong> Vous devrez changer ce mot de passe lors de votre première connexion.
+                    </p>
+                </div>
+                <p style="color: #9ca3af; font-size: 12px; margin-bottom: 0;">
+                    Si vous n'êtes pas à l'origine de cette demande, veuillez ignorer cet email.
+                </p>
+            </div>
+            <p style="color: #9ca3af; font-size: 11px; text-align: center; margin-top: 12px;">
+                OhmGuard — Système de surveillance et détection de chute
+            </p>
+        </div>
+        """
+
     def _build_test_email_html(self) -> str:
         return """
         <div style="font-family: -apple-system, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px;">

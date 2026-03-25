@@ -642,7 +642,7 @@ function UsersSettingsTab() {
 
 function CreateUserDialog({ open, onOpenChange, clientId, clientName, onSuccess }) {
   const [form, setForm] = useState({
-    full_name: '', email: '', password: '', role: 'VIEWER',
+    full_name: '', email: '', role: 'VIEWER',
     phone: '', job_title: '', department: '', notes: ''
   });
   const [errors, setErrors] = useState({});
@@ -657,8 +657,6 @@ function CreateUserDialog({ open, onOpenChange, clientId, clientName, onSuccess 
     if (!form.full_name.trim()) errs.full_name = 'Nom requis';
     if (!form.email.trim()) errs.email = 'Email requis';
     else if (!validateEmail(form.email)) errs.email = 'Email invalide';
-    if (!form.password) errs.password = 'Mot de passe requis';
-    else if (form.password.length < 6) errs.password = 'Minimum 6 caractères';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -668,9 +666,9 @@ function CreateUserDialog({ open, onOpenChange, clientId, clientName, onSuccess 
     setSaving(true);
     try {
       await api.post(`/clients/${clientId}/users`, form);
-      toast.success('Utilisateur créé avec succès');
+      toast.success('Utilisateur créé — un email avec le mot de passe temporaire a été envoyé');
       onOpenChange(false);
-      setForm({ full_name: '', email: '', password: '', role: 'VIEWER', phone: '', job_title: '', department: '', notes: '' });
+      setForm({ full_name: '', email: '', role: 'VIEWER', phone: '', job_title: '', department: '', notes: '' });
       setErrors({});
       onSuccess();
     } catch (error) {
@@ -805,25 +803,12 @@ function CreateUserDialog({ open, onOpenChange, clientId, clientName, onSuccess 
             </div>
           </div>
 
-          {/* Access Section */}
-          <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Accès</h4>
-            <div className="space-y-1">
-              <Label htmlFor="password">Mot de passe *</Label>
-              <div className="relative">
-                <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Minimum 6 caractères"
-                  value={form.password}
-                  onChange={(e) => updateField('password', e.target.value)}
-                  className={`pl-9 ${errors.password ? 'border-red-500' : ''}`}
-                  data-testid="create-user-password"
-                />
-              </div>
-              {errors.password && <p className="text-xs text-red-500">{errors.password}</p>}
-            </div>
+          {/* Access Info */}
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+            <p className="text-sm text-blue-800">
+              <Mail className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+              Un mot de passe temporaire sera généré et envoyé par email à l'utilisateur. Il devra le changer lors de sa première connexion.
+            </p>
           </div>
 
           {/* Notes */}

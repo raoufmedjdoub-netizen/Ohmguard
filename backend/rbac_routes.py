@@ -12,7 +12,10 @@ Endpoints:
 - GET /api/roles/permissions - Get default role permissions
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Body, Query
+
+logger = logging.getLogger(__name__)
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr
 
@@ -35,7 +38,7 @@ class CreateClientUserRequest(BaseModel):
     """Request to create a new client user"""
     email: EmailStr
     full_name: str
-    password: str
+    password: Optional[str] = None
     role: ClientRole = ClientRole.VIEWER
     phone: Optional[str] = None
     job_title: Optional[str] = None
@@ -164,18 +167,28 @@ def create_rbac_routes(get_current_user, check_permission, db):
         
         # Check if user with email already exists
         existing_user = await db.users.find_one({"email": request.email})
-        
+
         if existing_user:
             # Add existing user to client
             user_id = existing_user["id"]
+            temp_password = None
         else:
-            # Create new user
+            # Create new user with temporary password
             import uuid
+            import secrets
             from datetime import datetime, timezone
             import bcrypt
-            
+
+            # Generate temporary password or use provided one
+            if request.password:
+                temp_password = request.password
+                must_change = False
+            else:
+                temp_password = secrets.token_urlsafe(10)  # ~13 chars, URL-safe
+                must_change = True
+
             user_id = str(uuid.uuid4())
-            hashed_pw = bcrypt.hashpw(request.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            hashed_pw = bcrypt.hashpw(temp_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             new_user = {
                 "id": user_id,
                 "email": request.email,
@@ -185,6 +198,7 @@ def create_rbac_routes(get_current_user, check_permission, db):
                 "tenant_id": client_id,
                 "language": "fr",
                 "is_active": True,
+                "must_change_password": must_change,
                 "phone": request.phone,
                 "job_title": request.job_title,
                 "department": request.department,
@@ -192,7 +206,7 @@ def create_rbac_routes(get_current_user, check_permission, db):
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             await db.users.insert_one(new_user)
-        
+
         # Create ClientUser
         client_user = await rbac.create_client_user(
             client_id=client_id,
@@ -200,11 +214,29 @@ def create_rbac_routes(get_current_user, check_permission, db):
             role=request.role,
             created_by=current_user.id
         )
-        
+
+        # Send welcome email with temporary password
+        if temp_password and not request.password:
+            try:
+                from email_service import get_email_service
+                email_svc = get_email_service()
+                if email_svc:
+                    # Get client name for the email
+                    client_doc = await db.clients.find_one({"id": client_id}, {"_id": 0, "name": 1})
+                    org_name = client_doc.get("name", "") if client_doc else ""
+                    await email_svc.send_welcome_email(
+                        to_email=request.email,
+                        full_name=request.full_name,
+                        temp_password=temp_password,
+                        org_name=org_name
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to send welcome email to {request.email}: {e}")
+
         # Add user details
         client_user["user_email"] = request.email
         client_user["user_full_name"] = request.full_name
-        
+
         return client_user
     
     @router.get("/client-users/{client_user_id}")

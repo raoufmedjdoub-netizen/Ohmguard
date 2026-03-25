@@ -261,6 +261,7 @@ class Token(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    must_change_password: bool = False
 
 class TokenPayload(BaseModel):
     sub: str
@@ -699,7 +700,11 @@ async def login(request: Request, login_data: LoginRequest):
 
     await log_audit(user['id'], user.get('tenant_id'), "login", "user", user['id'])
 
-    return Token(access_token=access_token, refresh_token=refresh_token)
+    return Token(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        must_change_password=user.get('must_change_password', False)
+    )
 
 @api_router.post("/auth/refresh", response_model=Token)
 async def refresh_token(refresh_token: str):
@@ -736,6 +741,33 @@ async def refresh_token(refresh_token: str):
 @api_router.get("/auth/me", response_model=User)
 async def get_me(current_user: UserInDB = Depends(get_current_user)):
     return User(**current_user.model_dump())
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@api_router.post("/auth/change-password")
+async def change_password(
+    request: ChangePasswordRequest,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """Change password (required on first login with temporary password)."""
+    if not verify_password(request.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Mot de passe actuel incorrect")
+
+    if len(request.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Le nouveau mot de passe doit contenir au moins 6 caractères")
+
+    new_hash = get_password_hash(request.new_password)
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$set": {"hashed_password": new_hash, "must_change_password": False}}
+    )
+
+    await log_audit(current_user.id, current_user.tenant_id, "change_password", "user", current_user.id)
+    return {"detail": "Mot de passe modifié avec succès"}
 
 
 # ==================== SESSION ENDPOINTS ====================

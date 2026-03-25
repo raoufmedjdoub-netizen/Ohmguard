@@ -7,6 +7,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
 
   const fetchUser = useCallback(async () => {
     const token = localStorage.getItem('access_token');
@@ -36,18 +37,26 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       const response = await authAPI.login(email, password);
-      const { access_token, refresh_token } = response.data;
-      
+      const { access_token, refresh_token, must_change_password } = response.data;
+
       localStorage.setItem('access_token', access_token);
       localStorage.setItem('refresh_token', refresh_token);
-      
+
+      if (must_change_password) {
+        setMustChangePassword(true);
+      }
+
       await fetchUser();
-      return { success: true };
+      return { success: true, mustChangePassword: must_change_password };
     } catch (err) {
       const message = err.response?.data?.detail || 'Login failed';
       setError(message);
       return { success: false, error: message };
     }
+  };
+
+  const clearMustChangePassword = () => {
+    setMustChangePassword(false);
   };
 
   const logout = async () => {
@@ -59,6 +68,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     setUser(null);
+    setMustChangePassword(false);
   };
 
   const value = {
@@ -67,6 +77,8 @@ export function AuthProvider({ children }) {
     error,
     login,
     logout,
+    mustChangePassword,
+    clearMustChangePassword,
     isAuthenticated: !!user,
     isSuperAdmin: user?.role === 'SUPER_ADMIN',
     isTenantAdmin: user?.role === 'TENANT_ADMIN',
