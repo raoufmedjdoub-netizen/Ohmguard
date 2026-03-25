@@ -1340,7 +1340,7 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
                       </CardContent>
                     </Card>
                   );
-                }))}
+                })}
                 </div>
               )}
             </>
