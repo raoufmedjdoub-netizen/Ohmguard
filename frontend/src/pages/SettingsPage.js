@@ -1158,10 +1158,10 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
   const GROUP_LABELS = { Pages: 'Pages', Events: 'Événements', Devices: 'Capteurs', Admin: 'Administration', System: 'Système' };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-3">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
               <AvatarFallback className="bg-primary/10 text-primary">
                 {getInitials(user.user_full_name)}
@@ -1171,9 +1171,9 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
               <span>{user.user_full_name || 'Utilisateur'}</span>
               <p className="text-sm font-normal text-muted-foreground">{user.user_email}</p>
             </div>
-          </SheetTitle>
-          <SheetDescription className="sr-only">Détails de l'utilisateur</SheetDescription>
-        </SheetHeader>
+          </DialogTitle>
+          <DialogDescription className="sr-only">Détails de l'utilisateur</DialogDescription>
+        </DialogHeader>
 
         {/* Section tabs */}
         <div className="flex gap-1 mt-4 border-b">
@@ -1201,6 +1201,7 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
           {/* ==================== CONTACT / PROFILE ==================== */}
           {activeSection === 'contact' && (
             <>
+              <div className="grid md:grid-cols-2 gap-4">
               <Card>
                 <CardHeader className="py-3 px-4 flex-row items-center justify-between">
                   <CardTitle className="text-sm">Fiche de contact</CardTitle>
@@ -1272,17 +1273,19 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
                   </div>
                 </CardContent>
               </Card>
+              </div>
 
-              <Button variant="outline" className="w-full" onClick={() => setShowResetPw(true)} data-testid="reset-password-btn">
-                <Key className="h-4 w-4 mr-2" />
-                Réinitialiser le mot de passe
-              </Button>
-
-              {user.created_at && (
-                <p className="text-xs text-center text-muted-foreground">
-                  Créé le {new Date(user.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </p>
-              )}
+              <div className="flex items-center gap-3 flex-wrap">
+                <Button variant="outline" onClick={() => setShowResetPw(true)} data-testid="reset-password-btn">
+                  <Key className="h-4 w-4 mr-2" />
+                  Réinitialiser le mot de passe
+                </Button>
+                {user.created_at && (
+                  <p className="text-xs text-muted-foreground">
+                    Créé le {new Date(user.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </p>
+                )}
+              </div>
             </>
           )}
 
@@ -1298,7 +1301,8 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
               {permissionsLoading ? (
                 <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
               ) : (
-                Object.entries(permissionsByGroup).map(([group, perms]) => {
+                <div className="grid md:grid-cols-2 gap-4">
+                {Object.entries(permissionsByGroup).map(([group, perms]) => {
                   const GroupIcon = GROUP_ICONS[group] || Shield;
                   return (
                     <Card key={group}>
@@ -1336,7 +1340,9 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
                       </CardContent>
                     </Card>
                   );
-                })
+                }))
+                }
+                </div>
               )}
             </>
           )}
@@ -1350,6 +1356,7 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
                 Sans périmètre, l'utilisateur voit tout.
               </div>
 
+              <div className="grid md:grid-cols-2 gap-4">
               {/* Current scopes */}
               <Card>
                 <CardHeader className="py-3 px-4">
@@ -1440,6 +1447,7 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
                   )}
                 </CardContent>
               </Card>
+              </div>
             </>
           )}
         </div>
@@ -1470,8 +1478,8 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
