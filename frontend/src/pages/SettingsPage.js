@@ -432,6 +432,15 @@ function UsersSettingsTab() {
     }
   };
 
+  const handleResendWelcome = async (clientUserId, userEmail) => {
+    try {
+      await api.post(`/client-users/${clientUserId}/resend-welcome`);
+      toast.success(`Email de bienvenue renvoyé à ${userEmail}`);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Erreur lors de l'envoi de l'email");
+    }
+  };
+
   const handleStatusChange = async (clientUserId, isActive) => {
     try {
       await api.patch(`/client-users/${clientUserId}`, { is_active: isActive });
@@ -579,6 +588,9 @@ function UsersSettingsTab() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Renvoyer l'email de bienvenue" onClick={() => handleResendWelcome(u.id, u.user_email)}>
+                          <Send className="h-4 w-4 text-blue-500" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setSelectedUser(u); setShowUserSheet(true); }}>
                           <Eye className="h-4 w-4" />
                         </Button>

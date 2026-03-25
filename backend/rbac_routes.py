@@ -438,7 +438,67 @@ def create_rbac_routes(get_current_user, check_permission, db):
         await db.rbac_audit_logs.insert_one(log.model_dump())
         
         return {"status": "success", "message": "Password reset successfully"}
-    
+
+    @router.post("/client-users/{client_user_id}/resend-welcome")
+    async def resend_welcome_email(
+        client_user_id: str,
+        current_user = Depends(get_current_user)
+    ):
+        """Resend welcome email with a new temporary password."""
+        rbac = get_rbac_service()
+
+        client_user = await rbac.get_client_user_by_id(client_user_id)
+        if not client_user:
+            raise HTTPException(status_code=404, detail="Client user not found")
+
+        has_perm = await rbac.has_permission(
+            current_user.id, client_user["client_id"], "USER_EDIT"
+        )
+        if not has_perm and current_user.role != "SUPER_ADMIN":
+            raise HTTPException(status_code=403, detail="Permission denied")
+
+        import secrets
+        import bcrypt
+        from datetime import datetime, timezone
+
+        user = await db.users.find_one({"id": client_user["user_id"]}, {"_id": 0})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Generate new temporary password
+        temp_password = secrets.token_urlsafe(10)
+        hashed_pw = bcrypt.hashpw(temp_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$set": {
+                "hashed_password": hashed_pw,
+                "must_change_password": True
+            }}
+        )
+
+        # Send welcome email
+        from email_service import get_email_service
+        email_svc = get_email_service()
+        if not email_svc:
+            raise HTTPException(status_code=503, detail="Service email non disponible")
+
+        client_doc = await db.clients.find_one({"id": client_user["client_id"]}, {"_id": 0, "name": 1})
+        org_name = client_doc.get("name", "") if client_doc else ""
+
+        try:
+            await email_svc.send_welcome_email(
+                to_email=user["email"],
+                full_name=user.get("full_name", ""),
+                temp_password=temp_password,
+                org_name=org_name
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Erreur d'envoi : {str(e)}")
+
+        logger.info(f"[User] Welcome email resent to {user['email']} by {current_user.id}")
+        return {"status": "success", "message": f"Email de bienvenue renvoyé à {user['email']}"}
+
     # -------------------------------------------------------------------------
     # PERMISSIONS
     # -------------------------------------------------------------------------
