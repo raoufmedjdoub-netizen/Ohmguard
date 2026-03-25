@@ -881,12 +881,20 @@ class MQTTService:
                     "timestamp": status_update_at
                 })
 
-            # Trigger alerts (email + push) only on fall_confirmed
+            # Trigger alerts (email + push + cascade) only on fall_confirmed
             if fall_status == "fall_confirmed":
                 updated_event = {**existing, **update_data}
                 await self._process_alert_rules(updated_event, sensor)
                 await self._send_fall_push_notification(updated_event, sensor, "FALL")
                 await self._send_fall_email(updated_event, sensor)
+                # Cascade notifications to room emergency contacts
+                try:
+                    from cascade_notification_service import get_cascade_service
+                    cascade_svc = get_cascade_service()
+                    if cascade_svc:
+                        await cascade_svc.trigger_cascade(updated_event, sensor)
+                except Exception as e:
+                    logger.error(f"Cascade notification error: {e}")
             return
         
         # NEW fall event - create initial document

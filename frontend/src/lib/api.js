@@ -205,6 +205,23 @@ export const deviceConfigAPI = {
   deleteTemplate: (templateId) => api.delete(`/config/templates/${templateId}`)
 };
 
+// Room Contacts API
+export const roomContactsAPI = {
+  list: (roomId) => api.get(`/rooms/${roomId}/contacts`),
+  create: (roomId, data) => api.post(`/rooms/${roomId}/contacts`, data),
+  update: (contactId, data) => api.patch(`/room-contacts/${contactId}`, data),
+  delete: (contactId) => api.delete(`/room-contacts/${contactId}`),
+  reorder: (roomId, contactIds) => api.put(`/rooms/${roomId}/contacts/reorder`, { contact_ids: contactIds }),
+};
+
+// Channel Settings API
+export const channelSettingsAPI = {
+  getTwilio: () => api.get('/settings/twilio'),
+  updateTwilio: (data) => api.put('/settings/twilio', data),
+  getTelegram: () => api.get('/settings/telegram'),
+  updateTelegram: (data) => api.put('/settings/telegram', data),
+};
+
 // Command types for reference
 export const COMMAND_TYPES = {
   UPLOAD_APP_LOGS: 1,

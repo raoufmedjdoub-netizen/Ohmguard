@@ -18,6 +18,7 @@ from clients_buildings_models import (
 )
 from clients_buildings_service import get_clients_buildings_service, ClientsBuildingsService
 from rbac_service import get_rbac_service
+from room_contacts_models import RoomContactCreate, RoomContactUpdate
 
 
 def create_clients_buildings_router(get_current_user, check_permission, db, get_password_hash=None):
@@ -432,6 +433,87 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         await service.delete_room_space(space_id)
         return {"message": "Espace supprimé"}
     
+    # ==================== ROOM CONTACTS ====================
+
+    @router.get("/rooms/{room_id}/contacts")
+    async def list_room_contacts(room_id: str, current_user = Depends(get_current_user)):
+        """List emergency contacts for a room"""
+        room = await db.rooms.find_one({"id": room_id}, {"_id": 0})
+        if not room:
+            raise HTTPException(status_code=404, detail="Chambre introuvable")
+
+        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != room.get("client_id"):
+            raise HTTPException(status_code=403, detail="Accès refusé")
+
+        from room_contacts_service import get_room_contacts_service
+        svc = get_room_contacts_service()
+        return await svc.list_contacts(room_id)
+
+    @router.post("/rooms/{room_id}/contacts")
+    async def create_room_contact(room_id: str, data: RoomContactCreate, current_user = Depends(get_current_user)):
+        """Create an emergency contact for a room"""
+        room = await db.rooms.find_one({"id": room_id}, {"_id": 0})
+        if not room:
+            raise HTTPException(status_code=404, detail="Chambre introuvable")
+
+        if not await check_rbac_permission(current_user, room.get("client_id"), "BUILDING_MANAGE"):
+            raise HTTPException(status_code=403, detail="Accès refusé - Permission BUILDING_MANAGE requise")
+
+        from room_contacts_service import get_room_contacts_service
+        svc = get_room_contacts_service()
+        return await svc.create_contact(room_id, data)
+
+    @router.patch("/room-contacts/{contact_id}")
+    async def update_room_contact(contact_id: str, data: RoomContactUpdate, current_user = Depends(get_current_user)):
+        """Update an emergency contact"""
+        contact = await db.room_contacts.find_one({"id": contact_id}, {"_id": 0})
+        if not contact:
+            raise HTTPException(status_code=404, detail="Contact introuvable")
+
+        if not await check_rbac_permission(current_user, contact.get("client_id"), "BUILDING_MANAGE"):
+            raise HTTPException(status_code=403, detail="Accès refusé - Permission BUILDING_MANAGE requise")
+
+        from room_contacts_service import get_room_contacts_service
+        svc = get_room_contacts_service()
+        result = await svc.update_contact(contact_id, data)
+        if not result:
+            raise HTTPException(status_code=404, detail="Contact introuvable")
+        return result
+
+    @router.delete("/room-contacts/{contact_id}")
+    async def delete_room_contact(contact_id: str, current_user = Depends(get_current_user)):
+        """Delete an emergency contact"""
+        contact = await db.room_contacts.find_one({"id": contact_id}, {"_id": 0})
+        if not contact:
+            raise HTTPException(status_code=404, detail="Contact introuvable")
+
+        if not await check_rbac_permission(current_user, contact.get("client_id"), "BUILDING_MANAGE"):
+            raise HTTPException(status_code=403, detail="Accès refusé - Permission BUILDING_MANAGE requise")
+
+        from room_contacts_service import get_room_contacts_service
+        svc = get_room_contacts_service()
+        await svc.delete_contact(contact_id)
+        return {"message": "Contact supprimé"}
+
+    @router.put("/rooms/{room_id}/contacts/reorder")
+    async def reorder_room_contacts(room_id: str, body: dict, current_user = Depends(get_current_user)):
+        """Reorder contacts by priority"""
+        room = await db.rooms.find_one({"id": room_id}, {"_id": 0})
+        if not room:
+            raise HTTPException(status_code=404, detail="Chambre introuvable")
+
+        if not await check_rbac_permission(current_user, room.get("client_id"), "BUILDING_MANAGE"):
+            raise HTTPException(status_code=403, detail="Accès refusé - Permission BUILDING_MANAGE requise")
+
+        contact_ids = body.get("contact_ids", [])
+        if not contact_ids:
+            raise HTTPException(status_code=400, detail="contact_ids requis")
+
+        from room_contacts_service import get_room_contacts_service
+        svc = get_room_contacts_service()
+        await svc.reorder_contacts(room_id, contact_ids)
+        return {"message": "Ordre mis à jour"}
+
     # ==================== ZONES ====================
     
     @router.get("/buildings/{building_id}/zones")

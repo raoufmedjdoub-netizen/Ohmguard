@@ -12,12 +12,12 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { getInitials } from '@/lib/utils';
 import { toast } from 'sonner';
-import api, { authAPI } from '@/lib/api';
+import api, { authAPI, channelSettingsAPI } from '@/lib/api';
 import {
   Sun, Moon, Globe, User, Mail, Send, Loader2, CheckCircle2, Server,
   Users, UserPlus, Search, Shield, MapPin, Eye, Check, X, Trash2,
   RefreshCw, Key, Phone, Briefcase, Building2, FileText, ChevronRight, Bell, BellOff,
-  Smartphone
+  Smartphone, MessageCircle, Radio
 } from 'lucide-react';
 import {
   Tabs, TabsContent, TabsList, TabsTrigger
@@ -76,6 +76,12 @@ export function SettingsPage() {
               SMTP
             </TabsTrigger>
           )}
+          {isAdmin && (
+            <TabsTrigger value="channels" data-testid="tab-channels">
+              <MessageCircle className="h-4 w-4 mr-1.5" />
+              Canaux
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="general">
@@ -93,6 +99,11 @@ export function SettingsPage() {
         {isAdmin && (
           <TabsContent value="smtp">
             <SmtpSettingsTab />
+          </TabsContent>
+        )}
+        {isAdmin && (
+          <TabsContent value="channels">
+            <ChannelSettingsTab />
           </TabsContent>
         )}
       </Tabs>
@@ -1585,6 +1596,168 @@ function SmtpSettingsTab() {
             <Button variant="outline" onClick={testSmtp} disabled={testLoading || !smtp.host} data-testid="smtp-test-btn">
               {testLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
               Envoyer un test
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================================
+// CHANNEL SETTINGS TAB (Twilio SMS/WhatsApp + Telegram)
+// ============================================================================
+
+function ChannelSettingsTab() {
+  const [twilio, setTwilio] = useState({
+    account_sid: '', auth_token: '', from_number: '', whatsapp_from_number: '', enabled: false
+  });
+  const [telegram, setTelegram] = useState({ bot_token: '', enabled: false });
+  const [twilioLoading, setTwilioLoading] = useState(false);
+  const [telegramLoading, setTelegramLoading] = useState(false);
+
+  useEffect(() => {
+    channelSettingsAPI.getTwilio().then(r => setTwilio(r.data)).catch(() => {});
+    channelSettingsAPI.getTelegram().then(r => setTelegram(r.data)).catch(() => {});
+  }, []);
+
+  const saveTwilio = async () => {
+    setTwilioLoading(true);
+    try {
+      await channelSettingsAPI.updateTwilio(twilio);
+      toast.success('Configuration Twilio enregistrée');
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Erreur');
+    } finally {
+      setTwilioLoading(false);
+    }
+  };
+
+  const saveTelegram = async () => {
+    setTelegramLoading(true);
+    try {
+      await channelSettingsAPI.updateTelegram(telegram);
+      toast.success('Configuration Telegram enregistrée');
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Erreur');
+    } finally {
+      setTelegramLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800 p-3 text-sm text-blue-800 dark:text-blue-200">
+        <MessageCircle className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+        Configurez les canaux de notification pour les alertes cascadées aux contacts d'urgence des chambres.
+        Les canaux activés seront disponibles lors de la création de contacts.
+      </div>
+
+      {/* Twilio (SMS + WhatsApp) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Phone className="h-5 w-5 text-green-600" />
+            Twilio — SMS & WhatsApp
+          </CardTitle>
+          <CardDescription>
+            Envoi de SMS et messages WhatsApp via l'API Twilio
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={twilio.enabled}
+              onCheckedChange={(v) => setTwilio(s => ({ ...s, enabled: v }))}
+            />
+            <Label>{twilio.enabled ? 'Activé' : 'Désactivé'}</Label>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Account SID</Label>
+              <Input
+                placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                value={twilio.account_sid}
+                onChange={e => setTwilio(s => ({ ...s, account_sid: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Auth Token</Label>
+              <Input
+                type="password"
+                placeholder="••••••••"
+                value={twilio.auth_token}
+                onChange={e => setTwilio(s => ({ ...s, auth_token: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Numéro SMS (From)</Label>
+              <Input
+                placeholder="+33 1 23 45 67 89"
+                value={twilio.from_number}
+                onChange={e => setTwilio(s => ({ ...s, from_number: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Numéro WhatsApp (From)</Label>
+              <Input
+                placeholder="+33 1 23 45 67 89"
+                value={twilio.whatsapp_from_number}
+                onChange={e => setTwilio(s => ({ ...s, whatsapp_from_number: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2 border-t">
+            <Button onClick={saveTwilio} disabled={twilioLoading}>
+              {twilioLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+              Enregistrer
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Telegram */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Send className="h-5 w-5 text-blue-500" />
+            Telegram Bot
+          </CardTitle>
+          <CardDescription>
+            Envoi de messages Telegram via un Bot API
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={telegram.enabled}
+              onCheckedChange={(v) => setTelegram(s => ({ ...s, enabled: v }))}
+            />
+            <Label>{telegram.enabled ? 'Activé' : 'Désactivé'}</Label>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Bot Token</Label>
+            <Input
+              type="password"
+              placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+              value={telegram.bot_token}
+              onChange={e => setTelegram(s => ({ ...s, bot_token: e.target.value }))}
+            />
+            <p className="text-xs text-muted-foreground">
+              Créez un bot via @BotFather sur Telegram pour obtenir un token
+            </p>
+          </div>
+
+          <div className="flex gap-3 pt-2 border-t">
+            <Button onClick={saveTelegram} disabled={telegramLoading}>
+              {telegramLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+              Enregistrer
             </Button>
           </div>
         </CardContent>

@@ -134,6 +134,11 @@ from ai_sensor_service import (
 # Session Service import
 from session_service import init_session_service, get_session_service
 
+# Room Contacts & Cascade Notifications
+from room_contacts_service import init_room_contacts_service
+from cascade_notification_service import init_cascade_service, get_cascade_service
+from notification_channels import init_channel_manager
+
 # MongoDB connection
 mongo_url = os.environ.get('MONGO_URL')
 if not mongo_url:
@@ -3070,6 +3075,100 @@ async def test_smtp_config(config: SmtpConfig, current_user: UserInDB = Depends(
         return result
     raise HTTPException(status_code=400, detail=result["error"])
 
+# ==================== Twilio / Telegram Channel Settings ====================
+
+class TwilioConfigRequest(BaseModel):
+    account_sid: str = ""
+    auth_token: str = ""
+    from_number: str = ""
+    whatsapp_from_number: str = ""
+    enabled: bool = False
+
+class TelegramConfigRequest(BaseModel):
+    bot_token: str = ""
+    enabled: bool = False
+
+@api_router.get("/settings/twilio")
+async def get_twilio_config(current_user: UserInDB = Depends(get_current_user)):
+    """Get Twilio configuration (admin only). Secrets are masked."""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    config = await db.settings.find_one({"key": "twilio"}, {"_id": 0})
+    if config and config.get("value"):
+        val = config["value"]
+        if val.get("auth_token"):
+            val["auth_token"] = "\u2022" * 8
+        return val
+    return {"account_sid": "", "auth_token": "", "from_number": "", "whatsapp_from_number": "", "enabled": False}
+
+@api_router.put("/settings/twilio")
+async def update_twilio_config(config: TwilioConfigRequest, current_user: UserInDB = Depends(get_current_user)):
+    """Update Twilio configuration (admin only)."""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    config_dict = config.model_dump()
+    # Preserve existing auth_token if masked
+    existing = await db.settings.find_one({"key": "twilio"}, {"_id": 0})
+    if existing and existing.get("value"):
+        token = config_dict.get("auth_token", "")
+        if not token or all(c == '\u2022' for c in token):
+            config_dict["auth_token"] = existing["value"].get("auth_token", "")
+    await db.settings.update_one(
+        {"key": "twilio"},
+        {"$set": {"key": "twilio", "value": config_dict, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True
+    )
+    # Reload channel manager config
+    from notification_channels import get_channel_manager
+    mgr = get_channel_manager()
+    if mgr:
+        await mgr.reload_configs()
+    return {"success": True, "message": "Configuration Twilio enregistrée"}
+
+@api_router.get("/settings/telegram")
+async def get_telegram_config(current_user: UserInDB = Depends(get_current_user)):
+    """Get Telegram configuration (admin only). Token is masked."""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    config = await db.settings.find_one({"key": "telegram"}, {"_id": 0})
+    if config and config.get("value"):
+        val = config["value"]
+        if val.get("bot_token"):
+            val["bot_token"] = val["bot_token"][:8] + "\u2022" * 20
+        return val
+    return {"bot_token": "", "enabled": False}
+
+@api_router.put("/settings/telegram")
+async def update_telegram_config(config: TelegramConfigRequest, current_user: UserInDB = Depends(get_current_user)):
+    """Update Telegram configuration (admin only)."""
+    check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
+    config_dict = config.model_dump()
+    existing = await db.settings.find_one({"key": "telegram"}, {"_id": 0})
+    if existing and existing.get("value"):
+        token = config_dict.get("bot_token", "")
+        if not token or "\u2022" in token:
+            config_dict["bot_token"] = existing["value"].get("bot_token", "")
+    await db.settings.update_one(
+        {"key": "telegram"},
+        {"$set": {"key": "telegram", "value": config_dict, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True
+    )
+    from notification_channels import get_channel_manager
+    mgr = get_channel_manager()
+    if mgr:
+        await mgr.reload_configs()
+    return {"success": True, "message": "Configuration Telegram enregistrée"}
+
+# ==================== Cascade Alert Acknowledgment ====================
+
+@api_router.get("/cascade/{cascade_id}/ack")
+async def acknowledge_cascade(cascade_id: str, contact: str, token: str):
+    """Acknowledge a cascade alert (unauthenticated, HMAC-verified)."""
+    svc = get_cascade_service()
+    if not svc:
+        raise HTTPException(status_code=503, detail="Service indisponible")
+    result = await svc.acknowledge(cascade_id, contact, "link", token)
+    if result.get("success"):
+        return {"message": result.get("message", "Alerte acquittée"), "acknowledged": True}
+    raise HTTPException(status_code=400, detail=result.get("error", "Erreur"))
+
 # ==================== User Email Notification Preferences ====================
 
 @api_router.put("/users/me/notifications")
@@ -4662,6 +4761,13 @@ async def startup_event():
     # Initialize Email service
     init_email_service(db)
     logger.info("Email service initialized")
+
+    # Initialize Room Contacts & Cascade services
+    init_room_contacts_service(db)
+    init_channel_manager(db)
+    cascade_svc = init_cascade_service(db)
+    cascade_svc.start_escalation_checker()
+    logger.info("Room contacts, channel manager & cascade notification services initialized")
     
     # Initialize RBAC service
     rbac_service = init_rbac_service(db)

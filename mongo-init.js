@@ -37,4 +37,10 @@ db.sessions.createIndex({ "user_id": 1, "is_active": 1 });
 db.sessions.createIndex({ "refresh_token_jti": 1 }, { unique: true });
 db.sessions.createIndex({ "expires_at": 1 }, { expireAfterSeconds: 2592000 });
 
+db.room_contacts.createIndex({ "room_id": 1, "priority_order": 1 });
+db.room_contacts.createIndex({ "client_id": 1 });
+db.cascade_alerts.createIndex({ "event_id": 1 });
+db.cascade_alerts.createIndex({ "status": 1, "next_escalation_at": 1 });
+db.cascade_alerts.createIndex({ "room_id": 1, "created_at": -1 });
+
 print('MongoDB initialization completed!');
