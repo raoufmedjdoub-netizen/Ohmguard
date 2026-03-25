@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { getInitials } from '@/lib/utils';
 import { toast } from 'sonner';
-import api from '@/lib/api';
+import api, { authAPI } from '@/lib/api';
 import {
   Sun, Moon, Globe, User, Mail, Send, Loader2, CheckCircle2, Server,
   Users, UserPlus, Search, Shield, MapPin, Eye, Check, X, Trash2,
@@ -66,6 +66,10 @@ export function SettingsPage() {
             <Users className="h-4 w-4 mr-1.5" />
             Utilisateurs
           </TabsTrigger>
+          <TabsTrigger value="sessions" data-testid="tab-sessions">
+            <Smartphone className="h-4 w-4 mr-1.5" />
+            Sessions
+          </TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="smtp" data-testid="tab-smtp">
               <Server className="h-4 w-4 mr-1.5" />
@@ -80,6 +84,10 @@ export function SettingsPage() {
 
         <TabsContent value="users">
           <UsersSettingsTab />
+        </TabsContent>
+
+        <TabsContent value="sessions">
+          <ActiveSessionsTab />
         </TabsContent>
 
         {isAdmin && (
@@ -1171,6 +1179,196 @@ function SmtpSettingsTab() {
               Envoyer un test
             </Button>
           </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================================
+// ACTIVE SESSIONS TAB
+// ============================================================================
+
+function parseUserAgent(ua) {
+  if (!ua) return { browser: 'Inconnu', os: 'Inconnu' };
+  let browser = 'Inconnu';
+  let os = 'Inconnu';
+
+  if (ua.includes('Mobile') || ua.includes('Android') || ua.includes('iPhone')) {
+    if (ua.includes('Android')) os = 'Android';
+    else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+    else os = 'Mobile';
+  } else if (ua.includes('Windows')) os = 'Windows';
+  else if (ua.includes('Mac')) os = 'macOS';
+  else if (ua.includes('Linux')) os = 'Linux';
+
+  if (ua.includes('Edg/')) browser = 'Edge';
+  else if (ua.includes('Chrome/')) browser = 'Chrome';
+  else if (ua.includes('Firefox/')) browser = 'Firefox';
+  else if (ua.includes('Safari/') && !ua.includes('Chrome')) browser = 'Safari';
+
+  return { browser, os };
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "À l'instant";
+  if (diffMin < 60) return `Il y a ${diffMin} min`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `Il y a ${diffH}h`;
+  const diffD = Math.floor(diffH / 24);
+  return `Il y a ${diffD}j`;
+}
+
+function ActiveSessionsTab() {
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [revoking, setRevoking] = useState(null);
+  const [revokingAll, setRevokingAll] = useState(false);
+
+  const fetchSessions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await authAPI.sessions();
+      setSessions(res.data || []);
+    } catch (err) {
+      toast.error('Impossible de charger les sessions');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSessions();
+  }, [fetchSessions]);
+
+  const handleRevoke = async (sessionId) => {
+    setRevoking(sessionId);
+    try {
+      await authAPI.revokeSession(sessionId);
+      toast.success('Session révoquée');
+      fetchSessions();
+    } catch (err) {
+      toast.error('Erreur lors de la révocation');
+    } finally {
+      setRevoking(null);
+    }
+  };
+
+  const handleRevokeAll = async () => {
+    setRevokingAll(true);
+    try {
+      const res = await authAPI.logoutAll();
+      toast.success(res.data?.detail || 'Autres sessions déconnectées');
+      fetchSessions();
+    } catch (err) {
+      toast.error('Erreur lors de la déconnexion');
+    } finally {
+      setRevokingAll(false);
+    }
+  };
+
+  const otherSessions = sessions.filter(s => !s.is_current);
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Smartphone className="h-5 w-5" />
+              Sessions actives
+            </CardTitle>
+            <CardDescription>
+              Gérez vos sessions de connexion sur tous vos appareils
+            </CardDescription>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={fetchSessions} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+              Actualiser
+            </Button>
+            {otherSessions.length > 0 && (
+              <Button variant="destructive" size="sm" onClick={handleRevokeAll} disabled={revokingAll}>
+                {revokingAll ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <X className="h-4 w-4 mr-1.5" />}
+                Déconnecter les autres
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : sessions.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">Aucune session active</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Appareil</TableHead>
+                  <TableHead>Adresse IP</TableHead>
+                  <TableHead>Dernière activité</TableHead>
+                  <TableHead>Connecté depuis</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sessions.map((session) => {
+                  const { browser, os } = parseUserAgent(session.device_info?.user_agent);
+                  return (
+                    <TableRow key={session.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Smartphone className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <div className="font-medium">{browser} — {os}</div>
+                            {session.is_current && (
+                              <Badge variant="outline" className="text-xs mt-0.5 border-green-300 text-green-700 bg-green-50">
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Session actuelle
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {session.device_info?.ip_address || '—'}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {timeAgo(session.last_activity)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {timeAgo(session.created_at)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {!session.is_current && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRevoke(session.id)}
+                            disabled={revoking === session.id}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            {revoking === session.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

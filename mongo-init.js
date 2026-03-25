@@ -33,4 +33,8 @@ db.rooms.createIndex({ "floor_id": 1 });
 db.client_users.createIndex({ "user_id": 1 });
 db.client_users.createIndex({ "client_id": 1 });
 
+db.sessions.createIndex({ "user_id": 1, "is_active": 1 });
+db.sessions.createIndex({ "refresh_token_jti": 1 }, { unique: true });
+db.sessions.createIndex({ "expires_at": 1 }, { expireAfterSeconds: 2592000 });
+
 print('MongoDB initialization completed!');

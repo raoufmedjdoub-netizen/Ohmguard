@@ -179,6 +179,7 @@ async def join_rooms(sid, data):
         'role': role,
         'tenant_id': tenant_id,
         'rooms': rooms,
+        'jti': payload.get('jti'),
         'joined_at': datetime.now(timezone.utc).isoformat()
     }
 
@@ -318,3 +319,16 @@ def get_connected_clients_info() -> List[Dict]:
         }
         for sid, s in client_sessions.items()
     ]
+
+
+async def disconnect_by_jti(jti: str):
+    """Force disconnect a client by their session JTI."""
+    if not jti:
+        return
+    for sid, session in list(client_sessions.items()):
+        if session.get('jti') == jti:
+            try:
+                await sio.disconnect(sid)
+            except Exception as e:
+                logger.warning(f"Failed to disconnect sid {sid}: {e}")
+            break

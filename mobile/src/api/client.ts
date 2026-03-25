@@ -97,6 +97,11 @@ class ApiClient {
 
   async logout() {
     console.log('[API] Logout');
+    try {
+      await this.request('/auth/logout', { method: 'POST' });
+    } catch (err: any) {
+      console.log('[API] Logout API call failed (best effort):', err.message);
+    }
     await this.clearToken();
   }
 

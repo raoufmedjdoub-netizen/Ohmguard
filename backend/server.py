@@ -131,6 +131,9 @@ from ai_sensor_service import (
     AISensorService
 )
 
+# Session Service import
+from session_service import init_session_service, get_session_service
+
 # MongoDB connection
 mongo_url = os.environ.get('MONGO_URL')
 if not mongo_url:
@@ -486,10 +489,12 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def create_refresh_token(data: dict):
+def create_refresh_token(data: dict, jti: str = None):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire})
+    if jti:
+        to_encode.update({"jti": jti})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -507,7 +512,20 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    
+
+    # Validate session is still active (backward-compatible: skip if no jti)
+    jti = payload.get("jti")
+    if jti:
+        session_svc = get_session_service()
+        if session_svc:
+            session = await session_svc.validate_session(jti)
+            if not session:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Session expired or revoked",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
     user = await db.users.find_one({"id": user_id}, {"_id": 0})
     if user is None:
         raise credentials_exception
@@ -602,19 +620,28 @@ async def login(request: Request, login_data: LoginRequest):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password"
         )
-    
+
     if not user.get('is_active', True):
         raise HTTPException(status_code=400, detail="User is inactive")
-    
-    access_token = create_access_token(
-        data={"sub": user['id'], "tenant_id": user.get('tenant_id'), "role": user['role']}
+
+    # Create server-side session
+    device_info = {
+        "user_agent": request.headers.get("user-agent", ""),
+        "ip_address": request.client.host if request.client else "",
+    }
+    session_svc = get_session_service()
+    session_id, jti = await session_svc.create_session(
+        user_id=user['id'],
+        tenant_id=user.get('tenant_id'),
+        device_info=device_info,
     )
-    refresh_token = create_refresh_token(
-        data={"sub": user['id'], "tenant_id": user.get('tenant_id'), "role": user['role']}
-    )
-    
+
+    token_data = {"sub": user['id'], "tenant_id": user.get('tenant_id'), "role": user['role'], "jti": jti}
+    access_token = create_access_token(data=token_data)
+    refresh_token = create_refresh_token(data=token_data, jti=jti)
+
     await log_audit(user['id'], user.get('tenant_id'), "login", "user", user['id'])
-    
+
     return Token(access_token=access_token, refresh_token=refresh_token)
 
 @api_router.post("/auth/refresh", response_model=Token)
@@ -625,13 +652,26 @@ async def refresh_token(refresh_token: str):
         user = await db.users.find_one({"id": user_id}, {"_id": 0})
         if not user:
             raise HTTPException(status_code=401, detail="Invalid token")
-        
-        access_token = create_access_token(
-            data={"sub": user['id'], "tenant_id": user.get('tenant_id'), "role": user['role']}
-        )
-        new_refresh_token = create_refresh_token(
-            data={"sub": user['id'], "tenant_id": user.get('tenant_id'), "role": user['role']}
-        )
+
+        old_jti = payload.get("jti")
+        session_svc = get_session_service()
+
+        # Validate session if JTI present (backward-compatible)
+        if old_jti and session_svc:
+            import uuid as _uuid
+            new_jti = str(_uuid.uuid4())
+            session_id = await session_svc.rotate_jti(old_jti, new_jti)
+            if not session_id:
+                raise HTTPException(status_code=401, detail="Session expired or revoked")
+        else:
+            new_jti = None
+
+        token_data = {"sub": user['id'], "tenant_id": user.get('tenant_id'), "role": user['role']}
+        if new_jti:
+            token_data["jti"] = new_jti
+
+        access_token = create_access_token(data=token_data)
+        new_refresh_token = create_refresh_token(data=token_data, jti=new_jti)
         return Token(access_token=access_token, refresh_token=new_refresh_token)
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -639,6 +679,73 @@ async def refresh_token(refresh_token: str):
 @api_router.get("/auth/me", response_model=User)
 async def get_me(current_user: UserInDB = Depends(get_current_user)):
     return User(**current_user.model_dump())
+
+
+# ==================== SESSION ENDPOINTS ====================
+
+def _extract_jti_from_request(request: Request) -> Optional[str]:
+    """Extract JTI from the Bearer token in the request."""
+    try:
+        token = request.headers.get("authorization", "").replace("Bearer ", "")
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload.get("jti")
+    except Exception:
+        return None
+
+
+@api_router.post("/auth/logout")
+async def logout(request: Request, current_user: UserInDB = Depends(get_current_user)):
+    """Logout current session."""
+    jti = _extract_jti_from_request(request)
+    if jti:
+        session_svc = get_session_service()
+        if session_svc:
+            session = await session_svc.validate_session(jti)
+            if session:
+                await session_svc.revoke_session(session["session_id"], current_user.id)
+    await log_audit(current_user.id, current_user.tenant_id, "logout", "session", None)
+    return {"detail": "Logged out successfully"}
+
+
+@api_router.post("/auth/logout-all")
+async def logout_all(request: Request, current_user: UserInDB = Depends(get_current_user)):
+    """Logout all sessions except the current one."""
+    jti = _extract_jti_from_request(request)
+    session_svc = get_session_service()
+    if session_svc:
+        count = await session_svc.revoke_all_sessions(current_user.id, except_jti=jti)
+    else:
+        count = 0
+    await log_audit(current_user.id, current_user.tenant_id, "logout_all", "session", None)
+    return {"detail": f"{count} other session(s) revoked"}
+
+
+@api_router.get("/auth/sessions")
+async def list_sessions(request: Request, current_user: UserInDB = Depends(get_current_user)):
+    """List active sessions for the current user."""
+    session_svc = get_session_service()
+    if not session_svc:
+        return []
+    sessions = await session_svc.list_user_sessions(current_user.id)
+    current_jti = _extract_jti_from_request(request)
+    for s in sessions:
+        s["is_current"] = (s.get("refresh_token_jti") == current_jti)
+        s.pop("refresh_token_jti", None)
+    return sessions
+
+
+@api_router.delete("/auth/sessions/{session_id}")
+async def revoke_session(session_id: str, current_user: UserInDB = Depends(get_current_user)):
+    """Revoke a specific session."""
+    session_svc = get_session_service()
+    if not session_svc:
+        raise HTTPException(status_code=500, detail="Session service not available")
+    revoked = await session_svc.revoke_session(session_id, current_user.id)
+    if not revoked:
+        raise HTTPException(status_code=404, detail="Session not found")
+    await log_audit(current_user.id, current_user.tenant_id, "session_revoke", "session", session_id)
+    return {"detail": "Session revoked"}
+
 
 # ==================== TENANT ENDPOINTS ====================
 
@@ -4381,7 +4488,23 @@ async def startup_event():
     
     # Auto-seed database if empty (for production deployment)
     await auto_seed_if_empty()
-    
+
+    # Initialize Session service
+    init_session_service(db)
+    logger.info("Session service initialized")
+
+    # Start session cleanup background task
+    async def _session_cleanup_loop():
+        while True:
+            await asyncio.sleep(3600)  # Every hour
+            try:
+                svc = get_session_service()
+                if svc:
+                    await svc.cleanup_expired_sessions()
+            except Exception as e:
+                logger.error(f"Session cleanup error: {e}")
+    asyncio.create_task(_session_cleanup_loop())
+
     # Initialize Push Notification service
     init_push_notification_service(db)
     logger.info("Push Notification service initialized")
