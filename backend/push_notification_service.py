@@ -323,8 +323,8 @@ class PushNotificationService:
             ).to_list(100)
 
             if not scopes:
-                # No scopes defined - include (default behavior)
-                eligible_tokens.append(token)
+                # No scopes defined — only CLIENT_ADMIN gets implicit full access (handled above).
+                # Regular roles (SUPERVISOR, OPERATOR, VIEWER) with no scopes = no notifications.
                 continue
 
             # Check if any scope matches the sensor's location

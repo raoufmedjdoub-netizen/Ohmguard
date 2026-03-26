@@ -1481,7 +1481,8 @@ class MQTTService:
                 ).to_list(100)
 
                 if not scopes:
-                    recipients.append(user["email"])
+                    # No scopes = no notifications for regular roles (SUPERVISOR, OPERATOR, VIEWER).
+                    # CLIENT_ADMIN is already handled above.
                     continue
 
                 for scope in scopes:

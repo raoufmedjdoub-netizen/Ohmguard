@@ -484,6 +484,8 @@ function GeneralSettingsTab() {
 // ============================================================================
 
 function UsersSettingsTab() {
+  const { user: currentUser } = useAuth();
+  const canManageUsers = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'TENANT_ADMIN';
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
@@ -601,10 +603,12 @@ function UsersSettingsTab() {
           <Button variant="outline" size="sm" onClick={loadUsers} data-testid="user-refresh-btn">
             <RefreshCw className="h-4 w-4" />
           </Button>
-          <Button size="sm" onClick={() => setShowCreateDialog(true)} data-testid="create-user-btn">
-            <UserPlus className="h-4 w-4 mr-2" />
-            Nouvel utilisateur
-          </Button>
+          {canManageUsers && (
+            <Button size="sm" onClick={() => setShowCreateDialog(true)} data-testid="create-user-btn">
+              <UserPlus className="h-4 w-4 mr-2" />
+              Nouvel utilisateur
+            </Button>
+          )}
         </div>
       </div>
 
@@ -686,20 +690,25 @@ function UsersSettingsTab() {
                         checked={u.is_active !== false}
                         onCheckedChange={(val) => { handleStatusChange(u.id, val); }}
                         onClick={(e) => e.stopPropagation()}
+                        disabled={!canManageUsers}
                         data-testid={`user-status-${u.id}`}
                       />
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Renvoyer l'email de bienvenue" onClick={() => handleResendWelcome(u.id, u.user_email)}>
-                          <Send className="h-4 w-4 text-blue-500" />
-                        </Button>
+                        {canManageUsers && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Renvoyer l'email de bienvenue" onClick={() => handleResendWelcome(u.id, u.user_email)}>
+                            <Send className="h-4 w-4 text-blue-500" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setSelectedUser(u); setShowUserSheet(true); }}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setSelectedUser(u); setShowDeleteDialog(true); }}>
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
+                        {canManageUsers && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setSelectedUser(u); setShowDeleteDialog(true); }}>
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -745,6 +754,7 @@ function UsersSettingsTab() {
           onOpenChange={setShowUserSheet}
           clientId={selectedClient}
           onUpdate={loadUsers}
+          readOnly={!canManageUsers}
         />
       )}
     </div>
@@ -961,7 +971,7 @@ function CreateUserDialog({ open, onOpenChange, clientId, clientName, onSuccess 
 // USER CONTACT SHEET (View/Edit)
 // ============================================================================
 
-function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
+function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate, readOnly = false }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
@@ -1217,7 +1227,7 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
                 <CardHeader className="py-3 px-4 flex-row items-center justify-between">
                   <CardTitle className="text-sm">Fiche de contact</CardTitle>
                   {!editing ? (
-                    <Button variant="ghost" size="sm" onClick={() => setEditing(true)} data-testid="edit-user-btn">
+                    !readOnly && <Button variant="ghost" size="sm" onClick={() => setEditing(true)} data-testid="edit-user-btn">
                       Modifier
                     </Button>
                   ) : (
@@ -1248,6 +1258,7 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
                     <span className="text-sm">Rôle</span>
                     <Select
                       value={form.role || user.role}
+                      disabled={readOnly}
                       onValueChange={async (val) => {
                         try {
                           await api.patch(`/client-users/${user.id}`, { role: val });
@@ -1272,6 +1283,7 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
                     <span className="text-sm">Compte actif</span>
                     <Switch
                       checked={user.is_active !== false}
+                      disabled={readOnly}
                       onCheckedChange={async (val) => {
                         try {
                           await api.patch(`/client-users/${user.id}`, { is_active: val });
@@ -1287,10 +1299,12 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
               </div>
 
               <div className="flex items-center gap-3 flex-wrap">
-                <Button variant="outline" onClick={() => setShowResetPw(true)} data-testid="reset-password-btn">
-                  <Key className="h-4 w-4 mr-2" />
-                  Réinitialiser le mot de passe
-                </Button>
+                {!readOnly && (
+                  <Button variant="outline" onClick={() => setShowResetPw(true)} data-testid="reset-password-btn">
+                    <Key className="h-4 w-4 mr-2" />
+                    Réinitialiser le mot de passe
+                  </Button>
+                )}
                 {user.created_at && (
                   <p className="text-xs text-muted-foreground">
                     Créé le {new Date(user.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -1342,7 +1356,7 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
                               </div>
                               <Switch
                                 checked={effective}
-                                disabled={permSaving}
+                                disabled={permSaving || readOnly}
                                 onCheckedChange={() => togglePermission(p.key, p.override)}
                               />
                             </div>
@@ -1393,9 +1407,11 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
                               </p>
                             </div>
                           </div>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeScope(s.id)}>
-                            <X className="h-3.5 w-3.5 text-red-500" />
-                          </Button>
+                          {!readOnly && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeScope(s.id)}>
+                              <X className="h-3.5 w-3.5 text-red-500" />
+                            </Button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -1404,7 +1420,7 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
               </Card>
 
               {/* Add scopes */}
-              <Card>
+              {!readOnly && <Card>
                 <CardHeader className="py-3 px-4">
                   <CardTitle className="text-sm">Ajouter un périmètre</CardTitle>
                 </CardHeader>
@@ -1456,7 +1472,7 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate }) {
                     })
                   )}
                 </CardContent>
-              </Card>
+              </Card>}
               </div>
             </>
           )}
