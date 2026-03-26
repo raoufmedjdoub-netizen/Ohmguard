@@ -217,6 +217,21 @@ td {{border-collapse:collapse;border-spacing:0;}}
 </tr>
 </table>
 
+<!-- Login button -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;">
+<tr>
+<td align="center">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td align="center" style="background-color:#1E3A5F;padding:12px 32px;">
+<a href="https://app.ohmguard.fr" target="_blank" style="color:#ffffff;font-size:14px;font-weight:600;font-family:Arial,Helvetica,sans-serif;text-decoration:none;display:inline-block;">Se connecter à OhmGuard</a>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+
 <!-- Warning box -->
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;">
 <tr>
