@@ -9,26 +9,18 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
 
   const checkAuth = useCallback(async () => {
-    console.log('[Auth] Checking authentication...');
     try {
       const token = await apiClient.getToken();
       if (token) {
-        console.log('[Auth] Token found, verifying...');
         const userData = await apiClient.getCurrentUser();
-        console.log('[Auth] User verified:', userData);
         setUser(userData as User);
-        // Si on est sur la page de login et qu'on est connecté, rediriger vers alerts
-        setTimeout(() => {
-          router.replace('/alerts');
-        }, 100);
-      } else {
-        console.log('[Auth] No token found');
+        setTimeout(() => { router.replace('/alerts'); }, 100);
       }
     } catch (err: any) {
-      console.log('[Auth] Auth check failed:', err.message);
-      await apiClient.clearToken();
+      await apiClient.clearTokens();
       setUser(null);
     } finally {
       setLoading(false);
@@ -40,16 +32,23 @@ export function useAuth() {
   }, [checkAuth]);
 
   const login = async (email: string, password: string) => {
-    console.log('[Auth] Login attempt for:', email);
     setLoading(true);
     setError(null);
     try {
       const response = await apiClient.login(email, password);
-      console.log('[Auth] Login successful');
-      setUser(response.user || { email, full_name: email, id: '', role: 'user' });
+
+      // Check if user must change password
+      if (response.must_change_password) {
+        setMustChangePassword(true);
+        setLoading(false);
+        return { mustChangePassword: true };
+      }
+
+      const userData = await apiClient.getCurrentUser();
+      setUser(userData as User);
       router.replace('/alerts');
+      return { mustChangePassword: false };
     } catch (err: any) {
-      console.log('[Auth] Login failed:', err.message);
       setError(err.message);
       throw err;
     } finally {
@@ -57,17 +56,27 @@ export function useAuth() {
     }
   };
 
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    try {
+      await apiClient.changePassword(currentPassword, newPassword);
+      setMustChangePassword(false);
+      // Fetch user and navigate
+      const userData = await apiClient.getCurrentUser();
+      setUser(userData as User);
+      router.replace('/alerts');
+    } catch (err: any) {
+      throw err;
+    }
+  };
+
   const logout = async () => {
-    console.log('[Auth] Logging out...');
     setLoading(true);
     try {
-      // Supprimer le push token du serveur avant de se déconnecter
-      // pour ne plus recevoir de notifications sur cet appareil
+      // Delete push token from server before logout
       const pushToken = await SecureStore.getItemAsync('push_token');
       if (pushToken) {
         await apiClient.deletePushToken(pushToken);
         await SecureStore.deleteItemAsync('push_token');
-        console.log('[Auth] Push token deleted from server');
       }
       await apiClient.logout();
       setUser(null);
@@ -77,5 +86,5 @@ export function useAuth() {
     }
   };
 
-  return { user, loading, error, login, logout, checkAuth };
+  return { user, loading, error, mustChangePassword, login, logout, changePassword, checkAuth };
 }

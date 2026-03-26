@@ -5,25 +5,28 @@ import * as SecureStore from 'expo-secure-store';
 import apiClient from '../api/client';
 import type { Alert } from '../types';
 
+// Track recently processed event IDs to avoid duplicates across listeners
+const recentEventIds = new Set<string>();
+
+function markProcessed(id: string): boolean {
+  if (recentEventIds.has(id)) return false; // Already processed
+  recentEventIds.add(id);
+  // Clean up after 30s to avoid memory leak
+  setTimeout(() => recentEventIds.delete(id), 30000);
+  return true;
+}
+
 export function useWebSocket(onNewAlert: (alert: Alert) => void) {
   const socketRef = useRef<Socket | null>(null);
   const [connected, setConnected] = useState(false);
 
   const connect = useCallback(async () => {
     const token = await SecureStore.getItemAsync('auth_token');
-    if (!token) {
-      console.log('[WS] No auth token, skipping connection');
-      return;
-    }
+    if (!token) return;
 
-    if (socketRef.current?.connected) {
-      console.log('[WS] Already connected');
-      return;
-    }
+    if (socketRef.current?.connected) return;
 
-    // Get WebSocket URL from API client
     const wsUrl = apiClient.getBaseUrl();
-    console.log('[WS] Connecting to:', wsUrl);
 
     socketRef.current = io(wsUrl, {
       path: '/api/socket.io',
@@ -36,57 +39,35 @@ export function useWebSocket(onNewAlert: (alert: Alert) => void) {
     });
 
     socketRef.current.on('connect', () => {
-      console.log('[WS] Connected!');
       setConnected(true);
-      // Rejoindre la room tenant (même protocole que le frontend web)
       socketRef.current?.emit('join_tenant', { token });
     });
 
-    socketRef.current.on('joined', (data: any) => {
-      console.log('[WS] Joined rooms:', data.rooms);
-    });
+    socketRef.current.on('disconnect', () => setConnected(false));
+    socketRef.current.on('connect_error', () => setConnected(false));
 
-    socketRef.current.on('disconnect', (reason) => {
-      console.log('[WS] Disconnected:', reason);
-      setConnected(false);
-    });
+    // Single handler for all fall events — deduplicates across event types
+    const handleFallEvent = (data: any) => {
+      const event = data?.event || data;
+      if (!event) return;
 
-    socketRef.current.on('connect_error', (error) => {
-      console.log('[WS] Connection error:', error.message);
-      setConnected(false);
-    });
+      const eventType = event.type || event.event_type;
+      if (eventType !== 'FALL') return;
 
-    // Listen for new events (falls)
-    socketRef.current.on('new_event', (data: any) => {
-      console.log('[WS] new_event received:', data);
-      if (data.event?.type === 'FALL') {
-        const alert = normalizeAlert(data.event);
-        onNewAlert(alert);
-      }
-    });
+      const eventId = event.id || event.event_id;
+      if (!eventId || !markProcessed(eventId)) return;
 
-    socketRef.current.on('new_radar_event', (data: any) => {
-      console.log('[WS] new_radar_event received:', data);
-      if (data.event?.type === 'FALL') {
-        const alert = normalizeAlert(data.event);
-        onNewAlert(alert);
-      }
-    });
+      onNewAlert(normalizeAlert(event));
+    };
 
-    socketRef.current.on('radar_event', (data: any) => {
-      console.log('[WS] radar_event received:', data);
-      // Handle presence events that might be falls
-      if (data.type === 'FALL' || data.event_type === 'FALL') {
-        const alert = normalizeAlert(data);
-        onNewAlert(alert);
-      }
-    });
+    socketRef.current.on('new_event', handleFallEvent);
+    socketRef.current.on('new_radar_event', handleFallEvent);
+    socketRef.current.on('radar_event', handleFallEvent);
 
   }, [onNewAlert]);
 
   const disconnect = useCallback(() => {
     if (socketRef.current) {
-      console.log('[WS] Disconnecting...');
       socketRef.current.disconnect();
       socketRef.current = null;
       setConnected(false);
@@ -101,7 +82,6 @@ export function useWebSocket(onNewAlert: (alert: Alert) => void) {
   return { connected, reconnect: connect };
 }
 
-// Normalize alert data from various WebSocket event formats
 function normalizeAlert(data: any): Alert {
   return {
     id: data.id || data.event_id || `temp-${Date.now()}`,
@@ -117,21 +97,23 @@ function normalizeAlert(data: any): Alert {
   };
 }
 
-// Build location path from location object
 function buildLocationPath(data: any): string {
-  const parts = [];
-  if (data.client_name) parts.push(data.client_name);
-  if (data.building_name) parts.push(data.building_name);
-  if (data.floor_name) parts.push(data.floor_name);
-  if (data.room_name) parts.push(data.room_name);
-  if (data.location?.client_name) parts.push(data.location.client_name);
-  if (data.location?.building_name) parts.push(data.location.building_name);
-  if (data.location?.floor_name) parts.push(data.location.floor_name);
-  if (data.location?.room_name) parts.push(data.location.room_name);
+  const parts: string[] = [];
+  // Use location object first, fallback to flat fields
+  const loc = data.location || {};
+  const clientName = loc.client_name || data.client_name;
+  const buildingName = loc.building_name || data.building_name;
+  const floorName = loc.floor_name || data.floor_name;
+  const roomName = loc.room_name || data.room_name;
+
+  if (clientName) parts.push(clientName);
+  if (buildingName) parts.push(buildingName);
+  if (floorName) parts.push(floorName);
+  if (roomName) parts.push(roomName);
+
   return parts.join(' > ') || 'Localisation inconnue';
 }
 
-// Normalize status (backend uses ACK, we display as ACKNOWLEDGED)
 function normalizeStatus(status: string): 'NEW' | 'ACKNOWLEDGED' | 'RESOLVED' {
   if (status === 'ACK' || status === 'ACKNOWLEDGED') return 'ACKNOWLEDGED';
   if (status === 'RESOLVED') return 'RESOLVED';

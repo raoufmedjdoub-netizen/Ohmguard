@@ -3,14 +3,12 @@ import { useState, useCallback, useEffect } from 'react';
 import apiClient from '../api/client';
 import type { Alert } from '../types';
 
-// Normalize status from backend (ACK -> ACKNOWLEDGED)
 function normalizeStatus(status: string): 'NEW' | 'ACKNOWLEDGED' | 'RESOLVED' {
   if (status === 'ACK' || status === 'ACKNOWLEDGED') return 'ACKNOWLEDGED';
   if (status === 'RESOLVED') return 'RESOLVED';
   return 'NEW';
 }
 
-// Normalize alert from API response
 function normalizeAlert(event: any): Alert {
   return {
     id: event.id,
@@ -26,13 +24,19 @@ function normalizeAlert(event: any): Alert {
   };
 }
 
-// Build location path from event data
 function buildLocationPath(event: any): string {
-  const parts = [];
-  if (event.client_name) parts.push(event.client_name);
-  if (event.building_name) parts.push(event.building_name);
-  if (event.floor_name) parts.push(event.floor_name);
-  if (event.room_name) parts.push(event.room_name);
+  const parts: string[] = [];
+  const loc = event.location || {};
+  const clientName = loc.client_name || event.client_name;
+  const buildingName = loc.building_name || event.building_name;
+  const floorName = loc.floor_name || event.floor_name;
+  const roomName = loc.room_name || event.room_name;
+
+  if (clientName) parts.push(clientName);
+  if (buildingName) parts.push(buildingName);
+  if (floorName) parts.push(floorName);
+  if (roomName) parts.push(roomName);
+
   return parts.join(' > ') || 'Localisation inconnue';
 }
 
@@ -45,30 +49,20 @@ export function useAlerts() {
   const fetchAlerts = useCallback(async () => {
     try {
       setError(null);
-      console.log('[Alerts] Fetching alerts...');
       const data = await apiClient.getAlerts();
-      console.log('[Alerts] Raw data received:', JSON.stringify(data?.slice(0, 2)));
-      console.log('[Alerts] Received', data?.length || 0, 'events');
-      
+
       if (!data || !Array.isArray(data)) {
-        console.log('[Alerts] Invalid data format, expected array');
         setAlerts([]);
         return;
       }
-      
-      // Normalize all alerts
+
       const normalizedAlerts = data.map(normalizeAlert);
-      console.log('[Alerts] Normalized alerts:', normalizedAlerts.length);
-      
-      // Sort by timestamp (newest first)
-      normalizedAlerts.sort((a, b) => 
+      normalizedAlerts.sort((a, b) =>
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
-      
+
       setAlerts(normalizedAlerts);
-      console.log('[Alerts] State updated with', normalizedAlerts.length, 'alerts');
     } catch (err: any) {
-      console.log('[Alerts] Error fetching:', err.message);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -82,35 +76,27 @@ export function useAlerts() {
   }, [fetchAlerts]);
 
   const addAlert = useCallback((alert: Alert) => {
-    console.log('[Alerts] Adding new alert:', alert.id);
     setAlerts(prev => {
-      // Éviter les doublons
-      if (prev.some(a => a.id === alert.id)) {
-        console.log('[Alerts] Alert already exists, skipping');
-        return prev;
-      }
+      if (prev.some(a => a.id === alert.id)) return prev;
       return [alert, ...prev];
     });
   }, []);
 
   const updateAlert = useCallback((id: string, updates: Partial<Alert>) => {
-    console.log('[Alerts] Updating alert:', id, updates);
-    setAlerts(prev => prev.map(a => 
+    setAlerts(prev => prev.map(a =>
       a.id === id ? { ...a, ...updates } : a
     ));
   }, []);
 
   const acknowledgeAlert = useCallback(async (id: string) => {
-    console.log('[Alerts] Acknowledging alert:', id);
     try {
       await apiClient.acknowledgeAlert(id);
-      updateAlert(id, { 
+      updateAlert(id, {
         status: 'ACKNOWLEDGED',
         acknowledged_at: new Date().toISOString()
       });
       return true;
     } catch (err: any) {
-      console.log('[Alerts] Acknowledge error:', err.message);
       setError(err.message);
       return false;
     }
@@ -120,7 +106,6 @@ export function useAlerts() {
     fetchAlerts();
   }, [fetchAlerts]);
 
-  // Séparer alertes actives et acquittées
   const activeAlerts = alerts.filter(a => a.status === 'NEW');
   const acknowledgedAlerts = alerts.filter(a => a.status !== 'NEW');
 

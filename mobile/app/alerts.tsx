@@ -9,6 +9,7 @@ import {
   StyleSheet,
   RefreshControl,
   ActivityIndicator,
+  Alert as RNAlert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAlerts } from '../src/hooks/useAlerts';
@@ -134,11 +135,28 @@ export default function AlertsScreen() {
               thumbColor={notificationsEnabled ? '#fff' : '#888'}
             />
           </View>
-          <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
+          <TouchableOpacity
+            onPress={() => RNAlert.alert(
+              'Déconnexion',
+              'Voulez-vous vous déconnecter ?',
+              [
+                { text: 'Annuler', style: 'cancel' },
+                { text: 'Déconnexion', style: 'destructive', onPress: logout }
+              ]
+            )}
+            style={styles.logoutBtn}
+          >
             <Text style={styles.logoutText}>Déconnexion</Text>
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Error banner */}
+      {error && (
+        <TouchableOpacity style={styles.errorBanner} onPress={refresh}>
+          <Text style={styles.errorBannerText}>⚠ {error} — Appuyez pour réessayer</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Compteur alertes actives */}
       {activeAlerts.length > 0 && (
@@ -233,6 +251,16 @@ const styles = StyleSheet.create({
   logoutText: {
     color: '#888',
     fontSize: 14,
+  },
+  errorBanner: {
+    backgroundColor: '#78350F',
+    padding: 12,
+    alignItems: 'center',
+  },
+  errorBannerText: {
+    color: '#FDE68A',
+    fontSize: 13,
+    textAlign: 'center',
   },
   activeCounter: {
     backgroundColor: '#7F1D1D',

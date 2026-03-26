@@ -1,24 +1,26 @@
 // API Client - Connexion au backend OhmGuard
 import * as SecureStore from 'expo-secure-store';
 
-// URL de l'API - production OhmGuard
 const API_URL = 'https://app.ohmguard.fr/api';
-
-// Log pour debug
-console.log('[API] Using URL:', API_URL);
 
 class ApiClient {
   private token: string | null = null;
+  private refreshToken: string | null = null;
   private baseUrl: string;
+  private isRefreshing = false;
+  private refreshQueue: Array<{ resolve: (token: string) => void; reject: (err: any) => void }> = [];
 
   constructor() {
     this.baseUrl = API_URL;
-    console.log('[API] Client initialized with URL:', this.baseUrl);
   }
 
-  async setToken(token: string) {
-    this.token = token;
-    await SecureStore.setItemAsync('auth_token', token);
+  async setTokens(accessToken: string, refreshToken?: string) {
+    this.token = accessToken;
+    await SecureStore.setItemAsync('auth_token', accessToken);
+    if (refreshToken) {
+      this.refreshToken = refreshToken;
+      await SecureStore.setItemAsync('refresh_token', refreshToken);
+    }
   }
 
   async getToken(): Promise<string | null> {
@@ -28,17 +30,75 @@ class ApiClient {
     return this.token;
   }
 
-  async clearToken() {
+  async getRefreshToken(): Promise<string | null> {
+    if (!this.refreshToken) {
+      this.refreshToken = await SecureStore.getItemAsync('refresh_token');
+    }
+    return this.refreshToken;
+  }
+
+  async clearTokens() {
     this.token = null;
+    this.refreshToken = null;
     await SecureStore.deleteItemAsync('auth_token');
+    await SecureStore.deleteItemAsync('refresh_token');
+  }
+
+  // Legacy compat
+  async setToken(token: string) { await this.setTokens(token); }
+  async clearToken() { await this.clearTokens(); }
+
+  private async tryRefreshToken(): Promise<string | null> {
+    const rt = await this.getRefreshToken();
+    if (!rt) return null;
+
+    // If already refreshing, wait for the result
+    if (this.isRefreshing) {
+      return new Promise((resolve, reject) => {
+        this.refreshQueue.push({ resolve, reject });
+      });
+    }
+
+    this.isRefreshing = true;
+
+    try {
+      const response = await fetch(`${this.baseUrl}/auth/refresh?refresh_token=${encodeURIComponent(rt)}`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Refresh failed');
+      }
+
+      const data = await response.json();
+      const newAccessToken = data.access_token;
+      const newRefreshToken = data.refresh_token;
+
+      await this.setTokens(newAccessToken, newRefreshToken);
+
+      // Resolve all queued requests
+      this.refreshQueue.forEach(q => q.resolve(newAccessToken));
+      this.refreshQueue = [];
+
+      return newAccessToken;
+    } catch (err) {
+      // Refresh failed — clear everything
+      this.refreshQueue.forEach(q => q.reject(err));
+      this.refreshQueue = [];
+      await this.clearTokens();
+      return null;
+    } finally {
+      this.isRefreshing = false;
+    }
   }
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    retry = true
   ): Promise<T> {
     const token = await this.getToken();
-    
+
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...(token && { Authorization: `Bearer ${token}` }),
@@ -46,8 +106,6 @@ class ApiClient {
     };
 
     const url = `${this.baseUrl}${endpoint}`;
-    console.log('[API] Request:', options.method || 'GET', url);
-    console.log('[API] Headers:', JSON.stringify(headers));
 
     try {
       const response = await fetch(url, {
@@ -55,27 +113,28 @@ class ApiClient {
         headers,
       });
 
-      console.log('[API] Response status:', response.status);
+      // Token expired — try refresh
+      if (response.status === 401 && retry) {
+        const newToken = await this.tryRefreshToken();
+        if (newToken) {
+          return this.request<T>(endpoint, options, false);
+        }
+        throw new Error('Session expirée, veuillez vous reconnecter');
+      }
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: 'Erreur réseau' }));
-        console.log('[API] Error response:', JSON.stringify(error));
         throw new Error(error.detail || `Erreur ${response.status}`);
       }
 
-      const data = await response.json();
-      console.log('[API] Response data length:', Array.isArray(data) ? data.length : 'object');
-      return data;
+      return await response.json();
     } catch (err: any) {
-      console.log('[API] Fetch error:', err.message);
       throw err;
     }
   }
 
   // Auth
   async login(email: string, password: string) {
-    console.log('[API] Login attempt for:', email);
-    
     const response = await fetch(`${this.baseUrl}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -84,24 +143,28 @@ class ApiClient {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Identifiants incorrects' }));
-      console.log('[API] Login error:', error);
       throw new Error(error.detail || 'Erreur de connexion');
     }
 
     const data = await response.json();
-    console.log('[API] Login success, token received');
-    await this.setToken(data.access_token);
+    await this.setTokens(data.access_token, data.refresh_token);
     return data;
   }
 
   async logout() {
-    console.log('[API] Logout');
     try {
-      await this.request('/auth/logout', { method: 'POST' });
-    } catch (err: any) {
-      console.log('[API] Logout API call failed (best effort):', err.message);
+      await this.request('/auth/logout', { method: 'POST' }, false);
+    } catch {
+      // Best effort
     }
-    await this.clearToken();
+    await this.clearTokens();
+  }
+
+  async changePassword(currentPassword: string, newPassword: string) {
+    return this.request('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
   }
 
   async getCurrentUser() {
@@ -111,12 +174,10 @@ class ApiClient {
   // Alerts (Events de type FALL)
   async getAlerts(status?: string) {
     const params = new URLSearchParams();
-    params.append('event_type', 'FALL'); // Backend uses event_type not type
+    params.append('event_type', 'FALL');
     if (status) params.append('status', status);
     params.append('limit', '50');
-    
-    const data = await this.request<any[]>(`/events?${params.toString()}`);
-    return data;
+    return this.request<any[]>(`/events?${params.toString()}`);
   }
 
   async getAlert(id: string) {
@@ -124,47 +185,41 @@ class ApiClient {
   }
 
   async acknowledgeAlert(id: string) {
-    return this.request(`/events/${id}/acknowledge`, {
-      method: 'POST',
-    });
+    return this.request(`/events/${id}/acknowledge`, { method: 'POST' });
   }
 
-  // Register push token
+  // Push tokens
   async registerPushToken(pushToken: string, deviceType?: string) {
     try {
       return await this.request('/push-tokens', {
         method: 'POST',
         body: JSON.stringify({ token: pushToken, device_type: deviceType }),
       });
-    } catch (err) {
-      console.log('[API] Push token registration failed:', err);
+    } catch {
+      // Silent — push registration is best-effort
     }
   }
 
-  // Delete push token (on logout)
   async deletePushToken(pushToken: string) {
     try {
       return await this.request(`/push-tokens?token=${encodeURIComponent(pushToken)}`, {
         method: 'DELETE',
-      });
-    } catch (err) {
-      console.log('[API] Push token deletion failed:', err);
+      }, false);
+    } catch {
+      // Silent
     }
   }
 
-  // Get notification settings for a token
   async getNotificationSettings(pushToken: string): Promise<{ registered: boolean; notifications_enabled: boolean } | null> {
     try {
       return await this.request<{ registered: boolean; notifications_enabled: boolean }>(
         `/push-tokens/settings?token=${encodeURIComponent(pushToken)}`
       );
-    } catch (err) {
-      console.log('[API] Get notification settings failed:', err);
+    } catch {
       return null;
     }
   }
 
-  // Enable or disable push notifications for a token
   async setNotificationsEnabled(pushToken: string, enabled: boolean): Promise<boolean> {
     try {
       await this.request('/push-tokens/settings', {
@@ -172,15 +227,12 @@ class ApiClient {
         body: JSON.stringify({ token: pushToken, enabled }),
       });
       return true;
-    } catch (err) {
-      console.log('[API] Set notification settings failed:', err);
+    } catch {
       return false;
     }
   }
 
-  // Get base URL (for WebSocket)
   getBaseUrl() {
-    // Remove /api suffix for WebSocket URL
     return this.baseUrl.replace('/api', '');
   }
 }
