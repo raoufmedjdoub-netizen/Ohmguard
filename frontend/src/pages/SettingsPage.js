@@ -17,7 +17,7 @@ import {
   Sun, Moon, Globe, User, Mail, Send, Loader2, CheckCircle2, Server,
   Users, UserPlus, Search, Shield, MapPin, Eye, Check, X, Trash2,
   RefreshCw, Key, Phone, Briefcase, Building2, FileText, ChevronRight, Bell, BellOff,
-  Smartphone, MessageCircle, Radio
+  Smartphone, MessageCircle, Radio, AlertTriangle
 } from 'lucide-react';
 import {
   Tabs, TabsContent, TabsList, TabsTrigger
@@ -773,6 +773,48 @@ function CreateUserDialog({ open, onOpenChange, clientId, clientName, onSuccess 
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
+  // Scopes at creation
+  const [buildings, setBuildings] = useState([]);
+  const [floors, setFloors] = useState({});
+  const [selectedScopes, setSelectedScopes] = useState([]); // [{scope_type, building_id?, floor_id?, label}]
+
+  useEffect(() => {
+    if (open && clientId) {
+      loadBuildingsForScopes();
+    }
+  }, [open, clientId]);
+
+  const loadBuildingsForScopes = async () => {
+    try {
+      const res = await api.get(`/clients/${clientId}/buildings`);
+      setBuildings(res.data || []);
+      const floorsMap = {};
+      for (const b of (res.data || [])) {
+        try {
+          const fRes = await api.get(`/buildings/${b.id}/floors`);
+          floorsMap[b.id] = fRes.data || [];
+        } catch { floorsMap[b.id] = []; }
+      }
+      setFloors(floorsMap);
+    } catch { setBuildings([]); }
+  };
+
+  const addScope = (scopeType, id, label) => {
+    const exists = selectedScopes.some(s =>
+      (scopeType === 'BUILDING' && s.scope_type === 'BUILDING' && s.building_id === id) ||
+      (scopeType === 'FLOOR' && s.scope_type === 'FLOOR' && s.floor_id === id)
+    );
+    if (exists) return;
+    const scope = scopeType === 'BUILDING'
+      ? { scope_type: 'BUILDING', building_id: id, label }
+      : { scope_type: 'FLOOR', floor_id: id, label };
+    setSelectedScopes(prev => [...prev, scope]);
+  };
+
+  const removeScope = (idx) => {
+    setSelectedScopes(prev => prev.filter((_, i) => i !== idx));
+  };
+
   const validateEmail = (email) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
@@ -792,6 +834,23 @@ function CreateUserDialog({ open, onOpenChange, clientId, clientName, onSuccess 
     try {
       const res = await api.post(`/clients/${clientId}/users`, form);
       const data = res.data;
+
+      // Assign scopes if any selected
+      if (selectedScopes.length > 0 && data.id) {
+        try {
+          const scopePayloads = selectedScopes.map(s => ({
+            scope_type: s.scope_type,
+            building_id: s.building_id || null,
+            floor_id: s.floor_id || null,
+            access_level: 'VIEW'
+          }));
+          await api.put(`/client-users/${data.id}/scopes`, { scopes: scopePayloads });
+        } catch (e) {
+          console.error('Failed to assign scopes:', e);
+          toast.warning('Utilisateur créé mais les périmètres n\'ont pas pu être assignés');
+        }
+      }
+
       if (data.email_sent) {
         toast.success('Utilisateur créé — un email avec le mot de passe temporaire a été envoyé');
       } else {
@@ -799,6 +858,7 @@ function CreateUserDialog({ open, onOpenChange, clientId, clientName, onSuccess 
       }
       onOpenChange(false);
       setForm({ full_name: '', email: '', role: 'VIEWER', phone: '', job_title: '', department: '', notes: '' });
+      setSelectedScopes([]);
       setErrors({});
       onSuccess();
     } catch (error) {
@@ -932,6 +992,79 @@ function CreateUserDialog({ open, onOpenChange, clientId, clientName, onSuccess 
               </Select>
             </div>
           </div>
+
+          {/* Scopes / Périmètre */}
+          {form.role !== 'CLIENT_ADMIN' && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" />
+                Périmètre
+              </h4>
+
+              {selectedScopes.length > 0 && (
+                <div className="space-y-1.5">
+                  {selectedScopes.map((s, idx) => (
+                    <div key={idx} className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md px-3 py-1.5">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-3.5 w-3.5 text-blue-600" />
+                        <span className="text-sm">{s.label}</span>
+                        <Badge variant="outline" className="text-[10px]">
+                          {s.scope_type === 'BUILDING' ? 'Bâtiment' : 'Étage'}
+                        </Badge>
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeScope(idx)}>
+                        <X className="h-3 w-3 text-red-500" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {buildings.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Aucun bâtiment disponible pour ce client</p>
+              ) : (
+                <div className="border rounded-md divide-y max-h-40 overflow-y-auto">
+                  {buildings.map(b => (
+                    <div key={b.id} className="px-3 py-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{b.name}</span>
+                        <Button
+                          variant="ghost" size="sm" className="h-6 text-xs"
+                          disabled={selectedScopes.some(s => s.scope_type === 'BUILDING' && s.building_id === b.id)}
+                          onClick={() => addScope('BUILDING', b.id, b.name)}
+                        >
+                          + Tout le bâtiment
+                        </Button>
+                      </div>
+                      {(floors[b.id] || []).length > 0 && !selectedScopes.some(s => s.scope_type === 'BUILDING' && s.building_id === b.id) && (
+                        <div className="ml-4 mt-1 space-y-0.5">
+                          {(floors[b.id] || []).map(f => (
+                            <div key={f.id} className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">{f.name || `Étage ${f.level}`}</span>
+                              <Button
+                                variant="ghost" size="sm" className="h-5 text-[10px] px-1.5"
+                                disabled={selectedScopes.some(s => s.scope_type === 'FLOOR' && s.floor_id === f.id)}
+                                onClick={() => addScope('FLOOR', f.id, `${b.name} > ${f.name || 'Étage ' + f.level}`)}
+                              >
+                                + Ajouter
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {selectedScopes.length === 0 && (
+                <p className="text-xs text-amber-600">
+                  <AlertTriangle className="inline h-3 w-3 mr-1 -mt-0.5" />
+                  Sans périmètre, l'utilisateur n'aura accès à aucune donnée. Assignez au moins un bâtiment ou étage.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Access Info */}
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
