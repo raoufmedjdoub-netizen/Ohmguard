@@ -572,25 +572,45 @@ function UsersSettingsTab() {
 
   return (
     <div className="space-y-4 mt-4">
-      {/* Header with filters */}
+      {/* Organisation selector - prominent */}
+      {clients.length > 1 && (
+        <div className="rounded-lg border bg-card p-4">
+          <Label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">Organisation</Label>
+          <div className="flex flex-wrap gap-2">
+            {clients.map(client => (
+              <button
+                key={client.id}
+                onClick={() => setSelectedClient(client.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+                  selectedClient === client.id
+                    ? 'border-primary bg-primary/10 text-primary shadow-sm'
+                    : 'border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
+              >
+                <Building2 className="h-4 w-4" />
+                {client.name}
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                  {client.buildings_count || 0} bat.
+                </Badge>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Header with search and actions */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3 flex-wrap">
-          <Select value={selectedClient} onValueChange={setSelectedClient}>
-            <SelectTrigger className="w-52" data-testid="user-client-select">
-              <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="Client" />
-            </SelectTrigger>
-            <SelectContent>
-              {clients.map(client => (
-                <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
+          {clients.length <= 1 && (
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+              {selectedClientName || 'Organisation'}
+            </div>
+          )}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Rechercher..."
+              placeholder="Rechercher un utilisateur..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 w-64"
@@ -753,6 +773,7 @@ function UsersSettingsTab() {
           open={showUserSheet}
           onOpenChange={setShowUserSheet}
           clientId={selectedClient}
+          clientName={selectedClientName}
           onUpdate={loadUsers}
           readOnly={!canManageUsers}
         />
@@ -1104,7 +1125,7 @@ function CreateUserDialog({ open, onOpenChange, clientId, clientName, onSuccess 
 // USER CONTACT SHEET (View/Edit)
 // ============================================================================
 
-function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate, readOnly = false }) {
+function UserContactSheet({ user, open, onOpenChange, clientId, clientName, onUpdate, readOnly = false }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
@@ -1322,7 +1343,15 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate, readOn
               </AvatarFallback>
             </Avatar>
             <div>
-              <span>{user.user_full_name || 'Utilisateur'}</span>
+              <div className="flex items-center gap-2">
+                <span>{user.user_full_name || 'Utilisateur'}</span>
+                {clientName && (
+                  <Badge variant="outline" className="text-[10px] font-normal">
+                    <Building2 className="h-3 w-3 mr-1" />
+                    {clientName}
+                  </Badge>
+                )}
+              </div>
               <p className="text-sm font-normal text-muted-foreground">{user.user_email}</p>
             </div>
           </DialogTitle>
@@ -1509,8 +1538,8 @@ function UserContactSheet({ user, open, onOpenChange, clientId, onUpdate, readOn
             <>
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
                 <MapPin className="inline h-4 w-4 mr-1.5 -mt-0.5" />
-                Définissez les bâtiments et étages auxquels cet utilisateur a accès.
-                Sans périmètre, l'utilisateur voit tout.
+                Définissez les bâtiments et étages auxquels cet utilisateur a accès au sein de <strong>{clientName || 'l\'organisation'}</strong>.
+                Sans périmètre, l'utilisateur n'aura accès à aucune donnée.
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
