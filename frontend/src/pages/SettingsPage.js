@@ -872,7 +872,9 @@ function CreateUserDialog({ open, onOpenChange, clientId, clientName, onSuccess 
         }
       }
 
-      if (data.email_sent) {
+      if (data.existing_account) {
+        toast.success('Utilisateur existant ajouté à cette organisation');
+      } else if (data.email_sent) {
         toast.success('Utilisateur créé — un email avec le mot de passe temporaire a été envoyé');
       } else {
         toast.warning(`Utilisateur créé mais l'email n'a pas pu être envoyé${data.email_error ? ' : ' + data.email_error : ''}`);

@@ -218,7 +218,10 @@ def create_rbac_routes(get_current_user, check_permission, db):
         # Send welcome email with temporary password
         email_sent = False
         email_error = None
-        if temp_password and not request.password:
+        existing_account = temp_password is None  # User already existed
+        if existing_account:
+            email_error = "existing_account"
+        elif temp_password and not request.password:
             try:
                 from email_service import get_email_service
                 email_svc = get_email_service()
@@ -246,7 +249,8 @@ def create_rbac_routes(get_current_user, check_permission, db):
         client_user["user_email"] = request.email
         client_user["user_full_name"] = request.full_name
         client_user["email_sent"] = email_sent
-        if email_error:
+        client_user["existing_account"] = existing_account
+        if email_error and email_error != "existing_account":
             client_user["email_error"] = email_error
 
         return client_user
