@@ -522,11 +522,11 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     except JWTError:
         raise credentials_exception
 
-    # Validate session is still active (backward-compatible: skip if no jti)
+    # Validate session is still active
     jti = payload.get("jti")
-    if jti:
-        session_svc = get_session_service()
-        if session_svc:
+    session_svc = get_session_service()
+    if session_svc:
+        if jti:
             session = await session_svc.validate_session(jti)
             if not session:
                 raise HTTPException(
@@ -534,6 +534,13 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
                     detail="Session expired or revoked",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
+        else:
+            # Old token without JTI — force re-login
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session invalide, veuillez vous reconnecter",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
     user = await db.users.find_one({"id": user_id}, {"_id": 0})
     if user is None:
@@ -726,7 +733,10 @@ async def refresh_token(refresh_token: str):
         old_jti = payload.get("jti")
         session_svc = get_session_service()
 
-        # Validate session if JTI present (backward-compatible)
+        if not old_jti and session_svc:
+            # Old token without JTI — force re-login
+            raise HTTPException(status_code=401, detail="Session invalide, veuillez vous reconnecter")
+
         if old_jti and session_svc:
             import uuid as _uuid
             new_jti = str(_uuid.uuid4())
@@ -734,11 +744,11 @@ async def refresh_token(refresh_token: str):
             if not session_id:
                 raise HTTPException(status_code=401, detail="Session expired or revoked")
         else:
-            new_jti = None
+            import uuid as _uuid
+            new_jti = str(_uuid.uuid4())
 
         token_data = {"sub": user['id'], "tenant_id": user.get('tenant_id'), "role": user['role']}
-        if new_jti:
-            token_data["jti"] = new_jti
+        token_data["jti"] = new_jti
 
         access_token = create_access_token(data=token_data)
         new_refresh_token = create_refresh_token(data=token_data, jti=new_jti)
