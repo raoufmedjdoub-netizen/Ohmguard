@@ -12,7 +12,7 @@ import {
   Alert as RNAlert,
 } from 'react-native';
 import { router } from 'expo-router';
-import { useAlerts } from '../src/hooks/useAlerts';
+import { useAlerts, AlertFilter } from '../src/hooks/useAlerts';
 import { useWebSocket } from '../src/hooks/useWebSocket';
 import { useAuth } from '../src/hooks/useAuth';
 import { useNotificationSettings } from '../src/hooks/useNotificationSettings';
@@ -20,10 +20,18 @@ import { sendLocalNotification } from '../src/services/notifications';
 import { colors, spacing, radius } from '../src/theme';
 import type { Alert } from '../src/types';
 
+const FILTERS: { key: AlertFilter; label: string }[] = [
+  { key: 'ALL', label: 'Toutes' },
+  { key: 'NEW', label: 'En attente' },
+  { key: 'ACKNOWLEDGED', label: 'Acquittees' },
+];
+
 export default function AlertsScreen() {
   const { user, logout } = useAuth();
   const {
-    activeAlerts, acknowledgedAlerts, loading, refreshing, error, refresh, addAlert
+    alerts: filteredAlerts, allAlerts, activeAlerts,
+    loading, refreshing, error, filter, setFilter,
+    hasMore, loadingMore, refresh, loadMore, addAlert
   } = useAlerts();
   const { enabled: notificationsEnabled, toggling, toggle: toggleNotifications } = useNotificationSettings();
 
@@ -94,12 +102,26 @@ export default function AlertsScreen() {
     );
   };
 
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={colors.secondary} />
+        <Text style={styles.footerLoaderText}>Chargement...</Text>
+      </View>
+    );
+  };
+
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyCircle}>
         <Text style={styles.emptyCheck}>OK</Text>
       </View>
-      <Text style={styles.emptyTitle}>Aucune alerte</Text>
+      <Text style={styles.emptyTitle}>
+        {filter === 'NEW' ? 'Aucune alerte en attente' :
+         filter === 'ACKNOWLEDGED' ? 'Aucune alerte acquittee' :
+         'Aucune alerte'}
+      </Text>
       <Text style={styles.emptySubtitle}>
         Vous serez notifie en cas de detection de chute
       </Text>
@@ -119,7 +141,11 @@ export default function AlertsScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
+        <TouchableOpacity
+          style={styles.headerLeft}
+          onPress={() => router.push('/profile')}
+          activeOpacity={0.7}
+        >
           <View style={styles.headerBrand}>
             <Text style={styles.headerBrandText}>OG</Text>
           </View>
@@ -132,17 +158,15 @@ export default function AlertsScreen() {
               </Text>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
         <View style={styles.headerRight}>
-          <View style={styles.notifToggle}>
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={toggleNotifications}
-              disabled={toggling}
-              trackColor={{ false: colors.surfaceLight, true: colors.secondary }}
-              thumbColor={colors.white}
-            />
-          </View>
+          <Switch
+            value={notificationsEnabled}
+            onValueChange={toggleNotifications}
+            disabled={toggling}
+            trackColor={{ false: colors.surfaceLight, true: colors.secondary }}
+            thumbColor={colors.white}
+          />
           <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
             <Text style={styles.logoutText}>Sortir</Text>
           </TouchableOpacity>
@@ -166,9 +190,36 @@ export default function AlertsScreen() {
         </View>
       )}
 
+      {/* Filter tabs */}
+      <View style={styles.filterBar}>
+        {FILTERS.map(f => {
+          const isActive = filter === f.key;
+          const count = f.key === 'ALL' ? allAlerts.length :
+                        f.key === 'NEW' ? activeAlerts.length :
+                        allAlerts.filter(a => a.status !== 'NEW').length;
+          return (
+            <TouchableOpacity
+              key={f.key}
+              style={[styles.filterTab, isActive && styles.filterTabActive]}
+              onPress={() => setFilter(f.key)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.filterTabText, isActive && styles.filterTabTextActive]}>
+                {f.label}
+              </Text>
+              <View style={[styles.filterCount, isActive && styles.filterCountActive]}>
+                <Text style={[styles.filterCountText, isActive && styles.filterCountTextActive]}>
+                  {count}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       {/* List */}
       <FlatList
-        data={[...activeAlerts, ...acknowledgedAlerts]}
+        data={filteredAlerts}
         renderItem={renderAlert}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
@@ -181,259 +232,83 @@ export default function AlertsScreen() {
           />
         }
         ListEmptyComponent={renderEmpty}
+        ListFooterComponent={renderFooter}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.3}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: colors.textSecondary,
-    marginTop: spacing.md,
-    fontSize: 14,
-  },
+  container: { flex: 1, backgroundColor: colors.background },
+  loadingContainer: { flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { color: colors.textSecondary, marginTop: spacing.md, fontSize: 14 },
+
   // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.md,
-    paddingTop: spacing.lg,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  headerBrand: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.sm,
-    backgroundColor: colors.secondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerBrandText: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  headerTitle: {
-    color: colors.textPrimary,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  connectionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  headerStatus: {
-    color: colors.textMuted,
-    fontSize: 12,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  notifToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  logoutBtn: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    backgroundColor: colors.surfaceLight,
-    borderRadius: radius.sm,
-  },
-  logoutText: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '500',
-  },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, paddingTop: spacing.lg, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  headerBrand: { width: 36, height: 36, borderRadius: radius.sm, backgroundColor: colors.secondary, justifyContent: 'center', alignItems: 'center' },
+  headerBrandText: { color: colors.white, fontSize: 14, fontWeight: '800', letterSpacing: 1 },
+  headerTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '700' },
+  connectionRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headerStatus: { color: colors.textMuted, fontSize: 12 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  logoutBtn: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, backgroundColor: colors.surfaceLight, borderRadius: radius.sm },
+  logoutText: { color: colors.textSecondary, fontSize: 13, fontWeight: '500' },
+
   // Status dots
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  statusDotSmall: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  dotConnected: {
-    backgroundColor: colors.success,
-  },
-  dotDisconnected: {
-    backgroundColor: colors.alertRed,
-  },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  statusDotSmall: { width: 6, height: 6, borderRadius: 3 },
+  dotConnected: { backgroundColor: colors.success },
+  dotDisconnected: { backgroundColor: colors.alertRed },
+
   // Banners
-  errorBanner: {
-    backgroundColor: colors.warningAmberBg,
-    padding: spacing.md,
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.warningAmber,
-  },
-  errorBannerText: {
-    color: '#FDE68A',
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  activeCounter: {
-    backgroundColor: colors.alertRedBg,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  activeCounterDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-  },
-  activeCounterText: {
-    color: '#FCA5A5',
-    fontWeight: '700',
-    fontSize: 14,
-    letterSpacing: 0.5,
-  },
+  errorBanner: { backgroundColor: colors.warningAmberBg, padding: spacing.md, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.warningAmber },
+  errorBannerText: { color: '#FDE68A', fontSize: 13, textAlign: 'center' },
+  activeCounter: { backgroundColor: colors.alertRedBg, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  activeCounterDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
+  activeCounterText: { color: '#FCA5A5', fontWeight: '700', fontSize: 14, letterSpacing: 0.5 },
+
+  // Filter tabs
+  filterBar: { flexDirection: 'row', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.sm },
+  filterTab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.full, backgroundColor: colors.surfaceLight },
+  filterTabActive: { backgroundColor: colors.secondary },
+  filterTabText: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
+  filterTabTextActive: { color: colors.white },
+  filterCount: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: colors.border, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
+  filterCountActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
+  filterCountText: { color: colors.textMuted, fontSize: 11, fontWeight: '700' },
+  filterCountTextActive: { color: colors.white },
+
   // List
-  list: {
-    padding: spacing.md,
-    paddingBottom: spacing.xl,
-  },
-  separator: {
-    height: spacing.sm,
-  },
+  list: { padding: spacing.md, paddingBottom: spacing.xl },
+  separator: { height: spacing.sm },
+  footerLoader: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md },
+  footerLoaderText: { color: colors.textMuted, fontSize: 13 },
+
   // Alert cards
-  alertCard: {
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-  },
-  alertNew: {
-    backgroundColor: '#1C0A0A',
-    borderColor: colors.primary,
-  },
-  alertAck: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-  },
-  alertHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: radius.full,
-  },
-  badgeNew: {
-    backgroundColor: colors.primary,
-  },
-  badgeAck: {
-    backgroundColor: colors.surfaceLight,
-  },
-  statusText: {
-    color: colors.white,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  alertTime: {
-    color: colors.textMuted,
-    fontSize: 12,
-  },
-  alertType: {
-    color: colors.textPrimary,
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: spacing.xs,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  locationDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.secondary,
-  },
-  alertLocation: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    flex: 1,
-  },
-  alertAction: {
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: '#3D1515',
-  },
-  alertActionText: {
-    color: colors.primary,
-    textAlign: 'center',
-    fontWeight: '600',
-    fontSize: 13,
-  },
+  alertCard: { borderRadius: radius.lg, padding: spacing.md, borderWidth: 1 },
+  alertNew: { backgroundColor: '#1C0A0A', borderColor: colors.primary },
+  alertAck: { backgroundColor: colors.surface, borderColor: colors.border },
+  alertHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.full },
+  badgeNew: { backgroundColor: colors.primary },
+  badgeAck: { backgroundColor: colors.surfaceLight },
+  statusText: { color: colors.white, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  alertTime: { color: colors.textMuted, fontSize: 12 },
+  alertType: { color: colors.textPrimary, fontSize: 18, fontWeight: '700', marginBottom: spacing.xs },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  locationDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.secondary },
+  alertLocation: { color: colors.textSecondary, fontSize: 14, flex: 1 },
+  alertAction: { marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: '#3D1515' },
+  alertActionText: { color: colors.primary, textAlign: 'center', fontWeight: '600', fontSize: 13 },
+
   // Empty state
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 80,
-  },
-  emptyCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.surfaceLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  emptyCheck: {
-    color: colors.success,
-    fontSize: 24,
-    fontWeight: '800',
-  },
-  emptyTitle: {
-    color: colors.textPrimary,
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: spacing.xs,
-  },
-  emptySubtitle: {
-    color: colors.textMuted,
-    textAlign: 'center',
-    fontSize: 14,
-  },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 80 },
+  emptyCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.surfaceLight, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
+  emptyCheck: { color: colors.success, fontSize: 24, fontWeight: '800' },
+  emptyTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: '700', marginBottom: spacing.xs },
+  emptySubtitle: { color: colors.textMuted, textAlign: 'center', fontSize: 14 },
 });

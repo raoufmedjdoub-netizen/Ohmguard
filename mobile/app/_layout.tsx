@@ -8,18 +8,16 @@ import {
   addNotificationResponseListener
 } from '../src/services/notifications';
 import { router } from 'expo-router';
+import { colors } from '../src/theme';
 
 export default function RootLayout() {
   useEffect(() => {
-    // Initialiser les notifications push et enregistrer le token
     registerForPushNotifications().then((token) => {
       if (token) {
         sendPushTokenToServer(token);
       }
     });
 
-    // Gérer le tap sur une notification (ouvre le détail de l'alerte)
-    // Le backend envoie event_id dans data
     const subscription = addNotificationResponseListener((response) => {
       const data = response.notification.request.content.data;
       const eventId = data?.event_id || data?.alertId;
@@ -36,31 +34,27 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: '#DC2626' },
-          headerTintColor: '#fff',
+          headerStyle: { backgroundColor: colors.surface },
+          headerTintColor: colors.textPrimary,
           headerTitleStyle: { fontWeight: 'bold' },
-          contentStyle: { backgroundColor: '#111' },
+          contentStyle: { backgroundColor: colors.background },
         }}
       >
-        <Stack.Screen 
-          name="index" 
-          options={{ 
-            title: 'Connexion',
-            headerShown: false,
-          }} 
+        <Stack.Screen
+          name="index"
+          options={{ title: 'Connexion', headerShown: false }}
         />
-        <Stack.Screen 
-          name="alerts" 
-          options={{ 
-            title: 'Alertes',
-            headerBackVisible: false,
-          }} 
+        <Stack.Screen
+          name="alerts"
+          options={{ title: 'Alertes', headerShown: false, headerBackVisible: false }}
         />
-        <Stack.Screen 
-          name="alert/[id]" 
-          options={{ 
-            title: 'Détail Alerte',
-          }} 
+        <Stack.Screen
+          name="alert/[id]"
+          options={{ title: 'Detail Alerte' }}
+        />
+        <Stack.Screen
+          name="profile"
+          options={{ title: 'Mon profil' }}
         />
       </Stack>
     </>
