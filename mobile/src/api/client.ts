@@ -1,9 +1,8 @@
 // API Client - Connexion au backend OhmGuard
 import * as SecureStore from 'expo-secure-store';
 
-// URL de l'API - directement configurée pour le preview
-// En production, remplacer par l'URL du serveur déployé
-const API_URL = 'https://alert-feed-live.preview.emergentagent.com/api';
+// URL de l'API - production OhmGuard
+const API_URL = 'https://app.ohmguard.fr/api';
 
 // Log pour debug
 console.log('[API] Using URL:', API_URL);
