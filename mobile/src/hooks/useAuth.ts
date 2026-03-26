@@ -1,6 +1,7 @@
 // Hook d'authentification
 import { useState, useEffect, useCallback } from 'react';
 import { router } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import apiClient from '../api/client';
 import type { User } from '../types';
 
@@ -60,6 +61,14 @@ export function useAuth() {
     console.log('[Auth] Logging out...');
     setLoading(true);
     try {
+      // Supprimer le push token du serveur avant de se déconnecter
+      // pour ne plus recevoir de notifications sur cet appareil
+      const pushToken = await SecureStore.getItemAsync('push_token');
+      if (pushToken) {
+        await apiClient.deletePushToken(pushToken);
+        await SecureStore.deleteItemAsync('push_token');
+        console.log('[Auth] Push token deleted from server');
+      }
       await apiClient.logout();
       setUser(null);
       router.replace('/');
