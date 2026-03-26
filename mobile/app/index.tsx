@@ -9,16 +9,15 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { useAuth } from '../src/hooks/useAuth';
+import { colors, spacing, radius } from '../src/theme';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { login, changePassword, loading, error, mustChangePassword } = useAuth();
 
-  // Change password form
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
@@ -28,14 +27,11 @@ export default function LoginScreen() {
     if (!email || !password) return;
     try {
       await login(email, password);
-    } catch {
-      // Error handled by hook
-    }
+    } catch {}
   };
 
   const handleChangePassword = async () => {
     setChangeError(null);
-
     if (!newPassword || !confirmPassword) {
       setChangeError('Veuillez remplir tous les champs');
       return;
@@ -52,49 +48,42 @@ export default function LoginScreen() {
       setChangeError('Le nouveau mot de passe doit être différent de l\'ancien');
       return;
     }
-
     setChangingPassword(true);
     try {
       await changePassword(password, newPassword);
     } catch (err: any) {
-      setChangeError(err.message || 'Erreur lors du changement de mot de passe');
+      setChangeError(err.message || 'Erreur lors du changement');
     } finally {
       setChangingPassword(false);
     }
   };
 
-  // Password change screen
+  // Change password screen
   if (mustChangePassword) {
     return (
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.content}>
           <View style={styles.logoContainer}>
-            <View style={[styles.logoCircle, { backgroundColor: '#F59E0B' }]}>
-              <Text style={styles.logoText}>🔑</Text>
+            <View style={[styles.logoCircle, { backgroundColor: colors.warningAmber }]}>
+              <Text style={styles.logoIcon}>*</Text>
             </View>
             <Text style={styles.title}>Changement requis</Text>
-            <Text style={styles.subtitle}>
-              Vous devez changer votre mot de passe temporaire
-            </Text>
+            <Text style={styles.subtitle}>Vous devez changer votre mot de passe temporaire</Text>
           </View>
 
           <View style={styles.form}>
             <TextInput
               style={styles.input}
               placeholder="Nouveau mot de passe"
-              placeholderTextColor="#888"
+              placeholderTextColor={colors.textMuted}
               value={newPassword}
               onChangeText={setNewPassword}
               secureTextEntry
             />
-
             <TextInput
               style={styles.input}
               placeholder="Confirmer le mot de passe"
-              placeholderTextColor="#888"
+              placeholderTextColor={colors.textMuted}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
@@ -107,12 +96,12 @@ export default function LoginScreen() {
             )}
 
             <TouchableOpacity
-              style={[styles.button, { backgroundColor: '#F59E0B' }, (!newPassword || !confirmPassword) && styles.buttonDisabled]}
+              style={[styles.button, { backgroundColor: colors.warningAmber }, (!newPassword || !confirmPassword) && styles.buttonDisabled]}
               onPress={handleChangePassword}
               disabled={changingPassword || !newPassword || !confirmPassword}
             >
               {changingPassword ? (
-                <ActivityIndicator color="#fff" size="small" />
+                <ActivityIndicator color={colors.white} size="small" />
               ) : (
                 <Text style={styles.buttonText}>CHANGER LE MOT DE PASSE</Text>
               )}
@@ -125,41 +114,42 @@ export default function LoginScreen() {
 
   // Login screen
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.content}>
-        {/* Logo */}
         <View style={styles.logoContainer}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoText}>⚠️</Text>
+          <View style={styles.logoBadge}>
+            <Text style={styles.logoBadgeText}>OG</Text>
           </View>
           <Text style={styles.title}>OhmGuard</Text>
-          <Text style={styles.subtitle}>Alertes de Chute</Text>
+          <Text style={styles.subtitle}>Surveillance & Détection de Chute</Text>
         </View>
 
-        {/* Formulaire */}
         <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#888"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>EMAIL</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="nom@etablissement.fr"
+              placeholderTextColor={colors.textMuted}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Mot de passe"
-            placeholderTextColor="#888"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>MOT DE PASSE</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Votre mot de passe"
+              placeholderTextColor={colors.textMuted}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+          </View>
 
           {error && (
             <View style={styles.errorContainer}>
@@ -173,17 +163,14 @@ export default function LoginScreen() {
             disabled={loading || !email || !password}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={colors.white} size="small" />
             ) : (
               <Text style={styles.buttonText}>SE CONNECTER</Text>
             )}
           </TouchableOpacity>
         </View>
 
-        {/* Footer */}
-        <Text style={styles.footer}>
-          Application réservée au personnel autorisé
-        </Text>
+        <Text style={styles.footer}>Application réservée au personnel autorisé</Text>
       </View>
     </KeyboardAvoidingView>
   );
@@ -192,80 +179,114 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111',
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
     justifyContent: 'center',
-    padding: 24,
+    padding: spacing.lg,
   },
   logoContainer: {
     alignItems: 'center',
     marginBottom: 48,
   },
   logoCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#DC2626',
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: colors.warningAmber,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
-  logoText: {
-    fontSize: 48,
+  logoIcon: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: colors.white,
+  },
+  logoBadge: {
+    width: 88,
+    height: 88,
+    borderRadius: radius.lg,
+    backgroundColor: colors.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  logoBadgeText: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: colors.white,
+    letterSpacing: 2,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 34,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#888',
-    marginTop: 4,
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
     textAlign: 'center',
+    letterSpacing: 0.5,
   },
   form: {
-    gap: 16,
+    gap: spacing.md,
+  },
+  inputContainer: {
+    gap: spacing.xs,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textMuted,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
   input: {
-    backgroundColor: '#222',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 18,
-    color: '#fff',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border,
   },
   button: {
-    backgroundColor: '#DC2626',
-    borderRadius: 12,
+    backgroundColor: colors.secondary,
+    borderRadius: radius.md,
     padding: 18,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
   buttonDisabled: {
-    backgroundColor: '#555',
+    opacity: 0.4,
   },
   buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   errorContainer: {
-    backgroundColor: '#7F1D1D',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: colors.alertRedBg,
+    padding: spacing.md,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.alertRed,
   },
   errorText: {
     color: '#FCA5A5',
     textAlign: 'center',
+    fontSize: 14,
   },
   footer: {
-    color: '#666',
+    color: colors.textMuted,
     textAlign: 'center',
     marginTop: 48,
     fontSize: 12,
+    letterSpacing: 0.5,
   },
 });

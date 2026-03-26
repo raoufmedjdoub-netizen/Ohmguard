@@ -1,5 +1,5 @@
 // Écran Liste des Alertes
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,27 +17,20 @@ import { useWebSocket } from '../src/hooks/useWebSocket';
 import { useAuth } from '../src/hooks/useAuth';
 import { useNotificationSettings } from '../src/hooks/useNotificationSettings';
 import { sendLocalNotification } from '../src/services/notifications';
+import { colors, spacing, radius } from '../src/theme';
 import type { Alert } from '../src/types';
 
 export default function AlertsScreen() {
   const { user, logout } = useAuth();
   const {
-    activeAlerts,
-    acknowledgedAlerts,
-    loading,
-    refreshing,
-    error,
-    refresh,
-    addAlert
+    activeAlerts, acknowledgedAlerts, loading, refreshing, error, refresh, addAlert
   } = useAlerts();
   const { enabled: notificationsEnabled, toggling, toggle: toggleNotifications } = useNotificationSettings();
 
-  // Callback pour nouvelles alertes WebSocket
   const handleNewAlert = useCallback((alert: Alert) => {
     addAlert(alert);
-    // Notification locale
     sendLocalNotification(
-      '🚨 CHUTE DÉTECTÉE',
+      'CHUTE DETECTEE',
       `${alert.radar_name || 'Radar'} - ${alert.location_path || 'Localisation inconnue'}`,
       { alertId: alert.id }
     );
@@ -50,54 +43,65 @@ export default function AlertsScreen() {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMin = Math.floor(diffMs / 60000);
-    
-    if (diffMin < 1) return "À l'instant";
+    if (diffMin < 1) return "A l'instant";
     if (diffMin < 60) return `Il y a ${diffMin} min`;
     if (diffMin < 1440) return `Il y a ${Math.floor(diffMin / 60)}h`;
     return date.toLocaleDateString('fr-FR');
   };
 
-  const renderAlert = ({ item }: { item: Alert }) => (
-    <TouchableOpacity
-      style={[
-        styles.alertCard,
-        item.status === 'NEW' ? styles.alertNew : styles.alertAck
-      ]}
-      onPress={() => router.push(`/alert/${item.id}`)}
-      activeOpacity={0.8}
-    >
-      <View style={styles.alertHeader}>
-        <View style={[
-          styles.statusBadge,
-          item.status === 'NEW' ? styles.badgeNew : styles.badgeAck
-        ]}>
-          <Text style={styles.statusText}>
-            {item.status === 'NEW' ? '🚨 NOUVELLE' : '✓ ACQUITTÉE'}
+  const handleLogout = () => {
+    RNAlert.alert('Deconnexion', 'Voulez-vous vous deconnecter ?', [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Deconnexion', style: 'destructive', onPress: logout }
+    ]);
+  };
+
+  const renderAlert = ({ item }: { item: Alert }) => {
+    const isNew = item.status === 'NEW';
+    return (
+      <TouchableOpacity
+        style={[styles.alertCard, isNew ? styles.alertNew : styles.alertAck]}
+        onPress={() => router.push(`/alert/${item.id}`)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.alertHeader}>
+          <View style={[styles.statusBadge, isNew ? styles.badgeNew : styles.badgeAck]}>
+            <View style={[styles.statusDotSmall, { backgroundColor: isNew ? colors.white : colors.success }]} />
+            <Text style={[styles.statusText, !isNew && { color: colors.success }]}>
+              {isNew ? 'NOUVELLE' : 'ACQUITTEE'}
+            </Text>
+          </View>
+          <Text style={styles.alertTime}>{formatTime(item.timestamp)}</Text>
+        </View>
+
+        <Text style={[styles.alertType, !isNew && { color: colors.textSecondary }]}>
+          CHUTE DETECTEE
+        </Text>
+
+        <View style={styles.locationRow}>
+          <View style={styles.locationDot} />
+          <Text style={styles.alertLocation} numberOfLines={1}>
+            {item.location_path || item.radar_name || 'Localisation inconnue'}
           </Text>
         </View>
-        <Text style={styles.alertTime}>{formatTime(item.timestamp)}</Text>
-      </View>
 
-      <Text style={styles.alertType}>CHUTE DÉTECTÉE</Text>
-      
-      <Text style={styles.alertLocation}>
-        📍 {item.location_path || item.radar_name || 'Localisation inconnue'}
-      </Text>
-
-      {item.status === 'NEW' && (
-        <View style={styles.alertAction}>
-          <Text style={styles.alertActionText}>Appuyez pour acquitter →</Text>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
+        {isNew && (
+          <View style={styles.alertAction}>
+            <Text style={styles.alertActionText}>Appuyez pour voir les details</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>✓</Text>
+      <View style={styles.emptyCircle}>
+        <Text style={styles.emptyCheck}>OK</Text>
+      </View>
       <Text style={styles.emptyTitle}>Aucune alerte</Text>
       <Text style={styles.emptySubtitle}>
-        Vous serez notifié en cas de détection de chute
+        Vous serez notifie en cas de detection de chute
       </Text>
     </View>
   );
@@ -105,7 +109,7 @@ export default function AlertsScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#DC2626" />
+        <ActivityIndicator size="large" color={colors.secondary} />
         <Text style={styles.loadingText}>Chargement des alertes...</Text>
       </View>
     );
@@ -113,40 +117,34 @@ export default function AlertsScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header avec statut connexion */}
+      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={[styles.statusDot, connected ? styles.dotConnected : styles.dotDisconnected]} />
-          <Text style={styles.headerStatus}>
-            {connected ? 'Connecté' : 'Hors ligne'}
-          </Text>
+          <View style={styles.headerBrand}>
+            <Text style={styles.headerBrandText}>OG</Text>
+          </View>
+          <View>
+            <Text style={styles.headerTitle}>OhmGuard</Text>
+            <View style={styles.connectionRow}>
+              <View style={[styles.statusDot, connected ? styles.dotConnected : styles.dotDisconnected]} />
+              <Text style={styles.headerStatus}>
+                {connected ? 'Connecte' : 'Hors ligne'}
+              </Text>
+            </View>
+          </View>
         </View>
         <View style={styles.headerRight}>
-          {/* Toggle notifications */}
           <View style={styles.notifToggle}>
-            <Text style={styles.notifToggleLabel}>
-              {notificationsEnabled ? '🔔' : '🔕'}
-            </Text>
             <Switch
               value={notificationsEnabled}
               onValueChange={toggleNotifications}
               disabled={toggling}
-              trackColor={{ false: '#444', true: '#DC2626' }}
-              thumbColor={notificationsEnabled ? '#fff' : '#888'}
+              trackColor={{ false: colors.surfaceLight, true: colors.secondary }}
+              thumbColor={colors.white}
             />
           </View>
-          <TouchableOpacity
-            onPress={() => RNAlert.alert(
-              'Déconnexion',
-              'Voulez-vous vous déconnecter ?',
-              [
-                { text: 'Annuler', style: 'cancel' },
-                { text: 'Déconnexion', style: 'destructive', onPress: logout }
-              ]
-            )}
-            style={styles.logoutBtn}
-          >
-            <Text style={styles.logoutText}>Déconnexion</Text>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+            <Text style={styles.logoutText}>Sortir</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -154,20 +152,21 @@ export default function AlertsScreen() {
       {/* Error banner */}
       {error && (
         <TouchableOpacity style={styles.errorBanner} onPress={refresh}>
-          <Text style={styles.errorBannerText}>⚠ {error} — Appuyez pour réessayer</Text>
+          <Text style={styles.errorBannerText}>Erreur : {error} — Appuyez pour reessayer</Text>
         </TouchableOpacity>
       )}
 
-      {/* Compteur alertes actives */}
+      {/* Active counter */}
       {activeAlerts.length > 0 && (
         <View style={styles.activeCounter}>
+          <View style={styles.activeCounterDot} />
           <Text style={styles.activeCounterText}>
-            🚨 {activeAlerts.length} alerte{activeAlerts.length > 1 ? 's' : ''} en attente
+            {activeAlerts.length} alerte{activeAlerts.length > 1 ? 's' : ''} en attente
           </Text>
         </View>
       )}
 
-      {/* Liste */}
+      {/* List */}
       <FlatList
         data={[...activeAlerts, ...acknowledgedAlerts]}
         renderItem={renderAlert}
@@ -177,8 +176,8 @@ export default function AlertsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={refresh}
-            tintColor="#DC2626"
-            colors={['#DC2626']}
+            tintColor={colors.secondary}
+            colors={[colors.secondary]}
           />
         }
         ListEmptyComponent={renderEmpty}
@@ -191,71 +190,107 @@ export default function AlertsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111',
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#111',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
-    color: '#888',
-    marginTop: 16,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+    fontSize: 14,
   },
+  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#1a1a1a',
+    padding: spacing.md,
+    paddingTop: spacing.lg,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  headerBrand: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    backgroundColor: colors.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  dotConnected: {
-    backgroundColor: '#22C55E',
+  headerBrandText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
-  dotDisconnected: {
-    backgroundColor: '#EF4444',
+  headerTitle: {
+    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  connectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   headerStatus: {
-    color: '#888',
-    fontSize: 14,
+    color: colors.textMuted,
+    fontSize: 12,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   notifToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-  },
-  notifToggleLabel: {
-    fontSize: 16,
   },
   logoutBtn: {
-    padding: 8,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.surfaceLight,
+    borderRadius: radius.sm,
   },
   logoutText: {
-    color: '#888',
-    fontSize: 14,
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '500',
   },
+  // Status dots
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statusDotSmall: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  dotConnected: {
+    backgroundColor: colors.success,
+  },
+  dotDisconnected: {
+    backgroundColor: colors.alertRed,
+  },
+  // Banners
   errorBanner: {
-    backgroundColor: '#78350F',
-    padding: 12,
+    backgroundColor: colors.warningAmberBg,
+    padding: spacing.md,
     alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.warningAmber,
   },
   errorBannerText: {
     color: '#FDE68A',
@@ -263,100 +298,142 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   activeCounter: {
-    backgroundColor: '#7F1D1D',
-    padding: 12,
+    backgroundColor: colors.alertRedBg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  activeCounterDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary,
   },
   activeCounterText: {
     color: '#FCA5A5',
-    fontWeight: 'bold',
-    fontSize: 16,
+    fontWeight: '700',
+    fontSize: 14,
+    letterSpacing: 0.5,
   },
+  // List
   list: {
-    padding: 16,
-    paddingBottom: 32,
+    padding: spacing.md,
+    paddingBottom: spacing.xl,
   },
   separator: {
-    height: 12,
+    height: spacing.sm,
   },
+  // Alert cards
   alertCard: {
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 2,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
   },
   alertNew: {
-    backgroundColor: '#7F1D1D',
-    borderColor: '#DC2626',
+    backgroundColor: '#1C0A0A',
+    borderColor: colors.primary,
   },
   alertAck: {
-    backgroundColor: '#1a1a1a',
-    borderColor: '#333',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
   },
   alertHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.sm,
   },
   statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: radius.full,
   },
   badgeNew: {
-    backgroundColor: '#DC2626',
+    backgroundColor: colors.primary,
   },
   badgeAck: {
-    backgroundColor: '#333',
+    backgroundColor: colors.surfaceLight,
   },
   statusText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
+    color: colors.white,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   alertTime: {
-    color: '#888',
+    color: colors.textMuted,
     fontSize: 12,
   },
   alertType: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  locationDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.secondary,
   },
   alertLocation: {
-    color: '#ccc',
+    color: colors.textSecondary,
     fontSize: 14,
+    flex: 1,
   },
   alertAction: {
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: '#DC2626',
+    borderTopColor: '#3D1515',
   },
   alertActionText: {
-    color: '#FCA5A5',
+    color: colors.primary,
     textAlign: 'center',
-    fontWeight: '500',
+    fontWeight: '600',
+    fontSize: 13,
   },
+  // Empty state
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 80,
   },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
+  emptyCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.surfaceLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  emptyCheck: {
+    color: colors.success,
+    fontSize: 24,
+    fontWeight: '800',
   },
   emptyTitle: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontWeight: '700',
+    marginBottom: spacing.xs,
   },
   emptySubtitle: {
-    color: '#666',
+    color: colors.textMuted,
     textAlign: 'center',
+    fontSize: 14,
   },
 });

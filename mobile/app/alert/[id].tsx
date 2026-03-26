@@ -1,4 +1,4 @@
-// Écran Détail Alerte avec bouton ACQUITTER
+// Écran Détail Alerte
 import { useState, useEffect } from 'react';
 import {
   View,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import apiClient from '../../src/api/client';
+import { colors, spacing, radius } from '../../src/theme';
 import type { Alert } from '../../src/types';
 
 export default function AlertDetailScreen() {
@@ -19,9 +20,7 @@ export default function AlertDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [acknowledging, setAcknowledging] = useState(false);
 
-  useEffect(() => {
-    loadAlert();
-  }, [id]);
+  useEffect(() => { loadAlert(); }, [id]);
 
   const loadAlert = async () => {
     try {
@@ -37,7 +36,7 @@ export default function AlertDetailScreen() {
   const handleAcknowledge = async () => {
     RNAlert.alert(
       'Confirmer l\'acquittement',
-      'Êtes-vous sûr de vouloir acquitter cette alerte ?',
+      'Confirmez-vous la prise en charge de cette alerte ?',
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -47,8 +46,8 @@ export default function AlertDetailScreen() {
             setAcknowledging(true);
             try {
               await apiClient.acknowledgeAlert(id!);
-              setAlert(prev => prev ? { ...prev, status: 'ACK' } : null);
-              RNAlert.alert('Succès', 'Alerte acquittée', [
+              setAlert(prev => prev ? { ...prev, status: 'ACKNOWLEDGED' } : null);
+              RNAlert.alert('Alerte acquittee', 'La prise en charge a ete enregistree.', [
                 { text: 'OK', onPress: () => router.back() }
               ]);
             } catch (err: any) {
@@ -78,7 +77,7 @@ export default function AlertDetailScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#DC2626" />
+        <ActivityIndicator size="large" color={colors.secondary} />
       </View>
     );
   }
@@ -87,6 +86,9 @@ export default function AlertDetailScreen() {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>Alerte introuvable</Text>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <Text style={styles.backBtnText}>Retour</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -96,63 +98,67 @@ export default function AlertDetailScreen() {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        {/* Statut */}
+
+        {/* Status banner */}
         <View style={[styles.statusBanner, isNew ? styles.bannerNew : styles.bannerAck]}>
-          <Text style={styles.statusEmoji}>{isNew ? '🚨' : '✓'}</Text>
+          <View style={[styles.statusIndicator, { backgroundColor: isNew ? colors.primary : colors.success }]} />
           <Text style={styles.statusLabel}>
-            {isNew ? 'ALERTE EN ATTENTE' : 'ALERTE ACQUITTÉE'}
+            {isNew ? 'ALERTE EN ATTENTE' : 'ALERTE ACQUITTEE'}
           </Text>
         </View>
 
         {/* Type */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Type d'événement</Text>
-          <Text style={styles.alertType}>CHUTE DÉTECTÉE</Text>
+          <Text style={styles.sectionLabel}>TYPE D'EVENEMENT</Text>
+          <Text style={[styles.alertType, { color: isNew ? colors.primary : colors.textSecondary }]}>
+            CHUTE DETECTEE
+          </Text>
         </View>
 
         {/* Date/Heure */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Date et heure</Text>
+          <Text style={styles.sectionLabel}>DATE ET HEURE</Text>
           <Text style={styles.sectionValue}>{formatDateTime(alert.timestamp)}</Text>
         </View>
 
         {/* Localisation */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Localisation</Text>
+          <Text style={styles.sectionLabel}>LOCALISATION</Text>
           <Text style={styles.sectionValue}>
-            {alert.location_path || 'Non spécifiée'}
+            {alert.location_path || 'Non specifiee'}
           </Text>
           {alert.radar_name && (
-            <Text style={styles.radarName}>Radar : {alert.radar_name}</Text>
+            <View style={styles.radarRow}>
+              <View style={styles.radarDot} />
+              <Text style={styles.radarName}>{alert.radar_name}</Text>
+            </View>
           )}
         </View>
 
-        {/* Détails localisation */}
+        {/* Location details */}
         {alert.location && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Détails</Text>
+            <Text style={styles.sectionLabel}>DETAILS</Text>
             {alert.location.client_name && (
-              <Text style={styles.detailItem}>🏢 {alert.location.client_name}</Text>
+              <DetailRow label="Organisation" value={alert.location.client_name} />
             )}
             {alert.location.building_name && (
-              <Text style={styles.detailItem}>🏠 {alert.location.building_name}</Text>
+              <DetailRow label="Batiment" value={alert.location.building_name} />
             )}
             {alert.location.floor_name && (
-              <Text style={styles.detailItem}>📍 {alert.location.floor_name}</Text>
+              <DetailRow label="Etage" value={alert.location.floor_name} />
             )}
             {alert.location.room_name && (
-              <Text style={styles.detailItem}>🚪 {alert.location.room_name}</Text>
+              <DetailRow label="Chambre" value={alert.location.room_name} />
             )}
           </View>
         )}
 
-        {/* Info acquittement */}
+        {/* Acknowledgment info */}
         {alert.acknowledged_at && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Acquittement</Text>
-            <Text style={styles.sectionValue}>
-              {formatDateTime(alert.acknowledged_at)}
-            </Text>
+          <View style={[styles.section, styles.sectionSuccess]}>
+            <Text style={styles.sectionLabel}>ACQUITTEMENT</Text>
+            <Text style={styles.sectionValue}>{formatDateTime(alert.acknowledged_at)}</Text>
             {alert.acknowledged_by && (
               <Text style={styles.acknowledgedBy}>Par : {alert.acknowledged_by}</Text>
             )}
@@ -160,7 +166,7 @@ export default function AlertDetailScreen() {
         )}
       </ScrollView>
 
-      {/* Bouton ACQUITTER (uniquement si NEW) */}
+      {/* Acknowledge button */}
       {isNew && (
         <View style={styles.footer}>
           <TouchableOpacity
@@ -170,12 +176,9 @@ export default function AlertDetailScreen() {
             activeOpacity={0.8}
           >
             {acknowledging ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={colors.white} size="small" />
             ) : (
-              <>
-                <Text style={styles.acknowledgeIcon}>✓</Text>
-                <Text style={styles.acknowledgeText}>ACQUITTER L'ALERTE</Text>
-              </>
+              <Text style={styles.acknowledgeText}>ACQUITTER L'ALERTE</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -184,120 +187,179 @@ export default function AlertDetailScreen() {
   );
 }
 
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={detailStyles.row}>
+      <Text style={detailStyles.label}>{label}</Text>
+      <Text style={detailStyles.value}>{value}</Text>
+    </View>
+  );
+}
+
+const detailStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  label: {
+    color: colors.textMuted,
+    fontSize: 13,
+  },
+  value: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111',
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#111',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   errorContainer: {
     flex: 1,
-    backgroundColor: '#111',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: spacing.md,
   },
   errorText: {
-    color: '#888',
+    color: colors.textSecondary,
     fontSize: 16,
+  },
+  backBtn: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surfaceLight,
+    borderRadius: radius.sm,
+  },
+  backBtnText: {
+    color: colors.textPrimary,
+    fontWeight: '600',
   },
   scrollView: {
     flex: 1,
   },
   content: {
-    padding: 16,
+    padding: spacing.md,
     paddingBottom: 120,
   },
+  // Status banner
   statusBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
-    borderRadius: 16,
-    marginBottom: 24,
-    gap: 12,
+    borderRadius: radius.lg,
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
   },
   bannerNew: {
-    backgroundColor: '#7F1D1D',
+    backgroundColor: '#1C0A0A',
+    borderWidth: 1,
+    borderColor: colors.primary,
   },
   bannerAck: {
-    backgroundColor: '#14532D',
+    backgroundColor: '#0A1C0A',
+    borderWidth: 1,
+    borderColor: colors.success,
   },
-  statusEmoji: {
-    fontSize: 32,
+  statusIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   statusLabel: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
+  // Sections
   section: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  sectionTitle: {
-    color: '#888',
-    fontSize: 12,
+  sectionSuccess: {
+    borderColor: colors.success,
+    backgroundColor: '#0A1C0A',
+  },
+  sectionLabel: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   sectionValue: {
-    color: '#fff',
-    fontSize: 16,
+    color: colors.textPrimary,
+    fontSize: 15,
+    lineHeight: 22,
   },
   alertType: {
-    color: '#DC2626',
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '800',
+  },
+  radarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: spacing.xs,
+  },
+  radarDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.secondary,
   },
   radarName: {
-    color: '#666',
-    fontSize: 14,
-    marginTop: 4,
-  },
-  detailItem: {
-    color: '#ccc',
-    fontSize: 14,
-    marginBottom: 4,
+    color: colors.textSecondary,
+    fontSize: 13,
   },
   acknowledgedBy: {
-    color: '#666',
-    fontSize: 14,
-    marginTop: 4,
+    color: colors.textSecondary,
+    fontSize: 13,
+    marginTop: spacing.xs,
   },
+  // Footer
   footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 16,
-    backgroundColor: '#111',
+    padding: spacing.md,
+    backgroundColor: colors.background,
     borderTopWidth: 1,
-    borderTopColor: '#333',
+    borderTopColor: colors.border,
   },
   acknowledgeButton: {
-    backgroundColor: '#DC2626',
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+    padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-  },
-  acknowledgeIcon: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
   },
   acknowledgeText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
+    color: colors.white,
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
 });
