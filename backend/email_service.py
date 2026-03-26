@@ -124,7 +124,7 @@ class EmailService:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    async def send_welcome_email(self, to_email: str, full_name: str, temp_password: str, org_name: str = ""):
+    async def send_welcome_email(self, to_email: str, full_name: str, temp_password: str, org_name: str = "", building_names: str = ""):
         """Send welcome email with temporary password to new user."""
         config = await self.get_smtp_config()
         if not config:
@@ -135,15 +135,20 @@ class EmailService:
         logger.info(f"[Email] SMTP config found: host={config.get('host')}, port={config.get('port')}, from={config.get('from_email')}")
 
         subject = f"[OhmGuard] Bienvenue — Votre compte a été créé"
-        html_body = self._build_welcome_email_html(full_name, to_email, temp_password, org_name)
+        html_body = self._build_welcome_email_html(full_name, to_email, temp_password, org_name, building_names)
 
         result = self._send_email_sync(config=config, to_email=to_email, subject=subject, html_body=html_body)
         if not result.get("success"):
             raise Exception(result.get("error", "Erreur inconnue lors de l'envoi"))
         logger.info(f"[Email] Welcome email sent to {to_email}")
 
-    def _build_welcome_email_html(self, full_name: str, email: str, temp_password: str, org_name: str) -> str:
-        org_line = f" pour <strong>{org_name}</strong>" if org_name else ""
+    def _build_welcome_email_html(self, full_name: str, email: str, temp_password: str, org_name: str, building_names: str = "") -> str:
+        context_parts = []
+        if org_name:
+            context_parts.append(f"l'organisation <strong>{org_name}</strong>")
+        if building_names:
+            context_parts.append(f"le bâtiment <strong>{building_names}</strong>")
+        context_line = f" pour {' et '.join(context_parts)}" if context_parts else ""
         return f"""<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -186,7 +191,7 @@ td {{border-collapse:collapse;border-spacing:0;}}
 <td style="background-color:#ffffff;padding:28px 28px 24px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;font-family:Arial,Helvetica,sans-serif;">
 
 <p style="color:#1f2937;font-size:15px;line-height:1.5;margin:0 0 16px;">Bonjour <strong>{full_name}</strong>,</p>
-<p style="color:#4b5563;font-size:14px;line-height:1.6;margin:0 0 20px;">Un compte OhmGuard a été créé pour vous{org_line}. Voici vos identifiants de connexion :</p>
+<p style="color:#4b5563;font-size:14px;line-height:1.6;margin:0 0 20px;">Un compte a été créé pour vous sur la plateforme OhmGuard{context_line}. Voici vos identifiants de connexion :</p>
 
 <!-- Credentials box -->
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e5e7eb;background-color:#f9fafb;">

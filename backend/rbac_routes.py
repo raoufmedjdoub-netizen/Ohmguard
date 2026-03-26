@@ -226,15 +226,20 @@ def create_rbac_routes(get_current_user, check_permission, db):
                 from email_service import get_email_service
                 email_svc = get_email_service()
                 if email_svc:
-                    # Get client name for the email
+                    # Get client name and buildings for the email
                     client_doc = await db.clients.find_one({"id": client_id}, {"_id": 0, "name": 1})
                     org_name = client_doc.get("name", "") if client_doc else ""
+                    # Get building names for this client
+                    buildings_cursor = db.buildings.find({"client_id": client_id}, {"_id": 0, "name": 1})
+                    buildings_list = await buildings_cursor.to_list(50)
+                    building_names = ", ".join(b["name"] for b in buildings_list if b.get("name")) if buildings_list else ""
                     logger.info(f"[User Creation] Sending welcome email to {request.email}...")
                     await email_svc.send_welcome_email(
                         to_email=request.email,
                         full_name=request.full_name,
                         temp_password=temp_password,
-                        org_name=org_name
+                        org_name=org_name,
+                        building_names=building_names
                     )
                     email_sent = True
                     logger.info(f"[User Creation] Welcome email sent successfully to {request.email}")
@@ -489,13 +494,17 @@ def create_rbac_routes(get_current_user, check_permission, db):
 
         client_doc = await db.clients.find_one({"id": client_user["client_id"]}, {"_id": 0, "name": 1})
         org_name = client_doc.get("name", "") if client_doc else ""
+        buildings_cursor = db.buildings.find({"client_id": client_user["client_id"]}, {"_id": 0, "name": 1})
+        buildings_list = await buildings_cursor.to_list(50)
+        building_names = ", ".join(b["name"] for b in buildings_list if b.get("name")) if buildings_list else ""
 
         try:
             await email_svc.send_welcome_email(
                 to_email=user["email"],
                 full_name=user.get("full_name", ""),
                 temp_password=temp_password,
-                org_name=org_name
+                org_name=org_name,
+                building_names=building_names
             )
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Erreur d'envoi : {str(e)}")
