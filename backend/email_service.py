@@ -218,13 +218,13 @@ td {{border-collapse:collapse;border-spacing:0;}}
 </table>
 
 <!-- Login button -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:28px;margin-bottom:28px;">
 <tr>
-<td align="center">
+<td align="center" style="padding:8px 0;">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0">
 <tr>
-<td align="center" style="background-color:#1E3A5F;padding:12px 32px;">
-<a href="https://app.ohmguard.fr" target="_blank" style="color:#ffffff;font-size:14px;font-weight:600;font-family:Arial,Helvetica,sans-serif;text-decoration:none;display:inline-block;">Se connecter à OhmGuard</a>
+<td align="center" style="background-color:#0EA5E9;padding:14px 40px;">
+<a href="https://app.ohmguard.fr" target="_blank" style="color:#ffffff;font-size:15px;font-weight:600;font-family:Arial,Helvetica,sans-serif;text-decoration:none;display:inline-block;">Se connecter à OhmGuard</a>
 </td>
 </tr>
 </table>
