@@ -144,55 +144,128 @@ class EmailService:
 
     def _build_welcome_email_html(self, full_name: str, email: str, temp_password: str, org_name: str) -> str:
         org_line = f" pour <strong>{org_name}</strong>" if org_name else ""
-        return f"""
-        <div style="font-family: -apple-system, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px;">
-            <div style="background: #1E3A5F; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-                <h2 style="margin: 0;">OhmGuard</h2>
-                <p style="margin: 8px 0 0; opacity: 0.8; font-size: 14px;">Bienvenue sur la plateforme</p>
-            </div>
-            <div style="background: #f8f9fa; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-                <p style="color: #1f2937; margin-top: 0;">Bonjour <strong>{full_name}</strong>,</p>
-                <p style="color: #4b5563;">Un compte OhmGuard a été créé pour vous{org_line}. Voici vos identifiants de connexion :</p>
-                <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <td style="padding: 6px 0; color: #6b7280; font-size: 14px;">Email</td>
-                            <td style="padding: 6px 0; font-weight: 600; font-size: 14px;">{email}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 6px 0; color: #6b7280; font-size: 14px;">Mot de passe temporaire</td>
-                            <td style="padding: 6px 0; font-weight: 600; font-size: 14px; font-family: monospace; letter-spacing: 1px;">{temp_password}</td>
-                        </tr>
-                    </table>
-                </div>
-                <div style="background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; padding: 12px; margin: 16px 0;">
-                    <p style="color: #92400E; margin: 0; font-size: 13px;">
-                        <strong>Important :</strong> Vous devrez changer ce mot de passe lors de votre première connexion.
-                    </p>
-                </div>
-                <p style="color: #9ca3af; font-size: 12px; margin-bottom: 0;">
-                    Si vous n'êtes pas à l'origine de cette demande, veuillez ignorer cet email.
-                </p>
-            </div>
-            <p style="color: #9ca3af; font-size: 11px; text-align: center; margin-top: 12px;">
-                OhmGuard — Système de surveillance et détection de chute
-            </p>
-        </div>
-        """
+        return f"""<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OhmGuard - Bienvenue</title>
+<!--[if mso]>
+<style type="text/css">
+table {{border-collapse:collapse;border-spacing:0;margin:0;}}
+td {{border-collapse:collapse;border-spacing:0;}}
+</style>
+<noscript>
+<xml>
+<o:OfficeDocumentSettings>
+<o:PixelsPerInch>96</o:PixelsPerInch>
+</o:OfficeDocumentSettings>
+</xml>
+</noscript>
+<![endif]-->
+</head>
+<body style="margin:0;padding:0;background-color:#f0f2f5;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f0f2f5;">
+<tr><td align="center" style="padding:32px 16px;">
+
+<!-- Container -->
+<table role="presentation" width="520" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;width:100%;">
+
+<!-- Header -->
+<tr>
+<td align="center" style="background-color:#1E3A5F;padding:28px 24px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td align="center" style="font-size:26px;font-weight:700;color:#ffffff;letter-spacing:1px;">OhmGuard</td></tr>
+<tr><td align="center" style="font-size:13px;color:#b0c4de;padding-top:6px;">Bienvenue sur la plateforme</td></tr>
+</table>
+</td>
+</tr>
+
+<!-- Body -->
+<tr>
+<td style="background-color:#ffffff;padding:28px 28px 24px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;font-family:Arial,Helvetica,sans-serif;">
+
+<p style="color:#1f2937;font-size:15px;line-height:1.5;margin:0 0 16px;">Bonjour <strong>{full_name}</strong>,</p>
+<p style="color:#4b5563;font-size:14px;line-height:1.6;margin:0 0 20px;">Un compte OhmGuard a été créé pour vous{org_line}. Voici vos identifiants de connexion :</p>
+
+<!-- Credentials box -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e5e7eb;background-color:#f9fafb;">
+<tr>
+<td style="padding:14px 18px;border-bottom:1px solid #e5e7eb;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td style="color:#6b7280;font-size:13px;font-family:Arial,Helvetica,sans-serif;width:40%;">Email</td>
+<td style="color:#1f2937;font-size:14px;font-weight:600;font-family:Arial,Helvetica,sans-serif;">{email}</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td style="padding:14px 18px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td style="color:#6b7280;font-size:13px;font-family:Arial,Helvetica,sans-serif;width:40%;">Mot de passe</td>
+<td style="color:#1f2937;font-size:15px;font-weight:700;font-family:Consolas,'Courier New',monospace;letter-spacing:1.5px;">{temp_password}</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+
+<!-- Warning box -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;">
+<tr>
+<td style="background-color:#FEF3C7;border:1px solid #F59E0B;padding:14px 18px;">
+<p style="color:#92400E;font-size:13px;font-family:Arial,Helvetica,sans-serif;margin:0;line-height:1.5;">
+<strong>&#9888; Important :</strong> Vous devrez changer ce mot de passe lors de votre première connexion.
+</p>
+</td>
+</tr>
+</table>
+
+<p style="color:#9ca3af;font-size:12px;font-family:Arial,Helvetica,sans-serif;margin:20px 0 0;line-height:1.5;">
+Si vous n'êtes pas à l'origine de cette demande, veuillez ignorer cet email.
+</p>
+
+</td>
+</tr>
+
+<!-- Footer -->
+<tr>
+<td style="background-color:#f9fafb;padding:16px 28px;border:1px solid #e5e7eb;border-top:none;">
+<p style="color:#9ca3af;font-size:11px;font-family:Arial,Helvetica,sans-serif;margin:0;text-align:center;line-height:1.5;">
+OhmGuard &mdash; Système de surveillance et détection de chute
+</p>
+</td>
+</tr>
+
+</table>
+<!-- /Container -->
+
+</td></tr>
+</table>
+</body>
+</html>"""
 
     def _build_test_email_html(self) -> str:
-        return """
-        <div style="font-family: -apple-system, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px;">
-            <div style="background: #1E3A5F; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-                <h2 style="margin: 0;">OhmGuard</h2>
-            </div>
-            <div style="background: #f8f9fa; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-                <h3 style="color: #16a34a; margin-top: 0;">Connexion SMTP réussie</h3>
-                <p style="color: #4b5563;">Votre configuration email fonctionne correctement. Les alertes de chute seront envoyées via ce serveur SMTP.</p>
-                <p style="color: #9ca3af; font-size: 12px;">Ce message est un test automatique envoyé depuis OhmGuard.</p>
-            </div>
-        </div>
-        """
+        return """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /></head>
+<body style="margin:0;padding:0;background-color:#f0f2f5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f0f2f5;">
+<tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" width="520" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;width:100%;">
+<tr><td align="center" style="background-color:#1E3A5F;padding:28px 24px;font-family:Arial,Helvetica,sans-serif;font-size:26px;font-weight:700;color:#ffffff;letter-spacing:1px;">OhmGuard</td></tr>
+<tr><td style="background-color:#ffffff;padding:28px;border:1px solid #e5e7eb;border-top:none;font-family:Arial,Helvetica,sans-serif;">
+<p style="color:#16a34a;font-size:18px;font-weight:700;margin:0 0 12px;">&#10003; Connexion SMTP réussie</p>
+<p style="color:#4b5563;font-size:14px;line-height:1.6;margin:0 0 16px;">Votre configuration email fonctionne correctement. Les alertes de chute seront envoyées via ce serveur SMTP.</p>
+<p style="color:#9ca3af;font-size:12px;margin:0;">Ce message est un test automatique envoyé depuis OhmGuard.</p>
+</td></tr>
+<tr><td style="background-color:#f9fafb;padding:14px 28px;border:1px solid #e5e7eb;border-top:none;">
+<p style="color:#9ca3af;font-size:11px;font-family:Arial,Helvetica,sans-serif;margin:0;text-align:center;">OhmGuard &mdash; Système de surveillance et détection de chute</p>
+</td></tr>
+</table>
+</td></tr></table>
+</body></html>"""
 
     def _build_fall_alert_html(self, sensor_name: str, location: str, timestamp: str, event: Dict) -> str:
         try:
@@ -201,33 +274,51 @@ class EmailService:
         except Exception:
             time_str = timestamp
 
-        return f"""
-        <div style="font-family: -apple-system, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px;">
-            <div style="background: #DC2626; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-                <h2 style="margin: 0;">ALERTE CHUTE</h2>
-            </div>
-            <div style="background: #fef2f2; padding: 24px; border: 1px solid #fecaca; border-top: none; border-radius: 0 0 8px 8px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr>
-                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Capteur</td>
-                        <td style="padding: 8px 0; font-weight: 600; font-size: 14px;">{sensor_name}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Localisation</td>
-                        <td style="padding: 8px 0; font-weight: 600; font-size: 14px;">{location}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Date / Heure</td>
-                        <td style="padding: 8px 0; font-weight: 600; font-size: 14px;">{time_str}</td>
-                    </tr>
-                </table>
-                <hr style="border: none; border-top: 1px solid #fecaca; margin: 16px 0;">
-                <p style="color: #991b1b; font-weight: 600; margin: 0;">Action requise : veuillez vérifier immédiatement.</p>
-            </div>
-            <p style="color: #9ca3af; font-size: 11px; text-align: center; margin-top: 12px;">
-                OhmGuard - Système de détection de chute
-            </p>
-        </div>
+        return f"""<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /></head>
+<body style="margin:0;padding:0;background-color:#f0f2f5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f0f2f5;">
+<tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" width="520" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;width:100%;">
+
+<!-- Red header -->
+<tr><td align="center" style="background-color:#DC2626;padding:24px;font-family:Arial,Helvetica,sans-serif;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="font-size:24px;font-weight:700;color:#ffffff;letter-spacing:1px;">&#9888; ALERTE CHUTE</td></tr>
+</table>
+</td></tr>
+
+<!-- Body -->
+<tr><td style="background-color:#ffffff;padding:24px 28px;border-left:1px solid #fecaca;border-right:1px solid #fecaca;font-family:Arial,Helvetica,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #fecaca;background-color:#fef2f2;">
+<tr>
+<td style="padding:12px 18px;border-bottom:1px solid #fecaca;color:#6b7280;font-size:13px;width:35%;">Capteur</td>
+<td style="padding:12px 18px;border-bottom:1px solid #fecaca;color:#1f2937;font-size:14px;font-weight:600;">{sensor_name}</td>
+</tr>
+<tr>
+<td style="padding:12px 18px;border-bottom:1px solid #fecaca;color:#6b7280;font-size:13px;">Localisation</td>
+<td style="padding:12px 18px;border-bottom:1px solid #fecaca;color:#1f2937;font-size:14px;font-weight:600;">{location}</td>
+</tr>
+<tr>
+<td style="padding:12px 18px;color:#6b7280;font-size:13px;">Date / Heure</td>
+<td style="padding:12px 18px;color:#1f2937;font-size:14px;font-weight:600;">{time_str}</td>
+</tr>
+</table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;">
+<tr><td style="background-color:#FEE2E2;border:1px solid #FECACA;padding:14px 18px;">
+<p style="color:#991b1b;font-size:14px;font-weight:700;margin:0;">Action requise : veuillez vérifier immédiatement.</p>
+</td></tr>
+</table>
+</td></tr>
+
+<!-- Footer -->
+<tr><td style="background-color:#f9fafb;padding:14px 28px;border:1px solid #fecaca;border-top:none;">
+<p style="color:#9ca3af;font-size:11px;font-family:Arial,Helvetica,sans-serif;margin:0;text-align:center;">OhmGuard &mdash; Système de détection de chute</p>
+</td></tr>
+
+</table>
+</td></tr></table>
+</body></html>
         """
 
 
