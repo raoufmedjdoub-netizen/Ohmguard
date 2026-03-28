@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EventActionDialog } from '@/components/EventActionDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn, formatDate, getEventTypeColor, getSeverityColor, getStatusColor } from '@/lib/utils';
 
 function formatDelay(from, to) {
@@ -183,6 +184,7 @@ export function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogAction, setDialogAction] = useState('ACK');
+  const [showPayload, setShowPayload] = useState(false);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -245,21 +247,23 @@ export function EventDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Étape 1 : Prise en charge (si NEW) */}
           {event.status === 'NEW' && (
-            <Button variant="outline" onClick={() => handleAction('ACK')} data-testid="ack-btn">
+            <Button onClick={() => handleAction('ACK')} className="bg-blue-600 hover:bg-blue-700" data-testid="ack-btn">
               <Clock className="h-4 w-4 mr-2" />
-              {t('events.acknowledge')}
+              Prise en charge
             </Button>
           )}
-          {(event.status === 'NEW' || event.status === 'ACK') && (
+          {/* Étape 2 : Résolution (si ACK) */}
+          {event.status === 'ACK' && (
             <>
-              <Button onClick={() => handleAction('RESOLVED')} data-testid="resolve-btn">
+              <Button onClick={() => handleAction('RESOLVED')} className="bg-green-600 hover:bg-green-700" data-testid="resolve-btn">
                 <CheckCircle className="h-4 w-4 mr-2" />
-                {t('events.resolve')}
+                Resoudre
               </Button>
-              <Button variant="ghost" onClick={() => handleAction('FALSE_ALARM')} data-testid="false-alarm-btn">
+              <Button variant="outline" onClick={() => handleAction('FALSE_ALARM')} data-testid="false-alarm-btn">
                 <XCircle className="h-4 w-4 mr-2" />
-                {t('events.mark_false_alarm')}
+                Fausse alarme
               </Button>
               <Button variant="outline" onClick={() => handleAction('ASSIGN')} data-testid="assign-btn">
                 <UserPlus className="h-4 w-4 mr-2" />
@@ -553,20 +557,28 @@ export function EventDetailPage() {
       {/* Comments history */}
       <CommentsSection comments={event.comments} />
 
-      {/* Raw Payload */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Code className="h-5 w-5" />
-            {t('events.raw_payload')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* Payload button */}
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={() => setShowPayload(true)}>
+          <Code className="h-4 w-4 mr-2" />
+          Voir le payload technique
+        </Button>
+      </div>
+
+      {/* Payload dialog */}
+      <Dialog open={showPayload} onOpenChange={setShowPayload}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Code className="h-5 w-5" />
+              Payload technique
+            </DialogTitle>
+          </DialogHeader>
           <pre className="p-4 rounded-lg bg-muted/50 overflow-x-auto text-sm font-mono">
             {JSON.stringify(event.raw_payload || event, null, 2)}
           </pre>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
 
       {/* Action Dialog */}
       <EventActionDialog
