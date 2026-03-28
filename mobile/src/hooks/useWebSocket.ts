@@ -5,13 +5,11 @@ import * as SecureStore from 'expo-secure-store';
 import apiClient from '../api/client';
 import type { Alert } from '../types';
 
-// Track recently processed event IDs to avoid duplicates across listeners
 const recentEventIds = new Set<string>();
 
 function markProcessed(id: string): boolean {
-  if (recentEventIds.has(id)) return false; // Already processed
+  if (recentEventIds.has(id)) return false;
   recentEventIds.add(id);
-  // Clean up after 30s to avoid memory leak
   setTimeout(() => recentEventIds.delete(id), 30000);
   return true;
 }
@@ -19,6 +17,9 @@ function markProcessed(id: string): boolean {
 export function useWebSocket(onNewAlert: (alert: Alert) => void) {
   const socketRef = useRef<Socket | null>(null);
   const [connected, setConnected] = useState(false);
+  // Use ref for callback to avoid reconnecting when callback changes
+  const onNewAlertRef = useRef(onNewAlert);
+  onNewAlertRef.current = onNewAlert;
 
   const connect = useCallback(async () => {
     const token = await SecureStore.getItemAsync('auth_token');
@@ -46,7 +47,6 @@ export function useWebSocket(onNewAlert: (alert: Alert) => void) {
     socketRef.current.on('disconnect', () => setConnected(false));
     socketRef.current.on('connect_error', () => setConnected(false));
 
-    // Single handler for all fall events — deduplicates across event types
     const handleFallEvent = (data: any) => {
       const event = data?.event || data;
       if (!event) return;
@@ -57,14 +57,14 @@ export function useWebSocket(onNewAlert: (alert: Alert) => void) {
       const eventId = event.id || event.event_id;
       if (!eventId || !markProcessed(eventId)) return;
 
-      onNewAlert(normalizeAlert(event));
+      onNewAlertRef.current(normalizeAlert(event));
     };
 
     socketRef.current.on('new_event', handleFallEvent);
     socketRef.current.on('new_radar_event', handleFallEvent);
     socketRef.current.on('radar_event', handleFallEvent);
 
-  }, [onNewAlert]);
+  }, []); // No deps — callback is via ref
 
   const disconnect = useCallback(() => {
     if (socketRef.current) {
@@ -99,18 +99,15 @@ function normalizeAlert(data: any): Alert {
 
 function buildLocationPath(data: any): string {
   const parts: string[] = [];
-  // Use location object first, fallback to flat fields
   const loc = data.location || {};
   const clientName = loc.client_name || data.client_name;
   const buildingName = loc.building_name || data.building_name;
   const floorName = loc.floor_name || data.floor_name;
   const roomName = loc.room_name || data.room_name;
-
   if (clientName) parts.push(clientName);
   if (buildingName) parts.push(buildingName);
   if (floorName) parts.push(floorName);
   if (roomName) parts.push(roomName);
-
   return parts.join(' > ') || 'Localisation inconnue';
 }
 

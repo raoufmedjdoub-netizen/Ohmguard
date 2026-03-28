@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   Alert as RNAlert,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useAlerts, AlertFilter } from '../src/hooks/useAlerts';
 import { useWebSocket } from '../src/hooks/useWebSocket';
 import { useAuth } from '../src/hooks/useAuth';
@@ -22,18 +22,28 @@ import type { Alert } from '../src/types';
 
 const FILTERS: { key: AlertFilter; label: string }[] = [
   { key: 'ALL', label: 'Toutes' },
-  { key: 'NEW', label: 'En attente' },
-  { key: 'ACKNOWLEDGED', label: 'Acquittees' },
+  { key: 'NEW', label: 'En cours' },
+  { key: 'ACKNOWLEDGED', label: 'Traitees' },
 ];
 
 export default function AlertsScreen() {
+  const { ackedId } = useLocalSearchParams<{ ackedId?: string }>();
   const { user, logout } = useAuth();
   const {
     alerts: filteredAlerts, allAlerts, activeAlerts,
     loading, refreshing, error, filter, setFilter,
-    hasMore, loadingMore, refresh, loadMore, addAlert
+    hasMore, loadingMore, refresh, loadMore, addAlert, updateAlert
   } = useAlerts();
   const { enabled: notificationsEnabled, toggling, toggle: toggleNotifications } = useNotificationSettings();
+
+  // Update alert status locally when returning from ack
+  useFocusEffect(
+    useCallback(() => {
+      if (ackedId) {
+        updateAlert(ackedId, { status: 'ACKNOWLEDGED', acknowledged_at: new Date().toISOString() });
+      }
+    }, [ackedId])
+  );
 
   const handleNewAlert = useCallback((alert: Alert) => {
     addAlert(alert);
@@ -68,36 +78,44 @@ export default function AlertsScreen() {
     const isNew = item.status === 'NEW';
     return (
       <TouchableOpacity
-        style={[styles.alertCard, isNew ? styles.alertNew : styles.alertAck]}
+        style={styles.alertCard}
         onPress={() => router.push(`/alert/${item.id}`)}
         activeOpacity={0.7}
       >
         <View style={styles.alertHeader}>
-          <View style={[styles.statusBadge, isNew ? styles.badgeNew : styles.badgeAck]}>
-            <View style={[styles.statusDotSmall, { backgroundColor: isNew ? colors.white : colors.success }]} />
-            <Text style={[styles.statusText, !isNew && { color: colors.success }]}>
-              {isNew ? 'NOUVELLE' : 'ACQUITTEE'}
-            </Text>
+          <View style={styles.alertBadges}>
+            <View style={styles.typeBadge}>
+              <Text style={styles.typeBadgeText}>Chute suspecte</Text>
+            </View>
+            <View style={[styles.severityBadge, { backgroundColor: '#0EA5E920', borderColor: '#0EA5E9' }]}>
+              <Text style={[styles.severityBadgeText, { color: '#0EA5E9' }]}>MED</Text>
+            </View>
           </View>
-          <Text style={styles.alertTime}>{formatTime(item.timestamp)}</Text>
+          <View style={styles.alertRight}>
+            <View style={[styles.statusBadgeSmall,
+              isNew ? styles.statusNew :
+              (item.status === 'ACK' || item.status === 'ACKNOWLEDGED') ? { borderColor: '#0EA5E9', backgroundColor: '#EFF6FF' } :
+              item.status === 'RESOLVED' ? { borderColor: '#22C55E', backgroundColor: '#F0FFF4' } :
+              { borderColor: '#F59E0B', backgroundColor: '#FFFBEB' }
+            ]}>
+              <Text style={[styles.statusBadgeSmallText,
+                isNew ? { color: '#22C55E' } :
+                (item.status === 'ACK' || item.status === 'ACKNOWLEDGED') ? { color: '#0EA5E9' } :
+                item.status === 'RESOLVED' ? { color: '#22C55E' } :
+                { color: '#F59E0B' }
+              ]}>
+                {isNew ? 'Nouveau' :
+                 (item.status === 'ACK' || item.status === 'ACKNOWLEDGED') ? 'Pris en charge' :
+                 item.status === 'RESOLVED' ? 'Resolu' : 'Fausse alarme'}
+              </Text>
+            </View>
+            <Text style={styles.alertTime}>{formatTime(item.timestamp)}</Text>
+          </View>
         </View>
 
-        <Text style={[styles.alertType, !isNew && { color: colors.textSecondary }]}>
-          CHUTE DETECTEE
+        <Text style={styles.alertLocation} numberOfLines={1}>
+          {item.location_path || item.radar_name || 'Localisation inconnue'}
         </Text>
-
-        <View style={styles.locationRow}>
-          <View style={styles.locationDot} />
-          <Text style={styles.alertLocation} numberOfLines={1}>
-            {item.location_path || item.radar_name || 'Localisation inconnue'}
-          </Text>
-        </View>
-
-        {isNew && (
-          <View style={styles.alertAction}>
-            <Text style={styles.alertActionText}>Appuyez pour voir les details</Text>
-          </View>
-        )}
       </TouchableOpacity>
     );
   };
@@ -234,8 +252,8 @@ export default function AlertsScreen() {
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.3}
+        onEndReached={hasMore && !loadingMore ? loadMore : undefined}
+        onEndReachedThreshold={0.5}
       />
     </View>
   );
@@ -266,10 +284,10 @@ const styles = StyleSheet.create({
 
   // Banners
   errorBanner: { backgroundColor: colors.warningAmberBg, padding: spacing.md, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.warningAmber },
-  errorBannerText: { color: '#FDE68A', fontSize: 13, textAlign: 'center' },
+  errorBannerText: { color: '#92400E', fontSize: 13, textAlign: 'center' },
   activeCounter: { backgroundColor: colors.alertRedBg, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   activeCounterDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
-  activeCounterText: { color: '#FCA5A5', fontWeight: '700', fontSize: 14, letterSpacing: 0.5 },
+  activeCounterText: { color: '#991B1B', fontWeight: '700', fontSize: 14, letterSpacing: 0.5 },
 
   // Filter tabs
   filterBar: { flexDirection: 'row', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.sm },
@@ -288,22 +306,21 @@ const styles = StyleSheet.create({
   footerLoader: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md },
   footerLoaderText: { color: colors.textMuted, fontSize: 13 },
 
-  // Alert cards
-  alertCard: { borderRadius: radius.lg, padding: spacing.md, borderWidth: 1 },
-  alertNew: { backgroundColor: '#1C0A0A', borderColor: colors.primary },
-  alertAck: { backgroundColor: colors.surface, borderColor: colors.border },
+  // Alert cards — aligned with web platform
+  alertCard: { borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
   alertHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.full },
-  badgeNew: { backgroundColor: colors.primary },
-  badgeAck: { backgroundColor: colors.surfaceLight },
-  statusText: { color: colors.white, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  alertBadges: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  typeBadge: { backgroundColor: '#EF4444', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 4 },
+  typeBadgeText: { color: colors.white, fontSize: 12, fontWeight: '700' },
+  severityBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, borderWidth: 1 },
+  severityBadgeText: { fontSize: 11, fontWeight: '700' },
+  alertRight: { alignItems: 'flex-end', gap: 4 },
+  statusBadgeSmall: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, borderWidth: 1 },
+  statusNew: { borderColor: '#22C55E', backgroundColor: '#22C55E20' },
+  statusAck: { borderColor: colors.border, backgroundColor: colors.surfaceLight },
+  statusBadgeSmallText: { fontSize: 11, fontWeight: '600' },
   alertTime: { color: colors.textMuted, fontSize: 12 },
-  alertType: { color: colors.textPrimary, fontSize: 18, fontWeight: '700', marginBottom: spacing.xs },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  locationDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.secondary },
-  alertLocation: { color: colors.textSecondary, fontSize: 14, flex: 1 },
-  alertAction: { marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: '#3D1515' },
-  alertActionText: { color: colors.primary, textAlign: 'center', fontWeight: '600', fontSize: 13 },
+  alertLocation: { color: colors.textSecondary, fontSize: 14 },
 
   // Empty state
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 80 },

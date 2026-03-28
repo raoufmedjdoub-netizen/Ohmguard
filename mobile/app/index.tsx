@@ -1,5 +1,5 @@
 // Écran de connexion
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,13 +10,21 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { router } from 'expo-router';
 import { useAuth } from '../src/hooks/useAuth';
 import { colors, spacing, radius } from '../src/theme';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login, changePassword, loading, error, mustChangePassword } = useAuth();
+  const { user, login, changePassword, loading, error, mustChangePassword } = useAuth();
+
+  // Redirect to alerts if already logged in
+  useEffect(() => {
+    if (user && !loading && !mustChangePassword) {
+      router.replace('/alerts');
+    }
+  }, [user, loading, mustChangePassword]);
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -278,7 +286,7 @@ const styles = StyleSheet.create({
     borderColor: colors.alertRed,
   },
   errorText: {
-    color: '#FCA5A5',
+    color: '#EF4444',
     textAlign: 'center',
     fontSize: 14,
   },

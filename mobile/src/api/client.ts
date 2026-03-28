@@ -185,7 +185,17 @@ class ApiClient {
   }
 
   async acknowledgeAlert(id: string) {
-    return this.request(`/events/${id}/acknowledge`, { method: 'POST' });
+    return this.request(`/events/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'ACK' }),
+    });
+  }
+
+  async updateEvent(id: string, payload: { status: string; comment?: string }) {
+    return this.request(`/events/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
   }
 
   // Push tokens

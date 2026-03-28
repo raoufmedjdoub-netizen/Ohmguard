@@ -7,6 +7,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EventActionDialog } from '@/components/EventActionDialog';
 import { cn, formatDate, getEventTypeColor, getSeverityColor, getStatusColor } from '@/lib/utils';
+
+function formatDelay(from, to) {
+  const ms = new Date(to).getTime() - new Date(from).getTime();
+  if (ms < 0) return '-';
+  const totalMin = Math.floor(ms / 60000);
+  if (totalMin < 1) return '< 1 min';
+  if (totalMin < 60) return `${totalMin} min`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h}h ${m}min`;
+}
 import { toast } from 'sonner';
 import {
   ArrowLeft,
@@ -379,6 +390,63 @@ export function EventDetailPage() {
                 </Badge>
               </div>
             </div>
+
+            {/* Suivi d'intervention */}
+            {(event.acknowledged_at || event.resolved_at) && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-border">
+                {event.acknowledged_at && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock className="h-4 w-4 text-blue-500" />
+                      <span className="text-sm text-muted-foreground">Prise en charge</span>
+                    </div>
+                    <span className="font-medium text-sm">
+                      {formatDate(event.acknowledged_at, i18n.language === 'fr' ? 'fr-FR' : 'en-US')}
+                    </span>
+                    {event.acknowledged_by && (
+                      <p className="text-xs text-muted-foreground mt-0.5">Par : {event.acknowledged_by}</p>
+                    )}
+                    {event.timestamp && event.acknowledged_at && (
+                      <p className="text-xs text-blue-600 mt-1 font-medium">
+                        Delai : {formatDelay(event.occurred_at || event.timestamp, event.acknowledged_at)}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {event.resolved_at && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock className="h-4 w-4 text-green-500" />
+                      <span className="text-sm text-muted-foreground">
+                        {event.status === 'FALSE_ALARM' ? 'Fausse alarme' : 'Resolution'}
+                      </span>
+                    </div>
+                    <span className="font-medium text-sm">
+                      {formatDate(event.resolved_at, i18n.language === 'fr' ? 'fr-FR' : 'en-US')}
+                    </span>
+                    {event.resolved_by && (
+                      <p className="text-xs text-muted-foreground mt-0.5">Par : {event.resolved_by}</p>
+                    )}
+                    {event.acknowledged_at && event.resolved_at && (
+                      <p className="text-xs text-green-600 mt-1 font-medium">
+                        Intervention : {formatDelay(event.acknowledged_at, event.resolved_at)}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {event.resolved_at && event.timestamp && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Activity className="h-4 w-4 text-primary" />
+                      <span className="text-sm text-muted-foreground">Delai total</span>
+                    </div>
+                    <span className="font-bold text-lg text-primary">
+                      {formatDelay(event.occurred_at || event.timestamp, event.resolved_at)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Localisation & Capteur */}
             <div className="pt-4 border-t border-border">

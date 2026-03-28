@@ -1,6 +1,6 @@
 // Hook pour gérer les alertes avec pagination et cache offline
 import { useState, useCallback, useEffect, useRef } from 'react';
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '../api/client';
 import type { Alert } from '../types';
 
@@ -57,7 +57,7 @@ export function useAlerts() {
   // Load cached alerts on startup
   const loadCache = useCallback(async () => {
     try {
-      const cached = await SecureStore.getItemAsync(CACHE_KEY);
+      const cached = await AsyncStorage.getItem(CACHE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -70,9 +70,8 @@ export function useAlerts() {
   // Save alerts to cache
   const saveCache = useCallback(async (data: Alert[]) => {
     try {
-      // Keep only the last 50 alerts in cache (SecureStore size limit)
-      const toCache = data.slice(0, 50);
-      await SecureStore.setItemAsync(CACHE_KEY, JSON.stringify(toCache));
+      const toCache = data.slice(0, 100);
+      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(toCache));
     } catch {}
   }, []);
 
@@ -134,11 +133,14 @@ export function useAlerts() {
     await fetchAlerts(true);
   }, [fetchAlerts]);
 
+  const loadingMoreRef = useRef(false);
   const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return;
+    if (loadingMoreRef.current || !hasMore) return;
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     await fetchAlerts(false);
-  }, [fetchAlerts, loadingMore, hasMore]);
+    loadingMoreRef.current = false;
+  }, [fetchAlerts, hasMore]);
 
   const addAlert = useCallback((alert: Alert) => {
     setAlerts(prev => {
@@ -176,12 +178,19 @@ export function useAlerts() {
   }, []);
 
   // Filtered views
+  // "En attente" = NEW + ACK (not yet resolved)
+  // "Traitées" = RESOLVED + FALSE_ALARM
+  const pendingStatuses = ['NEW', 'ACK', 'ACKNOWLEDGED'];
+  const resolvedStatuses = ['RESOLVED', 'FALSE_ALARM'];
+
   const filteredAlerts = filter === 'ALL'
     ? alerts
-    : alerts.filter(a => a.status === filter);
+    : filter === 'NEW'
+    ? alerts.filter(a => pendingStatuses.includes(a.status))
+    : alerts.filter(a => resolvedStatuses.includes(a.status));
 
-  const activeAlerts = alerts.filter(a => a.status === 'NEW');
-  const acknowledgedAlerts = alerts.filter(a => a.status !== 'NEW');
+  const activeAlerts = alerts.filter(a => pendingStatuses.includes(a.status));
+  const acknowledgedAlerts = alerts.filter(a => resolvedStatuses.includes(a.status));
 
   return {
     alerts: filteredAlerts,

@@ -2192,6 +2192,15 @@ async def update_event(event_id: str, update: EventUpdate, current_user: UserInD
         if update.status in ("RESOLVED", "FALSE_ALARM") and not update.comment:
             raise HTTPException(status_code=400, detail="Un commentaire est obligatoire pour cette action")
         update_data["status"] = update.status
+        # Consign timestamps for statistics
+        if update.status == "ACK":
+            update_data["acknowledged_at"] = datetime.now(timezone.utc).isoformat()
+            update_data["acknowledged_by"] = current_user.full_name
+            update_data["acknowledged_by_id"] = current_user.id
+        elif update.status in ("RESOLVED", "FALSE_ALARM"):
+            update_data["resolved_at"] = datetime.now(timezone.utc).isoformat()
+            update_data["resolved_by"] = current_user.full_name
+            update_data["resolved_by_id"] = current_user.id
     if update.assigned_to is not None:
         update_data["assigned_to"] = update.assigned_to
     if update.assigned_to_name is not None:
