@@ -189,12 +189,25 @@ def create_rbac_routes(get_current_user, check_permission, db):
 
             user_id = str(uuid.uuid4())
             hashed_pw = bcrypt.hashpw(temp_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+            # Map client role → system role so check_permission() works correctly
+            # CLIENT_ADMIN → TENANT_ADMIN (full org access)
+            # SUPERVISOR   → SUPERVISOR
+            # OPERATOR / VIEWER → VIEWER
+            CLIENT_ROLE_TO_SYSTEM_ROLE = {
+                "CLIENT_ADMIN": "TENANT_ADMIN",
+                "SUPERVISOR": "SUPERVISOR",
+                "OPERATOR": "VIEWER",
+                "VIEWER": "VIEWER",
+            }
+            system_role = CLIENT_ROLE_TO_SYSTEM_ROLE.get(str(request.role), "VIEWER")
+
             new_user = {
                 "id": user_id,
                 "email": request.email,
                 "full_name": request.full_name,
                 "hashed_password": hashed_pw,
-                "role": "VIEWER",
+                "role": system_role,
                 "tenant_id": client_id,
                 "language": "fr",
                 "is_active": True,

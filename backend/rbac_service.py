@@ -137,7 +137,7 @@ class RBACService:
             raise HTTPException(status_code=404, detail="ClientUser not found")
         
         old_role = client_user.get("role")
-        
+
         await self.db.client_users.update_one(
             {"id": client_user_id},
             {"$set": {
@@ -145,7 +145,20 @@ class RBACService:
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }}
         )
-        
+
+        # Sync system role in users collection so check_permission() stays consistent
+        CLIENT_ROLE_TO_SYSTEM_ROLE = {
+            "CLIENT_ADMIN": "TENANT_ADMIN",
+            "SUPERVISOR": "SUPERVISOR",
+            "OPERATOR": "VIEWER",
+            "VIEWER": "VIEWER",
+        }
+        system_role = CLIENT_ROLE_TO_SYSTEM_ROLE.get(str(new_role), "VIEWER")
+        await self.db.users.update_one(
+            {"id": client_user["user_id"]},
+            {"$set": {"role": system_role}}
+        )
+
         # Audit log
         await self._log_rbac_action(
             RBACActionType.ROLE_CHANGE,
