@@ -165,84 +165,56 @@ def create_rbac_routes(get_current_user, check_permission, db):
         if not has_perm and current_user.role != "SUPER_ADMIN":
             raise HTTPException(status_code=403, detail="Permission denied")
         
-        # Check if user with email already exists
+        # L'email est un identifiant unique : refuser si déjà utilisé
         existing_user = await db.users.find_one({"email": request.email})
-
         if existing_user:
-            # Check if this user is already a member of this client
-            already_member = await db.client_users.find_one({
-                "user_id": existing_user["id"],
-                "client_id": client_id
-            })
-            if already_member:
-                raise HTTPException(
-                    status_code=409,
-                    detail=f"Un utilisateur avec l'adresse e-mail '{request.email}' fait déjà partie de ce client."
-                )
-
-            # Add existing user to client and update their primary tenant_id
-            user_id = existing_user["id"]
-            temp_password = None
-            # Map client role → system role
-            CLIENT_ROLE_TO_SYSTEM_ROLE = {
-                "CLIENT_ADMIN": "TENANT_ADMIN",
-                "SUPERVISOR": "SUPERVISOR",
-                "OPERATOR": "VIEWER",
-                "VIEWER": "VIEWER",
-            }
-            system_role = CLIENT_ROLE_TO_SYSTEM_ROLE.get(str(request.role), "VIEWER")
-            # Update user's primary tenant to the new client so event/sensor filtering works
-            await db.users.update_one(
-                {"id": user_id},
-                {"$set": {"tenant_id": client_id, "role": system_role}}
+            raise HTTPException(
+                status_code=409,
+                detail=f"Un utilisateur avec l'adresse e-mail '{request.email}' existe déjà."
             )
+
+        # Créer le nouvel utilisateur
+        import uuid
+        import secrets
+        from datetime import datetime, timezone
+        import bcrypt
+
+        # Generate temporary password or use provided one
+        if request.password:
+            temp_password = request.password
+            must_change = False
         else:
-            # Create new user with temporary password
-            import uuid
-            import secrets
-            from datetime import datetime, timezone
-            import bcrypt
+            temp_password = secrets.token_urlsafe(10)  # ~13 chars, URL-safe
+            must_change = True
 
-            # Generate temporary password or use provided one
-            if request.password:
-                temp_password = request.password
-                must_change = False
-            else:
-                temp_password = secrets.token_urlsafe(10)  # ~13 chars, URL-safe
-                must_change = True
+        user_id = str(uuid.uuid4())
+        hashed_pw = bcrypt.hashpw(temp_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-            user_id = str(uuid.uuid4())
-            hashed_pw = bcrypt.hashpw(temp_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        CLIENT_ROLE_TO_SYSTEM_ROLE = {
+            "CLIENT_ADMIN": "TENANT_ADMIN",
+            "SUPERVISOR": "SUPERVISOR",
+            "OPERATOR": "VIEWER",
+            "VIEWER": "VIEWER",
+        }
+        system_role = CLIENT_ROLE_TO_SYSTEM_ROLE.get(str(request.role), "VIEWER")
 
-            # Map client role → system role so check_permission() works correctly
-            # CLIENT_ADMIN → TENANT_ADMIN (full org access)
-            # SUPERVISOR   → SUPERVISOR
-            # OPERATOR / VIEWER → VIEWER
-            CLIENT_ROLE_TO_SYSTEM_ROLE = {
-                "CLIENT_ADMIN": "TENANT_ADMIN",
-                "SUPERVISOR": "SUPERVISOR",
-                "OPERATOR": "VIEWER",
-                "VIEWER": "VIEWER",
-            }
-            system_role = CLIENT_ROLE_TO_SYSTEM_ROLE.get(str(request.role), "VIEWER")
-
-            new_user = {
-                "id": user_id,
-                "email": request.email,
-                "full_name": request.full_name,
-                "hashed_password": hashed_pw,
-                "role": system_role,
-                "tenant_id": client_id,
-                "language": "fr",
-                "is_active": True,
-                "must_change_password": must_change,
-                "phone": request.phone,
-                "job_title": request.job_title,
-                "department": request.department,
-                "notes": request.notes,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-            await db.users.insert_one(new_user)
+        new_user = {
+            "id": user_id,
+            "email": request.email,
+            "full_name": request.full_name,
+            "hashed_password": hashed_pw,
+            "role": system_role,
+            "tenant_id": client_id,
+            "language": "fr",
+            "is_active": True,
+            "must_change_password": must_change,
+            "phone": request.phone,
+            "job_title": request.job_title,
+            "department": request.department,
+            "notes": request.notes,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.users.insert_one(new_user)
 
         # Create ClientUser
         client_user = await rbac.create_client_user(
@@ -252,21 +224,16 @@ def create_rbac_routes(get_current_user, check_permission, db):
             created_by=current_user.id
         )
 
-        # Send welcome email with temporary password
+        # Envoyer l'email de bienvenue si mot de passe généré automatiquement
         email_sent = False
         email_error = None
-        existing_account = temp_password is None  # User already existed
-        if existing_account:
-            email_error = "existing_account"
-        elif temp_password and not request.password:
+        if temp_password and not request.password:
             try:
                 from email_service import get_email_service
                 email_svc = get_email_service()
                 if email_svc:
-                    # Get client name and buildings for the email
                     client_doc = await db.clients.find_one({"id": client_id}, {"_id": 0, "name": 1})
                     org_name = client_doc.get("name", "") if client_doc else ""
-                    # Get building names for this client
                     buildings_cursor = db.buildings.find({"client_id": client_id}, {"_id": 0, "name": 1})
                     buildings_list = await buildings_cursor.to_list(50)
                     building_names = ", ".join(b["name"] for b in buildings_list if b.get("name")) if buildings_list else ""
@@ -291,8 +258,7 @@ def create_rbac_routes(get_current_user, check_permission, db):
         client_user["user_email"] = request.email
         client_user["user_full_name"] = request.full_name
         client_user["email_sent"] = email_sent
-        client_user["existing_account"] = existing_account
-        if email_error and email_error != "existing_account":
+        if email_error:
             client_user["email_error"] = email_error
 
         return client_user
