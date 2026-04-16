@@ -118,6 +118,21 @@ function ElapsedTimer({ since }) {
   return <span className="font-mono">{elapsed}</span>;
 }
 
+function formatTime(ts) {
+  if (!ts) return null;
+  const d = new Date(ts);
+  if (isNaN(d)) return null;
+  return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Timestamp de sortie : resolved_at, ou statuts terminaux SENSITIVE_FALL
+const TERMINAL_FALL_STATUSES = ['fall_exit', 'finished', 'no_fall'];
+function getExitTime(alert) {
+  if (alert.resolved_at) return alert.resolved_at;
+  if (TERMINAL_FALL_STATUSES.includes(alert.fall_status) && alert.updatedAt) return alert.updatedAt;
+  return null;
+}
+
 function AlertFeedItem({ alert, onAction, onView, selectionMode, isSelected, onToggleSelect }) {
   const isAI = alert.alertSource === 'ai_camera' || alert.type === 'AI_ALERT';
   const isAcked = alert.status === 'ACK' || alert.status === 'ACKNOWLEDGED';
@@ -129,6 +144,8 @@ function AlertFeedItem({ alert, onAction, onView, selectionMode, isSelected, onT
     : (alert.location_path || alert.sensor_name || alert.radar_name || '—');
   const fallStatus = alert.fall_status ? FALL_STATUS_LABELS[alert.fall_status] : null;
   const confidence = isAI && alert.confidence ? Math.round(alert.confidence * 100) : null;
+  const startTime = formatTime(alert.timestamp || alert.occurred_at || alert.created_at);
+  const exitTime = formatTime(getExitTime(alert));
 
   // Background blink class by alert type
   const blinkClass = isAI
@@ -174,9 +191,22 @@ function AlertFeedItem({ alert, onAction, onView, selectionMode, isSelected, onT
         <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
         <span className="text-sm font-semibold truncate flex-1 min-w-0">{location}</span>
         {isAI && alert.warning_text && <span className="text-xs text-muted-foreground italic">{alert.warning_text}</span>}
-        <div className="flex items-center gap-1 text-sm text-muted-foreground flex-shrink-0">
+        <div className="flex items-center gap-1.5 text-sm text-muted-foreground flex-shrink-0">
           <Clock className="h-4 w-4" />
-          <ElapsedTimer since={alert.addedAt || Date.now()} />
+          {startTime && (
+            <span className="font-mono text-foreground">{startTime}</span>
+          )}
+          {exitTime ? (
+            <>
+              <span className="text-muted-foreground">→</span>
+              <span className="font-mono text-green-600 dark:text-green-400">{exitTime}</span>
+            </>
+          ) : (
+            <>
+              <span className="text-muted-foreground">·</span>
+              <ElapsedTimer since={alert.addedAt || Date.now()} />
+            </>
+          )}
         </div>
 
         {/* Right: actions (hidden in selection mode) */}
