@@ -1409,10 +1409,13 @@ async def get_sensor(sensor_id: str, current_user: UserInDB = Depends(get_curren
     sensor = await db.sensors.find_one({"id": sensor_id}, {"_id": 0})
     if not sensor:
         raise HTTPException(status_code=404, detail="Sensor not found")
-    
-    if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != sensor['tenant_id']:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
+
+    if current_user.role != "SUPER_ADMIN":
+        # Support both legacy tenant_id and new client_id model
+        sensor_tenant = sensor.get("tenant_id") or sensor.get("client_id")
+        if sensor_tenant != current_user.tenant_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
     return sensor
 
 @api_router.patch("/sensors/{sensor_id}", response_model=Sensor)
@@ -1561,6 +1564,11 @@ async def list_ai_sensors(
     current_user: UserInDB = Depends(get_current_user)
 ):
     """List all AI sensors"""
+    if current_user.role != "SUPER_ADMIN":
+        # Enforce tenant scope: ignore user-supplied client_id, use their own
+        client_id = current_user.tenant_id
+    elif client_id is None:
+        pass  # SUPER_ADMIN without filter → all sensors allowed
     ai_service = get_ai_sensor_service()
     sensors = await ai_service.get_all_sensors(client_id)
     return sensors
@@ -1572,6 +1580,10 @@ async def get_ai_sensor(sensor_id: str, current_user: UserInDB = Depends(get_cur
     sensor = await ai_service.get_sensor(sensor_id)
     if not sensor:
         raise HTTPException(status_code=404, detail="AI Sensor not found")
+    # Verify tenant access
+    if current_user.role != "SUPER_ADMIN":
+        if sensor.get("client_id") != current_user.tenant_id:
+            raise HTTPException(status_code=403, detail="Access denied")
     return sensor
 
 @api_router.post("/ai-sensors")
@@ -1593,7 +1605,14 @@ async def update_ai_sensor(sensor_id: str, data: AISensorUpdate, current_user: U
     """Update an AI sensor"""
     check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
     ai_service = get_ai_sensor_service()
-    
+
+    if current_user.role != "SUPER_ADMIN":
+        existing = await ai_service.get_sensor(sensor_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="AI Sensor not found")
+        if existing.get("client_id") != current_user.tenant_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
     sensor = await ai_service.update_sensor(sensor_id, data.model_dump(exclude_none=True))
     if not sensor:
         raise HTTPException(status_code=404, detail="AI Sensor not found")
@@ -1604,7 +1623,14 @@ async def delete_ai_sensor(sensor_id: str, current_user: UserInDB = Depends(get_
     """Delete an AI sensor"""
     check_permission(current_user, ["SUPER_ADMIN", "TENANT_ADMIN"])
     ai_service = get_ai_sensor_service()
-    
+
+    if current_user.role != "SUPER_ADMIN":
+        existing = await ai_service.get_sensor(sensor_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="AI Sensor not found")
+        if existing.get("client_id") != current_user.tenant_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
     deleted = await ai_service.delete_sensor(sensor_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="AI Sensor not found")
@@ -1624,6 +1650,8 @@ async def list_ai_events(
     current_user: UserInDB = Depends(get_current_user)
 ):
     """List AI events with filters"""
+    if current_user.role != "SUPER_ADMIN":
+        client_id = current_user.tenant_id
     ai_service = get_ai_sensor_service()
     events = await ai_service.get_events(
         sensor_id=sensor_id,
@@ -1645,6 +1673,8 @@ async def count_ai_events(
     current_user: UserInDB = Depends(get_current_user)
 ):
     """Count AI events"""
+    if current_user.role != "SUPER_ADMIN":
+        client_id = current_user.tenant_id
     ai_service = get_ai_sensor_service()
     count = await ai_service.count_events(
         sensor_id=sensor_id,
@@ -1661,6 +1691,9 @@ async def get_ai_event(event_id: str, current_user: UserInDB = Depends(get_curre
     event = await ai_service.get_event(event_id)
     if not event:
         raise HTTPException(status_code=404, detail="AI Event not found")
+    if current_user.role != "SUPER_ADMIN":
+        if event.get("client_id") != current_user.tenant_id:
+            raise HTTPException(status_code=403, detail="Access denied")
     return event
 
 @api_router.patch("/ai-events/{event_id}/status")
@@ -1671,9 +1704,14 @@ async def update_ai_event_status(
 ):
     """Update AI event status"""
     ai_service = get_ai_sensor_service()
-    event = await ai_service.update_event_status(event_id, status, current_user.id)
-    if not event:
+    # Verify ownership before update
+    existing = await ai_service.get_event(event_id)
+    if not existing:
         raise HTTPException(status_code=404, detail="AI Event not found")
+    if current_user.role != "SUPER_ADMIN":
+        if existing.get("client_id") != current_user.tenant_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+    event = await ai_service.update_event_status(event_id, status, current_user.id)
     return event
 
 @api_router.delete("/ai-events/clear")
@@ -4019,18 +4057,20 @@ async def get_last_state_stats(
 
 @app.websocket("/ws/{tenant_id}")
 async def websocket_endpoint(websocket: WebSocket, tenant_id: str, token: Optional[str] = None):
-    # Simple token validation for WebSocket
-    if token:
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            user_tenant = payload.get("tenant_id")
-            if user_tenant and user_tenant != tenant_id and payload.get("role") != "SUPER_ADMIN":
-                await websocket.close(code=4003)
-                return
-        except JWTError:
-            await websocket.close(code=4001)
+    # Token is mandatory — reject unauthenticated connections
+    if not token:
+        await websocket.close(code=4001)
+        return
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_tenant = payload.get("tenant_id")
+        if user_tenant and user_tenant != tenant_id and payload.get("role") != "SUPER_ADMIN":
+            await websocket.close(code=4003)
             return
-    
+    except JWTError:
+        await websocket.close(code=4001)
+        return
+
     await manager.connect(websocket, tenant_id)
     try:
         while True:
