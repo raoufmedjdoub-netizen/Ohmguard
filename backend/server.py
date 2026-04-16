@@ -2637,12 +2637,52 @@ async def get_event_detail(event_id: str, current_user: UserInDB = Depends(get_c
     sensor = None
     if event.get('sensor_id'):
         sensor = await db.sensors.find_one({"id": event['sensor_id']}, {"_id": 0})
-    
+
+    # Build location_path from sensor cached names or live DB lookups
+    location_path = event.get('location_path')
+    location = event.get('location')
+    if sensor and not location_path:
+        # Use cached names stored on sensor (fast path)
+        if sensor.get('location_path'):
+            location_path = sensor['location_path']
+            location = {
+                "client_name": sensor.get('client_name'),
+                "building_name": sensor.get('building_name'),
+                "floor_name": sensor.get('floor_name'),
+                "room_number": sensor.get('room_number') or sensor.get('room_name'),
+                "zone_name": None
+            }
+        elif sensor.get('client_id'):
+            # Slow path: fetch names from DB
+            client = await db.clients.find_one({"id": sensor['client_id']}, {"_id": 0, "name": 1}) or {}
+            building = await db.buildings.find_one({"id": sensor['building_id']}, {"_id": 0, "name": 1}) if sensor.get('building_id') else {}
+            floor = await db.floors.find_one({"id": sensor['floor_id']}, {"_id": 0, "name": 1}) if sensor.get('floor_id') else {}
+            room = await db.rooms.find_one({"id": sensor['room_id']}, {"_id": 0, "room_number": 1, "name": 1}) if sensor.get('room_id') else {}
+
+            path_parts = []
+            if client.get('name'): path_parts.append(client['name'])
+            if building.get('name'): path_parts.append(building['name'])
+            if floor.get('name'): path_parts.append(floor['name'])
+            room_label = room.get('room_number') or room.get('name')
+            if room_label: path_parts.append(f"Ch. {room_label}")
+
+            location_path = " > ".join(path_parts) if path_parts else None
+            location = {
+                "client_name": client.get('name'),
+                "building_name": building.get('name'),
+                "floor_name": floor.get('name'),
+                "room_number": room.get('room_number') or room.get('name'),
+                "zone_name": None
+            }
+
     # Format response with enriched data
     return {
         **event,
         "sensor_name": sensor.get('name') if sensor else None,
         "sensor_serial": sensor.get('serial_product') if sensor else None,
+        "radar_name": sensor.get('name') if sensor else event.get('radar_name'),
+        "location_path": location_path,
+        "location": location,
         "active_regions_display": format_active_regions_display(event.get('active_regions', [])),
         "target_count_display": format_target_count_display(event.get('target_count', 0)),
         "presence_display": "Présence détectée" if event.get('presence_detected') else "Aucune présence"
