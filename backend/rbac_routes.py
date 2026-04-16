@@ -169,6 +169,17 @@ def create_rbac_routes(get_current_user, check_permission, db):
         existing_user = await db.users.find_one({"email": request.email})
 
         if existing_user:
+            # Check if this user is already a member of this client
+            already_member = await db.client_users.find_one({
+                "user_id": existing_user["id"],
+                "client_id": client_id
+            })
+            if already_member:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Un utilisateur avec l'adresse e-mail '{request.email}' fait déjà partie de ce client."
+                )
+
             # Add existing user to client and update their primary tenant_id
             user_id = existing_user["id"]
             temp_password = None
