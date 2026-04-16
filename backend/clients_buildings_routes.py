@@ -45,6 +45,18 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
             return True
 
         return False
+
+    async def user_can_access_client(user, client_id: str) -> bool:
+        """Vérifie qu'un utilisateur peut accéder à un client en lecture.
+        Autorisé si : SUPER_ADMIN, tenant_id correspond, ou enregistrement client_users actif."""
+        if user.role == "SUPER_ADMIN":
+            return True
+        if user.tenant_id == client_id:
+            return True
+        cu = await db.client_users.find_one(
+            {"user_id": user.id, "client_id": client_id, "is_active": True}
+        )
+        return cu is not None
     
     # ==================== CLIENTS ====================
     
@@ -158,7 +170,7 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
     @router.get("/clients/{client_id}/tree")
     async def get_client_tree(client_id: str, current_user = Depends(get_current_user)):
         """Get hierarchical tree view for a client"""
-        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != client_id:
+        if not await user_can_access_client(current_user, client_id):
             raise HTTPException(status_code=403, detail="Access denied")
         
         service = get_service()
@@ -169,7 +181,7 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
     @router.get("/clients/{client_id}/buildings")
     async def list_buildings(client_id: str, current_user = Depends(get_current_user)):
         """List buildings for a client"""
-        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != client_id:
+        if not await user_can_access_client(current_user, client_id):
             raise HTTPException(status_code=403, detail="Access denied")
         
         service = get_service()
@@ -196,11 +208,11 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         if not building:
             raise HTTPException(status_code=404, detail="Building not found")
         
-        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != building["client_id"]:
+        if not await user_can_access_client(current_user, building["client_id"]):
             raise HTTPException(status_code=403, detail="Access denied")
-        
+
         return building
-    
+
     @router.patch("/buildings/{building_id}")
     async def update_building(building_id: str, data: BuildingUpdate, current_user = Depends(get_current_user)):
         """Update a building"""
@@ -241,9 +253,9 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         if not building:
             raise HTTPException(status_code=404, detail="Building not found")
         
-        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != building["client_id"]:
+        if not await user_can_access_client(current_user, building["client_id"]):
             raise HTTPException(status_code=403, detail="Access denied")
-        
+
         return await service.list_floors(building_id)
     
     @router.post("/buildings/{building_id}/floors")
@@ -269,11 +281,11 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         if not floor:
             raise HTTPException(status_code=404, detail="Floor not found")
         
-        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != floor["client_id"]:
+        if not await user_can_access_client(current_user, floor["client_id"]):
             raise HTTPException(status_code=403, detail="Access denied")
-        
+
         return floor
-    
+
     @router.patch("/floors/{floor_id}")
     async def update_floor(floor_id: str, data: FloorUpdate, current_user = Depends(get_current_user)):
         """Update a floor"""
@@ -314,9 +326,9 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         if not floor:
             raise HTTPException(status_code=404, detail="Floor not found")
         
-        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != floor["client_id"]:
+        if not await user_can_access_client(current_user, floor["client_id"]):
             raise HTTPException(status_code=403, detail="Access denied")
-        
+
         return await service.list_rooms(floor_id)
     
     @router.post("/floors/{floor_id}/rooms")
@@ -528,9 +540,9 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         if not building:
             raise HTTPException(status_code=404, detail="Building not found")
         
-        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != building["client_id"]:
+        if not await user_can_access_client(current_user, building["client_id"]):
             raise HTTPException(status_code=403, detail="Access denied")
-        
+
         return await service.list_zones(building_id, floor_id)
     
     @router.post("/buildings/{building_id}/zones")
@@ -602,7 +614,7 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         current_user = Depends(get_current_user)
     ):
         """List radars for a client with optional filters"""
-        if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != client_id:
+        if not await user_can_access_client(current_user, client_id):
             raise HTTPException(status_code=403, detail="Access denied")
         
         query = {"client_id": client_id}
@@ -795,11 +807,9 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         if not building:
             raise HTTPException(status_code=404, detail="Building not found")
         
-        if current_user.role != "SUPER_ADMIN":
-            has_access = await check_rbac_permission(current_user, building["client_id"], "VIEW")
-            if not has_access and current_user.tenant_id != building["client_id"]:
-                raise HTTPException(status_code=403, detail="Access denied")
-        
+        if not await user_can_access_client(current_user, building["client_id"]):
+            raise HTTPException(status_code=403, detail="Access denied")
+
         sensors = await db.sensors.find(
             {"building_id": building_id},
             {"_id": 0}
@@ -817,11 +827,9 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         if not floor:
             raise HTTPException(status_code=404, detail="Floor not found")
         
-        if current_user.role != "SUPER_ADMIN":
-            has_access = await check_rbac_permission(current_user, floor["client_id"], "VIEW")
-            if not has_access and current_user.tenant_id != floor["client_id"]:
-                raise HTTPException(status_code=403, detail="Access denied")
-        
+        if not await user_can_access_client(current_user, floor["client_id"]):
+            raise HTTPException(status_code=403, detail="Access denied")
+
         sensors = await db.sensors.find(
             {"floor_id": floor_id},
             {"_id": 0}
@@ -839,11 +847,9 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         if not floor:
             raise HTTPException(status_code=404, detail="Floor not found")
         
-        if current_user.role != "SUPER_ADMIN":
-            has_access = await check_rbac_permission(current_user, floor["client_id"], "VIEW")
-            if not has_access and current_user.tenant_id != floor["client_id"]:
-                raise HTTPException(status_code=403, detail="Access denied")
-        
+        if not await user_can_access_client(current_user, floor["client_id"]):
+            raise HTTPException(status_code=403, detail="Access denied")
+
         # Zones avec floor_id correspondant OU zones sans floor_id du même building
         zones = await db.zones_new.find(
             {"$or": [
@@ -990,11 +996,9 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         if not floor:
             raise HTTPException(status_code=404, detail="Étage non trouvé")
         
-        if current_user.role != "SUPER_ADMIN":
-            has_access = await check_rbac_permission(current_user, floor["client_id"], "VIEW")
-            if not has_access and current_user.tenant_id != floor["client_id"]:
-                raise HTTPException(status_code=403, detail="Accès refusé")
-        
+        if not await user_can_access_client(current_user, floor["client_id"]):
+            raise HTTPException(status_code=403, detail="Accès refusé")
+
         service = get_floor_plan_service(db)
         plan = await service.get_floor_plan(floor_id)
         if not plan:
@@ -1011,11 +1015,9 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         if not floor:
             raise HTTPException(status_code=404, detail="Étage non trouvé")
         
-        if current_user.role != "SUPER_ADMIN":
-            has_access = await check_rbac_permission(current_user, floor["client_id"], "VIEW")
-            if not has_access and current_user.tenant_id != floor["client_id"]:
-                raise HTTPException(status_code=403, detail="Accès refusé")
-        
+        if not await user_can_access_client(current_user, floor["client_id"]):
+            raise HTTPException(status_code=403, detail="Accès refusé")
+
         service = get_floor_plan_service(db)
         file_path = await service.get_floor_plan_image_path(floor_id)
         if not file_path:
@@ -1053,11 +1055,9 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         if not building:
             raise HTTPException(status_code=404, detail="Bâtiment non trouvé")
         
-        if current_user.role != "SUPER_ADMIN":
-            has_access = await check_rbac_permission(current_user, building["client_id"], "VIEW")
-            if not has_access and current_user.tenant_id != building["client_id"]:
-                raise HTTPException(status_code=403, detail="Accès refusé")
-        
+        if not await user_can_access_client(current_user, building["client_id"]):
+            raise HTTPException(status_code=403, detail="Accès refusé")
+
         service = get_floor_plan_service(db)
         return await service.list_floor_plans(building_id)
     
@@ -1072,11 +1072,9 @@ def create_clients_buildings_router(get_current_user, check_permission, db, get_
         if not floor:
             raise HTTPException(status_code=404, detail="Étage non trouvé")
         
-        if current_user.role != "SUPER_ADMIN":
-            has_access = await check_rbac_permission(current_user, floor["client_id"], "VIEW")
-            if not has_access and current_user.tenant_id != floor["client_id"]:
-                raise HTTPException(status_code=403, detail="Accès refusé")
-        
+        if not await user_can_access_client(current_user, floor["client_id"]):
+            raise HTTPException(status_code=403, detail="Accès refusé")
+
         service = get_floor_plan_service(db)
         return await service.get_floor_sensors(floor_id)
     

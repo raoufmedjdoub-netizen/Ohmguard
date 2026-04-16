@@ -91,21 +91,25 @@ export function LiveStatePage() {
       // Get all clients first
       const clientsResponse = await api.get('/clients');
       const clients = clientsResponse.data || [];
-      
-      // Get buildings for all clients
+
+      // Get buildings for all clients (ignore per-client 403s)
       const allBuildings = [];
       for (const client of clients) {
-        const buildingsResponse = await api.get(`/clients/${client.id}/buildings`);
-        const clientBuildings = (buildingsResponse.data || []).map(b => ({
-          ...b,
-          client_name: client.name,
-          tenant_id: client.tenant_id
-        }));
-        allBuildings.push(...clientBuildings);
+        try {
+          const buildingsResponse = await api.get(`/clients/${client.id}/buildings`);
+          const clientBuildings = (buildingsResponse.data || []).map(b => ({
+            ...b,
+            client_name: client.name,
+            tenant_id: client.tenant_id
+          }));
+          allBuildings.push(...clientBuildings);
+        } catch (err) {
+          console.warn(`Buildings non disponibles pour le client ${client.id}:`, err?.response?.status);
+        }
       }
-      
+
       setBuildings(allBuildings);
-      
+
       // Auto-select first building if available
       if (allBuildings.length > 0) {
         setSelectedBuilding(allBuildings[0].id);
