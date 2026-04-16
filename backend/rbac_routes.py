@@ -386,6 +386,11 @@ def create_rbac_routes(get_current_user, check_permission, db):
         await db.location_scopes.delete_many({"client_user_id": client_user_id})
         await db.client_users.delete_one({"id": client_user_id})
 
+        # Supprimer le compte utilisateur si c'est son seul client
+        remaining_memberships = await db.client_users.count_documents({"user_id": deleted_user_id})
+        if remaining_memberships == 0:
+            await db.users.delete_one({"id": deleted_user_id})
+
         # Créer le journal d'audit pour la suppression
         from rbac_models import RBACAuditLog, RBACActionType
         log = RBACAuditLog(
