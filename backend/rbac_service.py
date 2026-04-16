@@ -691,7 +691,19 @@ class RBACService:
             "client_user_id": client_user_id,
             "access_level": {"$in": [access_level, AccessLevel.MANAGE] if access_level == AccessLevel.VIEW else [AccessLevel.MANAGE]}
         }, {"_id": 0}).to_list(1000)
-        
+
+        # No scopes defined = full access to the client (principle: no restriction = unrestricted)
+        if not scopes:
+            return {
+                "client_ids": {client_user["client_id"]},
+                "building_ids": set(),
+                "floor_ids": set(),
+                "zone_ids": set(),
+                "room_ids": set(),
+                "room_space_ids": set(),
+                "has_full_access": True
+            }
+
         result = {
             "client_ids": set(),
             "building_ids": set(),
@@ -701,7 +713,7 @@ class RBACService:
             "room_space_ids": set(),
             "has_full_access": False
         }
-        
+
         for scope in scopes:
             scope_type = scope.get("scope_type")
             
