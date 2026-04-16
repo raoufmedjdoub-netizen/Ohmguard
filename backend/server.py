@@ -3160,6 +3160,66 @@ async def reset_cache_stats(current_user: UserInDB = Depends(get_current_user)):
 
 # ==================== HEALTH CHECK ====================
 
+@api_router.get("/debug/my-alerts-access")
+async def debug_alerts_access(current_user: UserInDB = Depends(get_current_user)):
+    """Endpoint de diagnostic pour comprendre pourquoi un utilisateur ne voit pas les alertes."""
+    info = {
+        "user_id": current_user.id,
+        "role": current_user.role,
+        "tenant_id": current_user.tenant_id,
+    }
+
+    user_client_id = current_user.tenant_id
+
+    # Check client existence
+    client = await db.clients.find_one({"id": user_client_id}, {"_id": 0, "id": 1, "name": 1}) if user_client_id else None
+    info["client_found"] = client is not None
+    info["client_name"] = client.get("name") if client else None
+
+    # Check client_users record
+    cu = await db.client_users.find_one(
+        {"user_id": current_user.id, "is_active": True},
+        {"_id": 0, "id": 1, "client_id": 1, "role": 1}
+    ) if user_client_id else None
+    info["client_user_found"] = cu is not None
+    info["client_user"] = cu
+
+    # Count sensors by client_id
+    sensors_by_client_id = await db.sensors.count_documents({"client_id": user_client_id}) if user_client_id else 0
+    sensors_by_tenant_id = await db.sensors.count_documents({"tenant_id": user_client_id}) if user_client_id else 0
+    info["sensors_by_client_id"] = sensors_by_client_id
+    info["sensors_by_tenant_id"] = sensors_by_tenant_id
+
+    # Get sensor IDs
+    sensors = await db.sensors.find(
+        {"$or": [{"client_id": user_client_id}, {"tenant_id": user_client_id}]} if user_client_id else {},
+        {"_id": 0, "id": 1, "client_id": 1, "tenant_id": 1, "name": 1, "assignment_status": 1}
+    ).to_list(20)
+    info["sample_sensors"] = sensors
+
+    # Count NEW events for those sensors
+    sensor_ids = [s["id"] for s in sensors]
+    if sensor_ids:
+        new_events_count = await db.events.count_documents({"sensor_id": {"$in": sensor_ids}, "status": "NEW"})
+        fall_events_count = await db.events.count_documents({"sensor_id": {"$in": sensor_ids}, "status": "NEW", "type": "FALL"})
+    else:
+        new_events_count = 0
+        fall_events_count = 0
+
+    # Also count events by tenant_id directly
+    events_by_tenant = await db.events.count_documents({"tenant_id": user_client_id, "status": "NEW"}) if user_client_id else 0
+
+    info["new_events_for_sensors"] = new_events_count
+    info["fall_events_for_sensors"] = fall_events_count
+    info["new_events_by_tenant_id"] = events_by_tenant
+
+    # Check scoped_ids
+    scoped = await get_scoped_sensor_ids(current_user)
+    info["scoped_sensor_ids"] = scoped  # None = full access, [] = no access, list = scoped
+
+    return info
+
+
 @api_router.get("/health")
 async def health_check():
     try:
@@ -5007,13 +5067,25 @@ async def startup_event():
     async def socketio_broadcast(tenant_id: str, message: dict):
         """Broadcast message via Socket.IO with room-based routing"""
         msg_type = message.get('type', '')
-        
+        event_data = message.get('event', message)
+
+        # Extract client_id from the event data (set when sensor is assigned to a client)
+        # This allows RBAC-based VIEWER users to receive real-time events
+        client_id = (
+            event_data.get('client_id') if isinstance(event_data, dict) else None
+        )
+
         if msg_type == 'new_radar_event' or msg_type == 'new_event':
-            await broadcast_new_event(tenant_id, message.get('event', message))
+            await broadcast_new_event(tenant_id, event_data)
+            # Also broadcast to client room for RBAC users (tenant_id ≠ client_id in new system)
+            if client_id and client_id != tenant_id:
+                await broadcast_new_event(client_id, event_data)
         elif msg_type == 'new_ai_event':
-            await broadcast_ai_event(message.get('event', message))
+            await broadcast_ai_event(event_data)
         elif msg_type == 'presence_update':
             await broadcast_presence_update(tenant_id, message)
+            if client_id and client_id != tenant_id:
+                await broadcast_presence_update(client_id, message)
         elif msg_type == 'sensor_status':
             await broadcast_sensor_status(
                 tenant_id,
@@ -5027,6 +5099,8 @@ async def startup_event():
             await broadcast_sensor_registered(tenant_id, message.get('sensor', message))
         elif msg_type == 'fall_event_update':
             await broadcast_fall_event_update(tenant_id, message)
+            if client_id and client_id != tenant_id:
+                await broadcast_fall_event_update(client_id, message)
         else:
             await broadcast_new_event(tenant_id, message)
     

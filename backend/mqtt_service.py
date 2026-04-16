@@ -766,6 +766,7 @@ class MQTTService:
                 "type": "new_radar_event",
                 "event": {
                     **event_for_broadcast,
+                    "client_id": sensor.get('client_id'),
                     "building_id": sensor.get('building_id'),
                     "floor_id": sensor.get('floor_id'),
                     "sensor_name": sensor.get('name'),
@@ -954,6 +955,7 @@ class MQTTService:
                 "type": "new_radar_event",
                 "event": {
                     **event_for_broadcast,
+                    "client_id": sensor.get('client_id'),
                     "building_id": sensor.get('building_id'),
                     "floor_id": sensor.get('floor_id'),
                     "sensor_name": sensor.get('name'),
@@ -961,7 +963,7 @@ class MQTTService:
                     "urgent": True
                 }
             })
-        
+
         # Alerts (email + push) are triggered on fall_confirmed (handled in the update block above)
 
     async def _handle_sensitive_fall_event(self, device_id: str, event_payload: Dict, sensor: Dict):
@@ -1138,6 +1140,7 @@ class MQTTService:
                 "type": "new_radar_event",
                 "event": {
                     **event_for_broadcast,
+                    "client_id": sensor.get('client_id'),
                     "building_id": sensor.get('building_id'),
                     "floor_id": sensor.get('floor_id'),
                     "sensor_name": sensor.get('name'),
