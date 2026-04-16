@@ -169,9 +169,22 @@ def create_rbac_routes(get_current_user, check_permission, db):
         existing_user = await db.users.find_one({"email": request.email})
 
         if existing_user:
-            # Add existing user to client
+            # Add existing user to client and update their primary tenant_id
             user_id = existing_user["id"]
             temp_password = None
+            # Map client role → system role
+            CLIENT_ROLE_TO_SYSTEM_ROLE = {
+                "CLIENT_ADMIN": "TENANT_ADMIN",
+                "SUPERVISOR": "SUPERVISOR",
+                "OPERATOR": "VIEWER",
+                "VIEWER": "VIEWER",
+            }
+            system_role = CLIENT_ROLE_TO_SYSTEM_ROLE.get(str(request.role), "VIEWER")
+            # Update user's primary tenant to the new client so event/sensor filtering works
+            await db.users.update_one(
+                {"id": user_id},
+                {"$set": {"tenant_id": client_id, "role": system_role}}
+            )
         else:
             # Create new user with temporary password
             import uuid
