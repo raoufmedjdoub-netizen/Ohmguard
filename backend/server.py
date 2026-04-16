@@ -3250,6 +3250,31 @@ async def debug_alerts_access(current_user: UserInDB = Depends(get_current_user)
     return info
 
 
+@api_router.delete("/admin/purge-orphan-users")
+async def purge_orphan_users(current_user: UserInDB = Depends(get_current_user)):
+    """Supprime les comptes users qui n'ont aucune entrée dans client_users."""
+    if current_user.role != "SUPER_ADMIN":
+        raise HTTPException(status_code=403, detail="Réservé aux super admins")
+
+    # Récupérer tous les user_id présents dans client_users
+    client_user_docs = await db.client_users.find({}, {"_id": 0, "user_id": 1}).to_list(10000)
+    linked_user_ids = {d["user_id"] for d in client_user_docs}
+
+    # Trouver les users sans aucun client_user
+    all_users = await db.users.find(
+        {"role": {"$ne": "SUPER_ADMIN"}},
+        {"_id": 0, "id": 1, "email": 1}
+    ).to_list(10000)
+
+    orphan_ids = [u["id"] for u in all_users if u["id"] not in linked_user_ids]
+
+    if not orphan_ids:
+        return {"deleted": 0, "message": "Aucun utilisateur orphelin trouvé"}
+
+    result = await db.users.delete_many({"id": {"$in": orphan_ids}})
+    return {"deleted": result.deleted_count, "orphan_ids": orphan_ids}
+
+
 @api_router.get("/health")
 async def health_check():
     try:
