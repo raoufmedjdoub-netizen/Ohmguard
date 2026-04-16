@@ -3217,6 +3217,36 @@ async def debug_alerts_access(current_user: UserInDB = Depends(get_current_user)
     scoped = await get_scoped_sensor_ids(current_user)
     info["scoped_sensor_ids"] = scoped  # None = full access, [] = no access, list = scoped
 
+    # Find buildings for this client
+    buildings = await db.buildings.find(
+        {"client_id": user_client_id},
+        {"_id": 0, "id": 1, "name": 1}
+    ).to_list(20) if user_client_id else []
+    info["buildings_for_client"] = buildings
+
+    # Find sensors via buildings (even if client_id not set on sensor)
+    building_ids = [b["id"] for b in buildings]
+    sensors_in_buildings = await db.sensors.find(
+        {"building_id": {"$in": building_ids}},
+        {"_id": 0, "id": 1, "name": 1, "client_id": 1, "tenant_id": 1, "assignment_status": 1}
+    ).to_list(20) if building_ids else []
+    info["sensors_in_client_buildings"] = sensors_in_buildings
+
+    # NEW EVENTS for sensors in buildings
+    sensor_ids_via_buildings = [s["id"] for s in sensors_in_buildings]
+    if sensor_ids_via_buildings:
+        info["new_events_via_buildings"] = await db.events.count_documents(
+            {"sensor_id": {"$in": sensor_ids_via_buildings}, "status": "NEW"}
+        )
+    else:
+        info["new_events_via_buildings"] = 0
+
+    # Show ALL distinct client_ids / tenant_ids on sensors (to see what values exist)
+    all_sensors_sample = await db.sensors.find(
+        {}, {"_id": 0, "id": 1, "name": 1, "client_id": 1, "tenant_id": 1, "building_id": 1}
+    ).to_list(5)
+    info["all_sensors_sample"] = all_sensors_sample
+
     return info
 
 
