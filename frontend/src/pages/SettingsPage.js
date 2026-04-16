@@ -745,6 +745,8 @@ function UsersSettingsTab() {
         onOpenChange={setShowCreateDialog}
         clientId={selectedClient}
         clientName={selectedClientName}
+        allClients={clients}
+        isSuperAdmin={currentUser?.role === 'SUPER_ADMIN'}
         onSuccess={loadUsers}
       />
 
@@ -786,7 +788,7 @@ function UsersSettingsTab() {
 // CREATE USER DIALOG - Contact Card Form
 // ============================================================================
 
-function CreateUserDialog({ open, onOpenChange, clientId, clientName, onSuccess }) {
+function CreateUserDialog({ open, onOpenChange, clientId, clientName, allClients = [], isSuperAdmin = false, onSuccess }) {
   const [form, setForm] = useState({
     full_name: '', email: '', role: 'VIEWER',
     phone: '', job_title: '', department: '', notes: ''
@@ -794,20 +796,33 @@ function CreateUserDialog({ open, onOpenChange, clientId, clientName, onSuccess 
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Scopes at creation
+  // Scopes: grouped by client_id → [{scope_type, building_id?, floor_id?, label, client_id}]
+  // scopesByClient: { [cid]: scope[] }
+  const [scopesByClient, setScopesByClient] = useState({});
+
+  // Which org is currently browsed in the perimeter picker
+  const [scopeClientId, setScopeClientId] = useState(clientId);
   const [buildings, setBuildings] = useState([]);
   const [floors, setFloors] = useState({});
-  const [selectedScopes, setSelectedScopes] = useState([]); // [{scope_type, building_id?, floor_id?, label}]
 
+  // Reset on open
   useEffect(() => {
-    if (open && clientId) {
-      loadBuildingsForScopes();
+    if (open) {
+      setScopeClientId(clientId);
+      setScopesByClient({});
     }
   }, [open, clientId]);
 
-  const loadBuildingsForScopes = async () => {
+  // Reload buildings when browsed org changes
+  useEffect(() => {
+    if (open && scopeClientId) {
+      loadBuildingsForOrg(scopeClientId);
+    }
+  }, [open, scopeClientId]);
+
+  const loadBuildingsForOrg = async (cid) => {
     try {
-      const res = await api.get(`/clients/${clientId}/buildings`);
+      const res = await api.get(`/clients/${cid}/buildings`);
       setBuildings(res.data || []);
       const floorsMap = {};
       for (const b of (res.data || [])) {
@@ -821,20 +836,34 @@ function CreateUserDialog({ open, onOpenChange, clientId, clientName, onSuccess 
   };
 
   const addScope = (scopeType, id, label) => {
-    const exists = selectedScopes.some(s =>
-      (scopeType === 'BUILDING' && s.scope_type === 'BUILDING' && s.building_id === id) ||
-      (scopeType === 'FLOOR' && s.scope_type === 'FLOOR' && s.floor_id === id)
-    );
-    if (exists) return;
-    const scope = scopeType === 'BUILDING'
-      ? { scope_type: 'BUILDING', building_id: id, label }
-      : { scope_type: 'FLOOR', floor_id: id, label };
-    setSelectedScopes(prev => [...prev, scope]);
+    const cid = scopeClientId;
+    setScopesByClient(prev => {
+      const existing = prev[cid] || [];
+      const alreadyExists = existing.some(s =>
+        (scopeType === 'BUILDING' && s.scope_type === 'BUILDING' && s.building_id === id) ||
+        (scopeType === 'FLOOR' && s.scope_type === 'FLOOR' && s.floor_id === id)
+      );
+      if (alreadyExists) return prev;
+      const scope = scopeType === 'BUILDING'
+        ? { scope_type: 'BUILDING', building_id: id, label, client_id: cid }
+        : { scope_type: 'FLOOR', floor_id: id, label, client_id: cid };
+      return { ...prev, [cid]: [...existing, scope] };
+    });
   };
 
-  const removeScope = (idx) => {
-    setSelectedScopes(prev => prev.filter((_, i) => i !== idx));
+  const removeScope = (cid, idx) => {
+    setScopesByClient(prev => {
+      const updated = (prev[cid] || []).filter((_, i) => i !== idx);
+      if (updated.length === 0) {
+        const { [cid]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [cid]: updated };
+    });
   };
+
+  // Flat list for display / warning
+  const allSelectedScopes = Object.values(scopesByClient).flat();
 
   const validateEmail = (email) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -853,22 +882,46 @@ function CreateUserDialog({ open, onOpenChange, clientId, clientName, onSuccess 
     if (!validate()) return;
     setSaving(true);
     try {
+      // Step 1: create user in primary org (always)
       const res = await api.post(`/clients/${clientId}/users`, form);
       const data = res.data;
 
-      // Assign scopes if any selected
-      if (selectedScopes.length > 0 && data.id) {
-        try {
-          const scopePayloads = selectedScopes.map(s => ({
-            scope_type: s.scope_type,
-            building_id: s.building_id || null,
-            floor_id: s.floor_id || null,
-            access_level: 'VIEW'
-          }));
-          await api.put(`/client-users/${data.id}/scopes`, { scopes: scopePayloads });
-        } catch (e) {
-          console.error('Failed to assign scopes:', e);
-          toast.warning('Utilisateur créé mais les périmètres n\'ont pas pu être assignés');
+      // Step 2: for each org in scopesByClient, add user and assign scopes
+      const orgClientIds = Object.keys(scopesByClient);
+      for (const cid of orgClientIds) {
+        let clientUserId = null;
+
+        if (cid === clientId) {
+          // Primary org → user already created, use returned id
+          clientUserId = data.id;
+        } else {
+          // Other org (SUPER_ADMIN only) → link user to this org
+          try {
+            const linkRes = await api.post(`/clients/${cid}/users`, {
+              ...form,
+              password: undefined  // Don't re-send password for existing user
+            });
+            clientUserId = linkRes.data.id;
+          } catch (e) {
+            console.error(`Failed to link user to org ${cid}:`, e);
+            toast.warning(`Périmètre non assigné pour une organisation`);
+            continue;
+          }
+        }
+
+        if (clientUserId && scopesByClient[cid]?.length > 0) {
+          try {
+            const scopePayloads = scopesByClient[cid].map(s => ({
+              scope_type: s.scope_type,
+              building_id: s.building_id || null,
+              floor_id: s.floor_id || null,
+              access_level: 'VIEW'
+            }));
+            await api.put(`/client-users/${clientUserId}/scopes`, { scopes: scopePayloads });
+          } catch (e) {
+            console.error('Failed to assign scopes:', e);
+            toast.warning('Utilisateur créé mais les périmètres n\'ont pas pu être assignés');
+          }
         }
       }
 
@@ -881,7 +934,7 @@ function CreateUserDialog({ open, onOpenChange, clientId, clientName, onSuccess 
       }
       onOpenChange(false);
       setForm({ full_name: '', email: '', role: 'VIEWER', phone: '', job_title: '', department: '', notes: '' });
-      setSelectedScopes([]);
+      setScopesByClient({});
       setErrors({});
       onSuccess();
     } catch (error) {
@@ -1024,63 +1077,94 @@ function CreateUserDialog({ open, onOpenChange, clientId, clientName, onSuccess 
                 Périmètre
               </h4>
 
-              {selectedScopes.length > 0 && (
-                <div className="space-y-1.5">
-                  {selectedScopes.map((s, idx) => (
-                    <div key={idx} className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md px-3 py-1.5">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-3.5 w-3.5 text-blue-600" />
-                        <span className="text-sm">{s.label}</span>
-                        <Badge variant="outline" className="text-[10px]">
-                          {s.scope_type === 'BUILDING' ? 'Bâtiment' : 'Étage'}
-                        </Badge>
-                      </div>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeScope(idx)}>
-                        <X className="h-3 w-3 text-red-500" />
-                      </Button>
-                    </div>
-                  ))}
+              {/* SUPER_ADMIN : sélecteur d'organisation pour parcourir les bâtiments */}
+              {isSuperAdmin && allClients.length > 1 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground shrink-0">Organisation :</span>
+                  <Select value={scopeClientId} onValueChange={setScopeClientId}>
+                    <SelectTrigger className="h-7 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allClients.map(c => (
+                        <SelectItem key={c.id} value={c.id} className="text-xs">
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
-              {buildings.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Aucun bâtiment disponible pour ce client</p>
-              ) : (
-                <div className="border rounded-md divide-y max-h-40 overflow-y-auto">
-                  {buildings.map(b => (
-                    <div key={b.id} className="px-3 py-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{b.name}</span>
-                        <Button
-                          variant="ghost" size="sm" className="h-6 text-xs"
-                          disabled={selectedScopes.some(s => s.scope_type === 'BUILDING' && s.building_id === b.id)}
-                          onClick={() => addScope('BUILDING', b.id, b.name)}
-                        >
-                          + Tout le bâtiment
+              {/* Scopes sélectionnés — groupés par organisation */}
+              {allSelectedScopes.length > 0 && (
+                <div className="space-y-1.5">
+                  {Object.entries(scopesByClient).map(([cid, scopes]) => {
+                    const orgName = allClients.find(c => c.id === cid)?.name || cid;
+                    return scopes.map((s, idx) => (
+                      <div key={`${cid}-${idx}`} className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md px-3 py-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <MapPin className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                          <span className="text-sm truncate">{s.label}</span>
+                          <Badge variant="outline" className="text-[10px] shrink-0">
+                            {s.scope_type === 'BUILDING' ? 'Bâtiment' : 'Étage'}
+                          </Badge>
+                          {isSuperAdmin && allClients.length > 1 && (
+                            <Badge variant="secondary" className="text-[10px] shrink-0">{orgName}</Badge>
+                          )}
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => removeScope(cid, idx)}>
+                          <X className="h-3 w-3 text-red-500" />
                         </Button>
                       </div>
-                      {(floors[b.id] || []).length > 0 && !selectedScopes.some(s => s.scope_type === 'BUILDING' && s.building_id === b.id) && (
-                        <div className="ml-4 mt-1 space-y-0.5">
-                          {(floors[b.id] || []).map(f => (
-                            <div key={f.id} className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">{f.name || `Étage ${f.level}`}</span>
-                              <Button
-                                variant="ghost" size="sm" className="h-5 text-[10px] px-1.5"
-                                disabled={selectedScopes.some(s => s.scope_type === 'FLOOR' && s.floor_id === f.id)}
-                                onClick={() => addScope('FLOOR', f.id, `${b.name} > ${f.name || 'Étage ' + f.level}`)}
-                              >
-                                + Ajouter
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    ));
+                  })}
                 </div>
               )}
 
-              {selectedScopes.length === 0 && (
+              {/* Liste des bâtiments de l'org parcourue */}
+              {buildings.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Aucun bâtiment disponible pour cette organisation</p>
+              ) : (
+                <div className="border rounded-md divide-y max-h-40 overflow-y-auto">
+                  {buildings.map(b => {
+                    const orgScopes = scopesByClient[scopeClientId] || [];
+                    const buildingAdded = orgScopes.some(s => s.scope_type === 'BUILDING' && s.building_id === b.id);
+                    return (
+                      <div key={b.id} className="px-3 py-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">{b.name}</span>
+                          <Button
+                            variant="ghost" size="sm" className="h-6 text-xs"
+                            disabled={buildingAdded}
+                            onClick={() => addScope('BUILDING', b.id, b.name)}
+                          >
+                            + Tout le bâtiment
+                          </Button>
+                        </div>
+                        {(floors[b.id] || []).length > 0 && !buildingAdded && (
+                          <div className="ml-4 mt-1 space-y-0.5">
+                            {(floors[b.id] || []).map(f => (
+                              <div key={f.id} className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground">{f.name || `Étage ${f.level}`}</span>
+                                <Button
+                                  variant="ghost" size="sm" className="h-5 text-[10px] px-1.5"
+                                  disabled={orgScopes.some(s => s.scope_type === 'FLOOR' && s.floor_id === f.id)}
+                                  onClick={() => addScope('FLOOR', f.id, `${b.name} > ${f.name || 'Étage ' + f.level}`)}
+                                >
+                                  + Ajouter
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {allSelectedScopes.length === 0 && (
                 <p className="text-xs text-amber-600">
                   <AlertTriangle className="inline h-3 w-3 mr-1 -mt-0.5" />
                   Sans périmètre, l'utilisateur n'aura accès à aucune donnée. Assignez au moins un bâtiment ou étage.
