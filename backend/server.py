@@ -3774,51 +3774,87 @@ async def check_building_access(user: UserInDB, building_id: str) -> bool:
     """
     Check if user has access to a building.
     - SUPER_ADMIN: access to all
-    - TENANT_ADMIN / ORG_ADMIN: access to all buildings in their tenant
-    - SUPERVISOR / OPERATOR: check allowed_building_ids or assignments
+    - TENANT_ADMIN / ORG_ADMIN: access to all buildings in their tenant/client
+    - Other roles: check RBAC location_scopes (no scopes = full org access; scopes = restricted)
+    - Legacy fallback: allowed_building_ids or user_assignments
     """
     if user.role == "SUPER_ADMIN":
         return True
-    
-    # Get building to check tenant
+
     building = await db.buildings.find_one({"id": building_id}, {"_id": 0})
     if not building:
         return False
-    
-    # Get tenant_id from building or from client
+
+    building_client_id = building.get("client_id")
     building_tenant_id = building.get("tenant_id")
-    if not building_tenant_id:
-        # Try to get tenant from client
-        client = await db.clients.find_one({"id": building.get("client_id")}, {"_id": 0})
+    if not building_tenant_id and building_client_id:
+        client = await db.clients.find_one({"id": building_client_id}, {"_id": 0})
         if client:
             building_tenant_id = client.get("tenant_id")
-    
-    # If still no tenant_id, allow access for admins (legacy data)
-    if not building_tenant_id:
-        if user.role in ["TENANT_ADMIN", "ORG_ADMIN"]:
-            return True
-        # For other roles, deny access to unassigned buildings
+
+    # Check org access: tenant_id match (old system) OR client_id match (new system)
+    # OR membership via client_users record
+    user_has_org_access = (
+        (building_tenant_id and building_tenant_id == user.tenant_id) or
+        (building_client_id and building_client_id == user.tenant_id)
+    )
+    if not user_has_org_access and building_client_id:
+        cu_check = await db.client_users.find_one(
+            {"user_id": user.id, "client_id": building_client_id, "is_active": True}
+        )
+        user_has_org_access = cu_check is not None
+
+    if not user_has_org_access:
         return False
-    
-    # Check tenant match
-    if building_tenant_id != user.tenant_id:
-        return False
-    
-    # Org/Tenant admins have access to all buildings in their tenant
+
+    # Org/Tenant admins have access to all buildings in their org
     if user.role in ["TENANT_ADMIN", "ORG_ADMIN"]:
         return True
-    
-    # Check allowed_building_ids
+
+    # Check new RBAC location_scopes
+    if building_client_id:
+        cu = await db.client_users.find_one(
+            {"user_id": user.id, "client_id": building_client_id, "is_active": True}
+        )
+        if cu:
+            total_scopes = await db.location_scopes.count_documents({"client_user_id": cu["id"]})
+            if total_scopes == 0:
+                # No scopes defined → access to entire org
+                return True
+            # BUILDING scope directly
+            building_scope = await db.location_scopes.find_one({
+                "client_user_id": cu["id"],
+                "scope_type": "BUILDING",
+                "building_id": building_id
+            })
+            if building_scope:
+                return True
+            # FLOOR scope within this building
+            floors_in_building = await db.floors.find(
+                {"building_id": building_id}, {"_id": 0, "id": 1}
+            ).to_list(100)
+            floor_ids = [f["id"] for f in floors_in_building]
+            if floor_ids:
+                floor_scope = await db.location_scopes.find_one({
+                    "client_user_id": cu["id"],
+                    "scope_type": "FLOOR",
+                    "floor_id": {"$in": floor_ids}
+                })
+                if floor_scope:
+                    return True
+            return False
+
+    # Legacy: check allowed_building_ids
     if hasattr(user, 'allowed_building_ids') and user.allowed_building_ids:
         if building_id in user.allowed_building_ids:
             return True
-    
-    # Check assignments
+
+    # Legacy: check user_assignments
     assignment = await db.user_assignments.find_one({
         "user_id": user.id,
         "building_id": building_id
     })
-    
+
     return assignment is not None
 
 
@@ -4011,8 +4047,12 @@ async def get_last_state_stats(
         
         building = await db.buildings.find_one({"id": building_id}, {"_id": 0})
         if building:
-            tenant_id = building.get("tenant_id")
-    
+            tenant_id = (
+                building.get("tenant_id") or
+                building.get("client_id") or
+                current_user.tenant_id
+            )
+
     if not tenant_id:
         raise HTTPException(status_code=400, detail="Cannot determine tenant")
     

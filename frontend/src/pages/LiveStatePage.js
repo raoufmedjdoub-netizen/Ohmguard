@@ -128,7 +128,7 @@ export function LiveStatePage() {
       const building = buildings.find(b => b.id === buildingId);
       if (!building) return;
       
-      const response = await api.get(`/clients/${building.client_id}/buildings/${buildingId}/floors`);
+      const response = await api.get(`/buildings/${buildingId}/floors`);
       setFloors(response.data || []);
     } catch (err) {
       console.error('Error loading floors:', err);
