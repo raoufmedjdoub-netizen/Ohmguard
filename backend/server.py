@@ -4348,12 +4348,21 @@ async def simulate_event(
     doc = event_obj.model_dump()
     doc['timestamp'] = doc['timestamp'].isoformat()
     await db.events.insert_one(doc)
-    
-    # Broadcast to WebSocket
-    await manager.broadcast_to_tenant(sensor['tenant_id'], {
-        "type": "new_event",
-        "event": doc
-    })
+
+    # Broadcast via Socket.IO (not the legacy raw WebSocket manager)
+    from socketio_service import broadcast_new_event
+    event_payload = {
+        **{k: v for k, v in doc.items() if k != '_id'},
+        "client_id": sensor.get('client_id'),
+        "building_id": sensor.get('building_id'),
+        "floor_id": sensor.get('floor_id'),
+        "sensor_name": sensor.get('name'),
+    }
+    await broadcast_new_event(sensor['tenant_id'], event_payload)
+    # Also broadcast to client room for RBAC users
+    client_id = sensor.get('client_id')
+    if client_id and client_id != sensor['tenant_id']:
+        await broadcast_new_event(client_id, event_payload)
     
     return event_obj
 
