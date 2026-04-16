@@ -531,22 +531,25 @@ export function RadarsPage() {
     if (!radar.client_id) {
       return <span className="text-amber-500 italic">Non affecté</span>;
     }
-    
-    // Build location path
-    const client = clients.find(c => c.id === radar.client_id);
-    const parts = [];
-    if (client) parts.push(client.name);
-    
-    // We would need to fetch these, but for now show what we have
+
+    // Use cached location_path from backend (built at assignment time)
     if (radar.location_path) {
-      return <span className="text-sm">{radar.location_path}</span>;
+      return <span className="text-sm text-primary">{radar.location_path}</span>;
     }
-    
+
+    // Fallback: build from cached name fields
+    const parts = [];
+    if (radar.client_name) parts.push(radar.client_name);
+    if (radar.building_name) parts.push(radar.building_name);
+    if (radar.floor_name) parts.push(radar.floor_name);
+    if (radar.room_number || radar.room_name) parts.push(`Ch. ${radar.room_number || radar.room_name}`);
     if (parts.length > 0) {
       return <span className="text-sm text-primary">{parts.join(' > ')}</span>;
     }
-    
-    return <span className="text-muted-foreground">Client #{radar.client_id?.substring(0, 8)}</span>;
+
+    // Last resort: client name from local list or truncated ID
+    const client = clients.find(c => c.id === radar.client_id);
+    return <span className="text-sm text-primary">{client?.name || `Client #${radar.client_id?.substring(0, 8)}`}</span>;
   };
 
   const formatLastSeen = (lastSeen) => {

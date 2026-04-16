@@ -344,6 +344,13 @@ class SensorBase(BaseModel):
     room_id: Optional[str] = None
     room_space_id: Optional[str] = None
     assignment_status: Optional[str] = "PENDING"  # PENDING | ASSIGNED
+    # Cached human-readable location names (set at assignment time)
+    client_name: Optional[str] = None
+    building_name: Optional[str] = None
+    floor_name: Optional[str] = None
+    room_name: Optional[str] = None
+    room_number: Optional[str] = None
+    location_path: Optional[str] = None
 
 class SensorCreate(SensorBase):
     pass
@@ -1344,6 +1351,53 @@ async def list_sensors(
 
     sensors = await db.sensors.find(query, {"_id": 0}).to_list(1000)
 
+    # Backfill location_path for sensors assigned but missing the cached path
+    sensors_needing_backfill = [
+        s for s in sensors
+        if s.get("client_id") and not s.get("location_path")
+    ]
+    if sensors_needing_backfill:
+        # Batch fetch entity names
+        bf_client_ids = list(set(s["client_id"] for s in sensors_needing_backfill))
+        bf_building_ids = list(set(s["building_id"] for s in sensors_needing_backfill if s.get("building_id")))
+        bf_floor_ids = list(set(s["floor_id"] for s in sensors_needing_backfill if s.get("floor_id")))
+        bf_room_ids = list(set(s["room_id"] for s in sensors_needing_backfill if s.get("room_id")))
+
+        bf_clients = {c["id"]: c async for c in db.clients.find({"id": {"$in": bf_client_ids}}, {"_id": 0, "id": 1, "name": 1})} if bf_client_ids else {}
+        bf_buildings = {b["id"]: b async for b in db.buildings.find({"id": {"$in": bf_building_ids}}, {"_id": 0, "id": 1, "name": 1})} if bf_building_ids else {}
+        bf_floors = {f["id"]: f async for f in db.floors.find({"id": {"$in": bf_floor_ids}}, {"_id": 0, "id": 1, "name": 1})} if bf_floor_ids else {}
+        bf_rooms = {r["id"]: r async for r in db.rooms.find({"id": {"$in": bf_room_ids}}, {"_id": 0, "id": 1, "room_number": 1, "name": 1})} if bf_room_ids else {}
+
+        for sensor in sensors_needing_backfill:
+            client = bf_clients.get(sensor["client_id"], {})
+            building = bf_buildings.get(sensor.get("building_id"), {})
+            floor = bf_floors.get(sensor.get("floor_id"), {})
+            room = bf_rooms.get(sensor.get("room_id"), {})
+
+            parts = []
+            if client.get("name"):
+                parts.append(client["name"])
+            if building.get("name"):
+                parts.append(building["name"])
+            if floor.get("name"):
+                parts.append(floor["name"])
+            room_label = room.get("room_number") or room.get("name")
+            if room_label:
+                parts.append(f"Ch. {room_label}")
+
+            path = " > ".join(parts) if parts else None
+            update_fields = {
+                "client_name": client.get("name"),
+                "building_name": building.get("name"),
+                "floor_name": floor.get("name"),
+                "room_number": room.get("room_number"),
+                "room_name": room.get("name"),
+                "location_path": path
+            }
+            sensor.update(update_fields)
+            # Persist backfilled data so future requests are instant
+            await db.sensors.update_one({"id": sensor["id"]}, {"$set": update_fields})
+
     # Cache result if no filters
     if not site_id and not zone_id and not status:
         cache.set_sensors_list(cache_tenant, sensors)
@@ -1663,6 +1717,20 @@ async def assign_radar(radar_id: str, assignment: RadarAssignment, current_user:
     floor = await db.floors.find_one({"id": assignment.floor_id}, {"name": 1}) if assignment.floor_id else None
     room = await db.rooms.find_one({"id": assignment.room_id}, {"room_number": 1, "name": 1}) if assignment.room_id else None
 
+    # Build location_path string
+    path_parts = []
+    if client.get("name"):
+        path_parts.append(client["name"])
+    if building and building.get("name"):
+        path_parts.append(building["name"])
+    if floor and floor.get("name"):
+        path_parts.append(floor["name"])
+    if room:
+        room_label = room.get("room_number") or room.get("name")
+        if room_label:
+            path_parts.append(f"Ch. {room_label}")
+    location_path = " > ".join(path_parts) if path_parts else None
+
     # Update sensor with assignment (IDs + cached names for fast location_path)
     update_data = {
         "client_id": assignment.client_id,
@@ -1675,7 +1743,8 @@ async def assign_radar(radar_id: str, assignment: RadarAssignment, current_user:
         "room_number": room.get("room_number") if room else None,
         "room_name": room.get("name") if room else None,
         "room_space_id": assignment.room_space_id,
-        "assignment_status": "ASSIGNED"
+        "assignment_status": "ASSIGNED",
+        "location_path": location_path
     }
 
     await db.sensors.update_one({"id": radar_id}, {"$set": update_data})
@@ -1700,10 +1769,16 @@ async def unassign_radar(radar_id: str, current_user: UserInDB = Depends(get_cur
     # Clear assignment
     update_data = {
         "client_id": None,
+        "client_name": None,
         "building_id": None,
+        "building_name": None,
         "floor_id": None,
+        "floor_name": None,
         "room_id": None,
+        "room_number": None,
+        "room_name": None,
         "room_space_id": None,
+        "location_path": None,
         "assignment_status": "PENDING"
     }
     
