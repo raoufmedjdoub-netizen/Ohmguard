@@ -668,7 +668,11 @@ async def get_scoped_sensor_ids(current_user: UserInDB) -> Optional[list]:
     if scope_filter.get("_impossible"):
         return []
 
-    sensor_query = {"client_id": user_client_id, **scope_filter}
+    # Search by client_id (new system) OR tenant_id (legacy) within the scope
+    sensor_query = {
+        "$or": [{"client_id": user_client_id}, {"tenant_id": user_client_id}],
+        **scope_filter
+    }
     sensors = await db.sensors.find(sensor_query, {"_id": 0, "id": 1}).to_list(10000)
     return [s["id"] for s in sensors]
 
@@ -1338,7 +1342,9 @@ async def list_sensors(
                 return []
             query["id"] = {"$in": scoped_ids}
         else:
-            query["tenant_id"] = current_user.tenant_id
+            # Full access - match by client_id (new system) OR tenant_id (legacy)
+            user_tid = current_user.tenant_id
+            query["$or"] = [{"client_id": user_tid}, {"tenant_id": user_tid}]
     elif tenant_id:
         query["tenant_id"] = tenant_id
 
@@ -2009,15 +2015,20 @@ async def list_events(
                 query["sensor_id"] = {"$in": scoped_ids}
             else:
                 # Full access within client - filter by all client sensors
+                # Search by client_id (new system) OR tenant_id (legacy MQTT-registered sensors)
                 client_sensors = await db.sensors.find(
-                    {"client_id": user_client_id},
+                    {"$or": [
+                        {"client_id": user_client_id},
+                        {"tenant_id": user_client_id}
+                    ]},
                     {"_id": 0, "id": 1}
                 ).to_list(10000)
                 client_sensor_ids = [s["id"] for s in client_sensors]
                 if client_sensor_ids:
                     query["sensor_id"] = {"$in": client_sensor_ids}
                 else:
-                    return []
+                    # No sensors found via sensor lookup - fall back to direct tenant_id filter on events
+                    query["tenant_id"] = user_client_id
         else:
             # Legacy mode: filter by tenant_id directly
             cache_tenant_id = user_client_id
@@ -2213,8 +2224,12 @@ async def count_events(
 
         if client_exists:
             # User's tenant_id is a client_id - filter by sensors assigned to this client
+            # Search by client_id (new system) OR tenant_id (legacy MQTT-registered sensors)
             client_sensors = await db.sensors.find(
-                {"client_id": user_client_id},
+                {"$or": [
+                    {"client_id": user_client_id},
+                    {"tenant_id": user_client_id}
+                ]},
                 {"_id": 0, "id": 1}
             ).to_list(10000)
             client_sensor_ids = [s["id"] for s in client_sensors]
@@ -2222,7 +2237,7 @@ async def count_events(
             if client_sensor_ids:
                 query["sensor_id"] = {"$in": client_sensor_ids}
             else:
-                return {"count": 0}
+                query["tenant_id"] = user_client_id
         else:
             # Legacy mode: filter by tenant_id directly
             query["tenant_id"] = user_client_id
