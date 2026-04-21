@@ -5159,8 +5159,19 @@ async def startup_event():
                 building_id=message.get('building_id'),
                 floor_id=message.get('floor_id')
             )
+            if client_id and client_id != tenant_id:
+                await broadcast_sensor_status(
+                    client_id,
+                    message.get('sensor_id', ''),
+                    message.get('status', ''),
+                    message.get('last_seen', ''),
+                    building_id=message.get('building_id'),
+                    floor_id=message.get('floor_id')
+                )
         elif msg_type == 'sensor_registered':
             await broadcast_sensor_registered(tenant_id, message.get('sensor', message))
+            if client_id and client_id != tenant_id:
+                await broadcast_sensor_registered(client_id, message.get('sensor', message))
         elif msg_type == 'fall_event_update':
             await broadcast_fall_event_update(tenant_id, message)
             if client_id and client_id != tenant_id:

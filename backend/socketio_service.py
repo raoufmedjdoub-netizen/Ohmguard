@@ -133,6 +133,8 @@ async def join_rooms(sid, data):
         rooms.append(f'tenant_{tenant_id}')
     else:
         # Scoped users: look up their location_scopes in DB
+        # location_scopes.client_user_id stores ClientUser.id, not User.id
+        # So we must find the ClientUser record first, then query scopes by its id.
         try:
             from motor.motor_asyncio import AsyncIOMotorClient
             mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
@@ -140,11 +142,19 @@ async def join_rooms(sid, data):
             client = AsyncIOMotorClient(mongo_url)
             db = client[db_name]
 
-            # Find user's location scopes
-            scopes = await db.location_scopes.find(
-                {"client_user_id": user_id},
-                {"_id": 0, "building_id": 1, "floor_id": 1}
-            ).to_list(100)
+            # Step 1: find the ClientUser record for (user_id, client/tenant)
+            client_user = await db.client_users.find_one(
+                {"user_id": user_id, "client_id": tenant_id, "is_active": True},
+                {"_id": 0, "id": 1}
+            )
+
+            scopes = []
+            if client_user:
+                # Step 2: query scopes by client_user.id (not user_id!)
+                scopes = await db.location_scopes.find(
+                    {"client_user_id": client_user["id"]},
+                    {"_id": 0, "building_id": 1, "floor_id": 1}
+                ).to_list(100)
 
             if scopes:
                 building_ids = set()
@@ -158,7 +168,7 @@ async def join_rooms(sid, data):
                         rooms.append(f'floor_{fid}')
                 logger.info(f"User {user_id} ({role}) scoped to {len(building_ids)} buildings")
             else:
-                # No specific scopes: fall back to tenant room (see all tenant events)
+                # No specific scopes: fall back to tenant room (see all tenant/client events)
                 rooms.append(f'tenant_{tenant_id}')
                 logger.info(f"User {user_id} ({role}) has no scopes, falling back to tenant room")
 
