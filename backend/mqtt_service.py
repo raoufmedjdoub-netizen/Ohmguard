@@ -820,6 +820,9 @@ class MQTTService:
             update_data = {
                 "fall_status": fall_status,
                 "exit_reason": fall_payload.exitReason,
+                # Timestamp of this status transition (used by frontend to display exit time)
+                "fall_status_updated_at": status_update_at,
+                "updated_at": status_update_at,
             }
             
             # Update location if now available
@@ -1035,7 +1038,10 @@ class MQTTService:
                 "fall_loc_x_cm": sf_payload.fallLocX_cm,
                 "fall_loc_y_cm": sf_payload.fallLocY_cm,
                 "fall_loc_z_cm": sf_payload.fallLocZ_cm,
-                "raw_payload": {"type": 8, "payload": sf_payload.model_dump()}
+                "raw_payload": {"type": 8, "payload": sf_payload.model_dump()},
+                # Timestamp of this status transition (used by frontend to display exit time)
+                "fall_status_updated_at": now,
+                "updated_at": now,
             }
 
             # Escalade de sévérité selon le statut

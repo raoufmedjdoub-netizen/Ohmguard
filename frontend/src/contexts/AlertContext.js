@@ -260,22 +260,24 @@ export function AlertProvider({ children }) {
         }
       }
       else if (message.type === 'fall_event_update') {
-        const { event_id, fall_status, ...rest } = message;
+        const { event_id, fall_status, timestamp, ...rest } = message;
         if (!event_id) return;
+        // Conserver l'horodatage réel de la transition de statut pour l'affichage
+        const statusUpdate = { fall_status, ...rest, fall_status_updated_at: timestamp };
 
         if (fall_status === 'calling') {
           // Chute confirmée : promouvoir le SENSITIVE_FALL en attente dans le fil d'alertes
           const pending = pendingSensitiveFallsRef.current[event_id];
           if (pending) {
             delete pendingSensitiveFallsRef.current[event_id];
-            addAlert({ ...pending, fall_status, ...rest });
+            addAlert({ ...pending, ...statusUpdate });
           } else {
             // Déjà dans le fil ou pas de pending → mise à jour + son
-            updateAlert(event_id, { fall_status, ...rest });
+            updateAlert(event_id, statusUpdate);
             playAlertSound();
           }
         } else {
-          updateAlert(event_id, { fall_status, ...rest });
+          updateAlert(event_id, statusUpdate);
           if (fall_status === 'fall_confirmed') {
             playAlertSound();
           }

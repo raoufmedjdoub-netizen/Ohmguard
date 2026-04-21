@@ -125,11 +125,24 @@ function formatTime(ts) {
   return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 
-// Timestamp de sortie : resolved_at, ou statuts terminaux SENSITIVE_FALL
+// Timestamp de sortie : resolved_at, ou horodatage réel du passage en statut terminal
 const TERMINAL_FALL_STATUSES = ['fall_exit', 'finished', 'no_fall'];
 function getExitTime(alert) {
   if (alert.resolved_at) return alert.resolved_at;
-  if (TERMINAL_FALL_STATUSES.includes(alert.fall_status) && alert.updatedAt) return alert.updatedAt;
+  if (!TERMINAL_FALL_STATUSES.includes(alert.fall_status)) return null;
+  // Horodatage posé par le backend lors de la transition de statut
+  if (alert.fall_status_updated_at) return alert.fall_status_updated_at;
+  // end_at : présent uniquement si fall_payload.endTimestamp a été transmis
+  if (alert.end_at) return alert.end_at;
+  // Dernière transition vers un statut terminal dans l'historique
+  if (Array.isArray(alert.fall_status_history) && alert.fall_status_history.length) {
+    for (let i = alert.fall_status_history.length - 1; i >= 0; i--) {
+      const h = alert.fall_status_history[i];
+      if (TERMINAL_FALL_STATUSES.includes(h?.status) && h?.timestamp) return h.timestamp;
+    }
+  }
+  // updated_at backend en dernier recours
+  if (alert.updated_at) return alert.updated_at;
   return null;
 }
 
@@ -768,7 +781,7 @@ export function LivePage() {
         }
       }
       else if (message.type === 'fall_event_update') {
-        const { event_id, fall_status, sensor_name } = message;
+        const { event_id, fall_status, sensor_name, timestamp } = message;
         if (fall_status === 'fall_confirmed') {
           toast.error('🚨 Chute confirmée!', {
             description: sensor_name || 'Intervention requise',
@@ -776,7 +789,7 @@ export function LivePage() {
           });
         }
         setEvents(prev => prev.map(e =>
-          e.id === event_id ? { ...e, fall_status } : e
+          e.id === event_id ? { ...e, fall_status, fall_status_updated_at: timestamp } : e
         ));
       }
       else if (message.type === 'event_updated') {
