@@ -5,7 +5,7 @@ import {
   Wifi, WifiOff, Radio, RefreshCw, Activity, 
   Clock, Plus, Copy, Key, 
   Trash2, Search, MapPin, Sliders, Building2, AlertCircle, Link2, Upload,
-  CheckSquare, Square, Settings2, Send, FileJson, Save, Edit, X
+  CheckSquare, Square, Settings2, Send, FileJson, Save, Edit, X, Power
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,7 @@ export function RadarsPage() {
   const [selectedRadars, setSelectedRadars] = useState(new Set());
   const [updateBaseUrlDialogOpen, setUpdateBaseUrlDialogOpen] = useState(false);
   const [newBaseUrl, setNewBaseUrl] = useState('http://auth.ohmguard.fr:5051');
+  const [rebootDialogOpen, setRebootDialogOpen] = useState(false);
   const [bulkOperationLoading, setBulkOperationLoading] = useState(false);
   
   // Bulk Config Dialog
@@ -466,10 +467,55 @@ export function RadarsPage() {
       
       setUpdateBaseUrlDialogOpen(false);
       setSelectedRadars(new Set());
-      
+
     } catch (error) {
       console.error('Bulk command error:', error);
       toast.error(error.response?.data?.detail || 'Erreur lors de l\'envoi des commandes');
+    } finally {
+      setBulkOperationLoading(false);
+    }
+  };
+
+  const handleBulkReboot = async () => {
+    if (selectedRadars.size === 0) {
+      toast.error('Veuillez sélectionner au moins un radar');
+      return;
+    }
+
+    setBulkOperationLoading(true);
+
+    try {
+      const sensorIds = radars
+        .filter(r => selectedRadars.has(r.id))
+        .map(r => r.id)
+        .filter(Boolean);
+
+      if (sensorIds.length === 0) {
+        toast.error('Aucun radar sélectionné');
+        return;
+      }
+
+      const response = await api.post('/devices/bulk-command', {
+        device_ids: sensorIds,
+        command_type: 3, // Reboot
+      });
+
+      const result = response.data;
+
+      if (result.success_count > 0) {
+        toast.success(`Reboot envoyé à ${result.success_count}/${result.total} radars`);
+      }
+
+      if (result.failed_count > 0) {
+        toast.error(`Échec pour ${result.failed_count} radars`);
+      }
+
+      setRebootDialogOpen(false);
+      setSelectedRadars(new Set());
+
+    } catch (error) {
+      console.error('Bulk reboot error:', error);
+      toast.error(error.response?.data?.detail || 'Erreur lors de l\'envoi du reboot');
     } finally {
       setBulkOperationLoading(false);
     }
@@ -760,13 +806,22 @@ export function RadarsPage() {
                   <Send className="h-4 w-4 mr-2" />
                   Envoyer Config
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => setUpdateBaseUrlDialogOpen(true)}
                 >
                   <Settings2 className="h-4 w-4 mr-2" />
                   Modifier BaseUrl
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-destructive text-destructive hover:bg-destructive/10"
+                  onClick={() => setRebootDialogOpen(true)}
+                >
+                  <Power className="h-4 w-4 mr-2" />
+                  Reboot
                 </Button>
               </div>
             </div>
@@ -1222,6 +1277,73 @@ export function RadarsPage() {
                 <>
                   <Send className="h-4 w-4 mr-2" />
                   Envoyer la commande
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Reboot Dialog */}
+      <Dialog open={rebootDialogOpen} onOpenChange={setRebootDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Power className="h-5 w-5" />
+              Redémarrer les radars
+            </DialogTitle>
+            <DialogDescription>
+              Cette commande va redémarrer {selectedRadars.size} radar(s) sélectionné(s).
+              La détection de chute sera interrompue pendant environ 30 secondes par radar.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="rounded-lg border p-3 bg-muted/50">
+              <p className="text-sm font-medium mb-2">Radars sélectionnés:</p>
+              <div className="max-h-32 overflow-y-auto space-y-1">
+                {radars
+                  .filter(r => selectedRadars.has(r.id))
+                  .slice(0, 10)
+                  .map(r => (
+                    <div key={r.id} className="text-xs flex items-center gap-2">
+                      <Radio className="h-3 w-3" />
+                      <span>{r.name}</span>
+                      <span className="text-muted-foreground">({r.device_id?.substring(0, 15)}...)</span>
+                    </div>
+                  ))
+                }
+                {selectedRadars.size > 10 && (
+                  <p className="text-xs text-muted-foreground">
+                    ... et {selectedRadars.size - 10} autres
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRebootDialogOpen(false)}
+              disabled={bulkOperationLoading}
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkReboot}
+              disabled={bulkOperationLoading}
+            >
+              {bulkOperationLoading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Envoi en cours...
+                </>
+              ) : (
+                <>
+                  <Power className="h-4 w-4 mr-2" />
+                  Confirmer le reboot
                 </>
               )}
             </Button>
