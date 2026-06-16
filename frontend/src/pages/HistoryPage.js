@@ -289,6 +289,8 @@ export function HistoryPage() {
 
   // Statuts de chute déjà terminaux (pas d'action "Terminer" proposée)
   const TERMINAL_FALL_STATUSES = ['finished', 'fall_exit', 'canceled'];
+  // Types d'événements considérés comme des chutes (action "Terminer" pertinente)
+  const FALL_EVENT_TYPES = ['FALL', 'SENSITIVE_FALL', 'PRE_FALL'];
 
   const handleMarkFinished = async () => {
     if (!finishEvent) return;
@@ -696,7 +698,7 @@ export function HistoryPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {fallStatus && !TERMINAL_FALL_STATUSES.includes(fallStatus) && (
+                          {FALL_EVENT_TYPES.includes(event.type) && !TERMINAL_FALL_STATUSES.includes(fallStatus) && (
                             <Button
                               variant="ghost"
                               size="sm"
