@@ -50,6 +50,8 @@ export function HistoryPage() {
   const [events, setEvents] = useState([]);
   const [clients, setClients] = useState([]);
   const [buildings, setBuildings] = useState([]);
+  const [floors, setFloors] = useState([]);
+  const [rooms, setRooms] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -57,6 +59,8 @@ export function HistoryPage() {
 
   const [selectedClient, setSelectedClient] = useState('all');
   const [selectedBuilding, setSelectedBuilding] = useState('all');
+  const [selectedFloor, setSelectedFloor] = useState('all');
+  const [selectedRoom, setSelectedRoom] = useState('all');
   const [selectedSite, setSelectedSite] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -72,6 +76,7 @@ export function HistoryPage() {
   const limit = 20;
 
   const hasActiveFilters = selectedClient !== 'all' || selectedBuilding !== 'all' ||
+    selectedFloor !== 'all' || selectedRoom !== 'all' ||
     selectedSite !== 'all' || selectedType !== 'all' || selectedStatus !== 'all' ||
     selectedSeverity !== 'all' || startDate || endDate || searchQuery;
 
@@ -99,10 +104,36 @@ export function HistoryPage() {
     }
   }, [selectedClient]);
 
+  // Charger les étages quand un bâtiment est sélectionné
+  useEffect(() => {
+    if (selectedBuilding && selectedBuilding !== 'all') {
+      api.get(`/buildings/${selectedBuilding}/floors`).then(res => {
+        setFloors(res.data);
+      }).catch(() => setFloors([]));
+    } else {
+      setFloors([]);
+      setSelectedFloor('all');
+    }
+  }, [selectedBuilding]);
+
+  // Charger les chambres quand un étage est sélectionné
+  useEffect(() => {
+    if (selectedFloor && selectedFloor !== 'all') {
+      api.get(`/floors/${selectedFloor}/rooms`).then(res => {
+        setRooms(res.data);
+      }).catch(() => setRooms([]));
+    } else {
+      setRooms([]);
+      setSelectedRoom('all');
+    }
+  }, [selectedFloor]);
+
   // Construit les paramètres de filtre (sans pagination)
   const buildFilterParams = useCallback((extra = {}) => ({
     ...(selectedClient !== 'all' && { client_id: selectedClient }),
     ...(selectedBuilding !== 'all' && { building_id: selectedBuilding }),
+    ...(selectedFloor !== 'all' && { floor_id: selectedFloor }),
+    ...(selectedRoom !== 'all' && { room_id: selectedRoom }),
     ...(selectedSite !== 'all' && { site_id: selectedSite }),
     ...(selectedType !== 'all' && { event_type: selectedType }),
     ...(selectedStatus !== 'all' && { status: selectedStatus }),
@@ -111,7 +142,7 @@ export function HistoryPage() {
     ...(endDate && { end_date: new Date(`${endDate}T23:59:59`).toISOString() }),
     ...(debouncedSearch && { q: debouncedSearch }),
     ...extra,
-  }), [selectedClient, selectedBuilding, selectedSite, selectedType, selectedStatus, selectedSeverity, startDate, endDate, debouncedSearch]);
+  }), [selectedClient, selectedBuilding, selectedFloor, selectedRoom, selectedSite, selectedType, selectedStatus, selectedSeverity, startDate, endDate, debouncedSearch]);
 
   // Revenir à la première page dès qu'un filtre change (sauf au premier rendu)
   const firstRender = useRef(true);
@@ -155,6 +186,8 @@ export function HistoryPage() {
   const handleResetFilters = () => {
     setSelectedClient('all');
     setSelectedBuilding('all');
+    setSelectedFloor('all');
+    setSelectedRoom('all');
     setSelectedSite('all');
     setSelectedType('all');
     setSelectedStatus('all');
@@ -343,9 +376,9 @@ export function HistoryPage() {
             </Select>
             
             {/* Filtre Bâtiment (dépend du client) */}
-            <Select 
-              value={selectedBuilding} 
-              onValueChange={(v) => { setSelectedBuilding(v); setPage(0); }}
+            <Select
+              value={selectedBuilding}
+              onValueChange={(v) => { setSelectedBuilding(v); setSelectedFloor('all'); setSelectedRoom('all'); }}
               disabled={selectedClient === 'all'}
             >
               <SelectTrigger className="w-44" data-testid="filter-building">
@@ -359,7 +392,43 @@ export function HistoryPage() {
                 ))}
               </SelectContent>
             </Select>
-            
+
+            {/* Filtre Étage (dépend du bâtiment) */}
+            <Select
+              value={selectedFloor}
+              onValueChange={(v) => { setSelectedFloor(v); setSelectedRoom('all'); }}
+              disabled={selectedBuilding === 'all'}
+            >
+              <SelectTrigger className="w-40" data-testid="filter-floor">
+                <SelectValue placeholder={t('history.floor', 'Étage')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('all')}</SelectItem>
+                {floors.map(floor => (
+                  <SelectItem key={floor.id} value={floor.id}>{floor.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Filtre Chambre (dépend de l'étage) */}
+            <Select
+              value={selectedRoom}
+              onValueChange={setSelectedRoom}
+              disabled={selectedFloor === 'all'}
+            >
+              <SelectTrigger className="w-40" data-testid="filter-room">
+                <SelectValue placeholder={t('history.room', 'Chambre')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('all')}</SelectItem>
+                {rooms.map(room => (
+                  <SelectItem key={room.id} value={room.id}>
+                    {room.room_number ? `Ch. ${room.room_number}` : room.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             {/* Filtre Site */}
             {sites.length > 0 && (
               <Select value={selectedSite} onValueChange={setSelectedSite}>

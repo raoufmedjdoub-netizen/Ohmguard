@@ -2011,6 +2011,8 @@ async def list_events(
     sensor_id: Optional[str] = None,
     client_id: Optional[str] = None,
     building_id: Optional[str] = None,
+    floor_id: Optional[str] = None,
+    room_id: Optional[str] = None,
     event_type: Optional[EventType] = None,
     status: Optional[EventStatus] = None,
     severity: Optional[SeverityType] = None,
@@ -2082,20 +2084,26 @@ async def list_events(
     if sensor_id:
         query["sensor_id"] = sensor_id
     
-    # Filtrage par client/building: on doit d'abord trouver les sensors associés
-    if client_id or building_id:
+    # Filtrage par client/building/floor/room: on doit d'abord trouver les sensors associés
+    if client_id or building_id or floor_id or room_id:
         sensor_query = {}
         if client_id:
             sensor_query["client_id"] = client_id
             cache_client_id = client_id
         if building_id:
             sensor_query["building_id"] = building_id
-        
+        if floor_id:
+            sensor_query["floor_id"] = floor_id
+        if room_id:
+            sensor_query["room_id"] = room_id
+
         matching_sensors = await db.sensors.find(sensor_query, {"_id": 0, "id": 1}).to_list(1000)
         matching_sensor_ids = [s["id"] for s in matching_sensors]
-        
+
         if matching_sensor_ids:
-            query["sensor_id"] = {"$in": matching_sensor_ids}
+            _apply_sensor_id_filter(query, matching_sensor_ids)
+            if not query.get("sensor_id", {}).get("$in"):
+                return []
         else:
             # Aucun capteur correspondant, retourner une liste vide
             return []
@@ -2256,6 +2264,8 @@ async def count_events(
     status: Optional[EventStatus] = None,
     client_id: Optional[str] = None,
     building_id: Optional[str] = None,
+    floor_id: Optional[str] = None,
+    room_id: Optional[str] = None,
     event_type: Optional[EventType] = None,
     severity: Optional[SeverityType] = None,
     start_date: Optional[str] = None,
@@ -2298,24 +2308,25 @@ async def count_events(
         # Default: filter by tenant_id
         query["tenant_id"] = user_client_id
 
-    # Filter by client/building: find sensors and filter events by sensor_id
-    if client_id or building_id:
+    # Filter by client/building/floor/room: find sensors and filter events by sensor_id
+    if client_id or building_id or floor_id or room_id:
         sensor_query = {}
         if client_id:
             sensor_query["client_id"] = client_id
         if building_id:
             sensor_query["building_id"] = building_id
+        if floor_id:
+            sensor_query["floor_id"] = floor_id
+        if room_id:
+            sensor_query["room_id"] = room_id
 
         matching_sensors = await db.sensors.find(sensor_query, {"_id": 0, "id": 1}).to_list(1000)
         matching_sensor_ids = [s["id"] for s in matching_sensors]
 
         if matching_sensor_ids:
-            # Merge with existing sensor_id filter if present
-            if "sensor_id" in query:
-                existing_ids = set(query["sensor_id"]["$in"])
-                query["sensor_id"] = {"$in": list(existing_ids & set(matching_sensor_ids))}
-            else:
-                query["sensor_id"] = {"$in": matching_sensor_ids}
+            _apply_sensor_id_filter(query, matching_sensor_ids)
+            if not query.get("sensor_id", {}).get("$in"):
+                return {"count": 0}
         else:
             return {"count": 0}
 
