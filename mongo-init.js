@@ -17,6 +17,10 @@ db.events.createIndex({ "timestamp": -1 });
 db.events.createIndex({ "sensor_id": 1, "timestamp": -1 });
 db.events.createIndex({ "type": 1, "timestamp": -1 });
 db.events.createIndex({ "tenant_id": 1, "timestamp": -1 });
+// Filtres de la page Historique (status / severity / site)
+db.events.createIndex({ "status": 1, "timestamp": -1 });
+db.events.createIndex({ "severity": 1, "timestamp": -1 });
+db.events.createIndex({ "site_id": 1, "timestamp": -1 });
 
 db.sensors.createIndex({ "device_id": 1 }, { unique: true });
 db.sensors.createIndex({ "client_id": 1 });
