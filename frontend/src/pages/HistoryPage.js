@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import api, { eventsAPI, sitesAPI } from '@/lib/api';
@@ -24,7 +24,9 @@ import {
   Building2,
   Home,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  X,
+  Calendar
 } from 'lucide-react';
 
 const FALL_STATUS_LABELS = {
@@ -50,24 +52,39 @@ export function HistoryPage() {
   const [buildings, setBuildings] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
-  
+
   const [selectedClient, setSelectedClient] = useState('all');
   const [selectedBuilding, setSelectedBuilding] = useState('all');
   const [selectedSite, setSelectedSite] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedSeverity, setSelectedSeverity] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
   const [page, setPage] = useState(0);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
   const limit = 20;
 
-  // Charger les clients au démarrage
+  const hasActiveFilters = selectedClient !== 'all' || selectedBuilding !== 'all' ||
+    selectedSite !== 'all' || selectedType !== 'all' || selectedStatus !== 'all' ||
+    selectedSeverity !== 'all' || startDate || endDate || searchQuery;
+
+  // Debounce de la recherche texte (évite une requête à chaque frappe)
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 400);
+    return () => clearTimeout(id);
+  }, [searchQuery]);
+
+  // Charger clients + sites une seule fois au démarrage (indépendant des filtres)
   useEffect(() => {
     api.get('/clients').then(res => setClients(res.data)).catch(() => setClients([]));
+    sitesAPI.list().then(res => setSites(res.data)).catch(() => setSites([]));
   }, []);
 
   // Charger les bâtiments quand un client est sélectionné
@@ -82,68 +99,124 @@ export function HistoryPage() {
     }
   }, [selectedClient]);
 
-  const fetchData = useCallback(async (noCache = false) => {
+  // Construit les paramètres de filtre (sans pagination)
+  const buildFilterParams = useCallback((extra = {}) => ({
+    ...(selectedClient !== 'all' && { client_id: selectedClient }),
+    ...(selectedBuilding !== 'all' && { building_id: selectedBuilding }),
+    ...(selectedSite !== 'all' && { site_id: selectedSite }),
+    ...(selectedType !== 'all' && { event_type: selectedType }),
+    ...(selectedStatus !== 'all' && { status: selectedStatus }),
+    ...(selectedSeverity !== 'all' && { severity: selectedSeverity }),
+    ...(startDate && { start_date: new Date(`${startDate}T00:00:00`).toISOString() }),
+    ...(endDate && { end_date: new Date(`${endDate}T23:59:59`).toISOString() }),
+    ...(debouncedSearch && { q: debouncedSearch }),
+    ...extra,
+  }), [selectedClient, selectedBuilding, selectedSite, selectedType, selectedStatus, selectedSeverity, startDate, endDate, debouncedSearch]);
+
+  // Revenir à la première page dès qu'un filtre change (sauf au premier rendu)
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return; }
+    setPage(0);
+  }, [buildFilterParams]);
+
+  // Compteur : recalculé uniquement quand les filtres changent (pas à chaque page)
+  useEffect(() => {
+    let cancelled = false;
+    eventsAPI.count(buildFilterParams())
+      .then(res => { if (!cancelled) setTotalCount(res.data.count); })
+      .catch(() => { if (!cancelled) setTotalCount(0); });
+    return () => { cancelled = true; };
+  }, [buildFilterParams]);
+
+  // Liste des événements : dépend des filtres ET de la page
+  const fetchEvents = useCallback(async (noCache = false) => {
     setLoading(true);
     try {
-      const params = {
+      const params = buildFilterParams({
         limit,
         skip: page * limit,
-        ...(selectedClient !== 'all' && { client_id: selectedClient }),
-        ...(selectedBuilding !== 'all' && { building_id: selectedBuilding }),
-        ...(selectedSite !== 'all' && { site_id: selectedSite }),
-        ...(selectedType !== 'all' && { event_type: selectedType }),
-        ...(selectedStatus !== 'all' && { status: selectedStatus }),
-        ...(selectedSeverity !== 'all' && { severity: selectedSeverity }),
-        ...(noCache && { no_cache: true })
-      };
-      
-      const [eventsRes, countRes, sitesRes] = await Promise.all([
-        eventsAPI.list(params),
-        eventsAPI.count(params),
-        sitesAPI.list()
-      ]);
-      
-      setEvents(eventsRes.data);
-      setTotalCount(countRes.data.count);
-      setSites(sitesRes.data);
+        ...(noCache && { no_cache: true }),
+      });
+      const res = await eventsAPI.list(params);
+      setEvents(res.data);
     } catch (error) {
-      console.error('Failed to fetch data:', error);
+      console.error('Failed to fetch events:', error);
       toast.error(t('errors.generic'));
     } finally {
       setLoading(false);
     }
-  }, [page, selectedClient, selectedBuilding, selectedSite, selectedType, selectedStatus, selectedSeverity, t]);
+  }, [buildFilterParams, page, t]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchEvents();
+  }, [fetchEvents]);
 
-  const handleExport = () => {
-    const headers = ['ID', 'Type', 'Severity', 'Status', 'Fall Status', 'Simulated', 'Location', 'Fall X(cm)', 'Fall Y(cm)', 'Fall Z(cm)', 'Timestamp', 'Device'];
-    const rows = events.map(e => [
-      e.id,
-      e.type,
-      e.severity,
-      e.status,
-      e.fall_status || '-',
-      e.is_simulated ? 'Yes' : 'No',
-      e.location_path || '-',
-      e.fall_loc_x_cm ?? '-',
-      e.fall_loc_y_cm ?? '-',
-      e.fall_loc_z_cm ?? '-',
-      e.timestamp || e.occurred_at,
-      e.location_path || e.radar_name || e.sensor_id
-    ]);
-    
-    const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ohmguard-events-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Export completed');
+  const handleResetFilters = () => {
+    setSelectedClient('all');
+    setSelectedBuilding('all');
+    setSelectedSite('all');
+    setSelectedType('all');
+    setSelectedStatus('all');
+    setSelectedSeverity('all');
+    setStartDate('');
+    setEndDate('');
+    setSearchQuery('');
+    setPage(0);
+  };
+
+  // Échappe une valeur pour le format CSV (gère virgules, guillemets, retours ligne)
+  const csvCell = (value) => {
+    const s = value === null || value === undefined ? '' : String(value);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      // Récupère l'intégralité du jeu filtré (pas seulement la page courante)
+      const pageSize = 500;
+      const maxRows = 10000;
+      const all = [];
+      let skip = 0;
+      while (skip < maxRows) {
+        const res = await eventsAPI.list(buildFilterParams({ limit: pageSize, skip }));
+        all.push(...res.data);
+        if (res.data.length < pageSize) break;
+        skip += pageSize;
+      }
+
+      const headers = ['ID', 'Type', 'Severity', 'Status', 'Fall Status', 'Simulated', 'Location', 'Fall X(cm)', 'Fall Y(cm)', 'Fall Z(cm)', 'Timestamp', 'Device'];
+      const rows = all.map(e => [
+        e.id,
+        e.type,
+        e.severity,
+        e.status,
+        e.fall_status || '-',
+        e.is_simulated ? 'Yes' : 'No',
+        e.location_path || '-',
+        e.fall_loc_x_cm ?? '-',
+        e.fall_loc_y_cm ?? '-',
+        e.fall_loc_z_cm ?? '-',
+        e.timestamp || e.occurred_at,
+        e.location_path || e.radar_name || e.sensor_id
+      ]);
+
+      const csv = [headers, ...rows].map(r => r.map(csvCell).join(',')).join('\n');
+      const blob = new Blob(["﻿" + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ohmguard-events-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${rows.length} événements exportés`);
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error(t('errors.generic'));
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleClearHistory = async () => {
@@ -158,7 +231,10 @@ export function HistoryPage() {
       setPage(0);
       // Force refresh bypassing cache
       setTimeout(() => {
-        fetchData(true); // noCache = true
+        fetchEvents(true); // noCache = true
+        eventsAPI.count(buildFilterParams())
+          .then(res => setTotalCount(res.data.count))
+          .catch(() => setTotalCount(0));
       }, 100);
     } catch (error) {
       if (error.response?.status === 403) {
@@ -195,8 +271,12 @@ export function HistoryPage() {
             <Trash2 className="h-4 w-4 mr-2" />
             Effacer l&apos;historique
           </Button>
-          <Button variant="outline" onClick={handleExport} data-testid="export-btn">
-            <Download className="h-4 w-4 mr-2" />
+          <Button variant="outline" onClick={handleExport} data-testid="export-btn" disabled={exporting || totalCount === 0}>
+            {exporting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
             {t('export')}
           </Button>
         </div>
@@ -280,6 +360,22 @@ export function HistoryPage() {
               </SelectContent>
             </Select>
             
+            {/* Filtre Site */}
+            {sites.length > 0 && (
+              <Select value={selectedSite} onValueChange={setSelectedSite}>
+                <SelectTrigger className="w-44" data-testid="filter-site">
+                  <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder={t('history.site', 'Site')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('all')}</SelectItem>
+                  {sites.map(site => (
+                    <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
             {/* Recherche */}
             <div className="relative flex-1 min-w-40 max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -291,7 +387,7 @@ export function HistoryPage() {
                 data-testid="search-input"
               />
             </div>
-            
+
             {/* Type d'événement */}
             <Select value={selectedType} onValueChange={(v) => { setSelectedType(v); setPage(0); }}>
               <SelectTrigger className="w-40" data-testid="filter-type">
@@ -335,13 +431,51 @@ export function HistoryPage() {
                 <SelectItem value="FALSE_ALARM">{t('events.status_false_alarm')}</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Période (date début / fin) */}
+            <div className="flex items-center gap-1">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <Input
+                type="date"
+                value={startDate}
+                max={endDate || undefined}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-36"
+                data-testid="filter-start-date"
+                aria-label={t('history.start_date', 'Date de début')}
+              />
+              <span className="text-muted-foreground text-sm">—</span>
+              <Input
+                type="date"
+                value={endDate}
+                min={startDate || undefined}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-36"
+                data-testid="filter-end-date"
+                aria-label={t('history.end_date', 'Date de fin')}
+              />
+            </div>
+
+            {/* Réinitialiser les filtres */}
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetFilters}
+                data-testid="reset-filters-btn"
+                className="text-muted-foreground"
+              >
+                <X className="h-4 w-4 mr-1" />
+                {t('history.reset_filters', 'Réinitialiser')}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardContent className="p-0">
-          {loading ? (
+          {loading && events.length === 0 ? (
             <div className="flex items-center justify-center h-64">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
@@ -350,6 +484,12 @@ export function HistoryPage() {
               {t('events.no_events')}
             </div>
           ) : (
+            <div className={cn('relative transition-opacity', loading && 'opacity-50 pointer-events-none')}>
+              {loading && (
+                <div className="absolute right-4 top-4 z-10">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                </div>
+              )}
             <Table>
               <TableHeader>
                 <TableRow>
@@ -431,8 +571,9 @@ export function HistoryPage() {
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
-          
+
           {totalPages > 1 && (
             <div className="flex items-center justify-between p-4 border-t border-border">
               <span className="text-sm text-muted-foreground">

@@ -9,6 +9,7 @@ from slowapi.errors import RateLimitExceeded
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import io
+import re
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
@@ -1968,6 +1969,41 @@ async def process_alert_rules(event: Event):
 
 # ==================== EVENT ENDPOINTS ====================
 
+async def _resolve_search_sensor_ids(q: str) -> List[str]:
+    """Resolve a free-text search query to sensor IDs by matching against sensor
+    name, serial and cached location fields (client/building/floor/room names).
+    Used by /events and /events/count so the History search stays consistent."""
+    regex = {"$regex": re.escape(q), "$options": "i"}
+    sensors = await db.sensors.find(
+        {"$or": [
+            {"name": regex},
+            {"serial_product": regex},
+            {"device_id": regex},
+            {"client_name": regex},
+            {"building_name": regex},
+            {"floor_name": regex},
+            {"room_name": regex},
+            {"room_number": regex},
+            {"location_path": regex},
+        ]},
+        {"_id": 0, "id": 1}
+    ).to_list(5000)
+    return [s["id"] for s in sensors]
+
+
+def _apply_sensor_id_filter(query: dict, sensor_ids: List[str]):
+    """Intersect a list of sensor IDs with any sensor_id constraint already in query."""
+    if "sensor_id" in query:
+        existing = query["sensor_id"]
+        if isinstance(existing, dict) and "$in" in existing:
+            allowed = set(existing["$in"]) & set(sensor_ids)
+        else:
+            allowed = {existing} & set(sensor_ids)
+        query["sensor_id"] = {"$in": list(allowed)}
+    else:
+        query["sensor_id"] = {"$in": sensor_ids}
+
+
 @api_router.get("/events", response_model=List[Event])
 async def list_events(
     site_id: Optional[str] = None,
@@ -1980,6 +2016,7 @@ async def list_events(
     severity: Optional[SeverityType] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    q: Optional[str] = None,
     limit: int = Query(50, le=500),
     skip: int = 0,
     no_cache: bool = Query(False, description="Bypass cache and fetch from database"),
@@ -2076,7 +2113,16 @@ async def list_events(
             query["timestamp"]["$lte"] = end_date
         else:
             query["timestamp"] = {"$lte": end_date}
-    
+
+    # Free-text search: match against sensor name/serial/location, filter events accordingly
+    if q and q.strip():
+        search_sensor_ids = await _resolve_search_sensor_ids(q.strip())
+        if not search_sensor_ids:
+            return []
+        _apply_sensor_id_filter(query, search_sensor_ids)
+        if not query.get("sensor_id", {}).get("$in"):
+            return []
+
     # Build cache filters (exclude complex query operators for cache key)
     cache_filters = {
         "site_id": site_id,
@@ -2094,7 +2140,7 @@ async def list_events(
     cache_filters = {k: v for k, v in cache_filters.items() if v is not None}
     
     # Try to get from cache (only for default queries without skip and small limits)
-    use_cache = not no_cache and skip == 0 and limit <= 100 and not start_date and not end_date
+    use_cache = not no_cache and skip == 0 and limit <= 100 and not start_date and not end_date and not (q and q.strip())
     
     if use_cache:
         cached_events = cache_service.get_cached_events(
@@ -2205,9 +2251,16 @@ async def list_events(
 @api_router.get("/events/count")
 async def count_events(
     site_id: Optional[str] = None,
+    zone_id: Optional[str] = None,
+    sensor_id: Optional[str] = None,
     status: Optional[EventStatus] = None,
     client_id: Optional[str] = None,
     building_id: Optional[str] = None,
+    event_type: Optional[EventType] = None,
+    severity: Optional[SeverityType] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    q: Optional[str] = None,
     current_user: UserInDB = Depends(get_current_user)
 ):
     query = {}
@@ -2268,8 +2321,32 @@ async def count_events(
 
     if site_id:
         query["site_id"] = site_id
+    if zone_id:
+        query["zone_id"] = zone_id
+    if sensor_id:
+        query["sensor_id"] = sensor_id
     if status:
         query["status"] = status
+    if event_type:
+        query["type"] = event_type
+    if severity:
+        query["severity"] = severity
+    if start_date:
+        query["timestamp"] = {"$gte": start_date}
+    if end_date:
+        if "timestamp" in query:
+            query["timestamp"]["$lte"] = end_date
+        else:
+            query["timestamp"] = {"$lte": end_date}
+
+    # Free-text search: same resolution as /events so the count matches the list
+    if q and q.strip():
+        search_sensor_ids = await _resolve_search_sensor_ids(q.strip())
+        if not search_sensor_ids:
+            return {"count": 0}
+        _apply_sensor_id_filter(query, search_sensor_ids)
+        if not query.get("sensor_id", {}).get("$in"):
+            return {"count": 0}
 
     count = await db.events.count_documents(query)
     return {"count": count}
