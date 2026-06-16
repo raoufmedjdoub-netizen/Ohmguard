@@ -2131,11 +2131,16 @@ async def list_events(
         if not query.get("sensor_id", {}).get("$in"):
             return []
 
-    # Build cache filters (exclude complex query operators for cache key)
+    # Build cache filters (exclude complex query operators for cache key).
+    # IMPORTANT: location filters (building/floor/room) must be part of the cache key,
+    # otherwise different selections within the same client collide on the same cache entry.
     cache_filters = {
         "site_id": site_id,
         "zone_id": zone_id,
         "sensor_id": sensor_id,
+        "building_id": building_id,
+        "floor_id": floor_id,
+        "room_id": room_id,
         "event_type": event_type,
         "status": status,
         "severity": severity,
