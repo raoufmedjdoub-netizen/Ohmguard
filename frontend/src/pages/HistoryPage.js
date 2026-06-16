@@ -26,7 +26,8 @@ import {
   Trash2,
   AlertTriangle,
   X,
-  Calendar
+  Calendar,
+  CheckCircle2
 } from 'lucide-react';
 
 const FALL_STATUS_LABELS = {
@@ -73,6 +74,8 @@ export function HistoryPage() {
   const [page, setPage] = useState(0);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [finishEvent, setFinishEvent] = useState(null);
+  const [finishing, setFinishing] = useState(false);
   const limit = 20;
 
   const hasActiveFilters = selectedClient !== 'all' || selectedBuilding !== 'all' ||
@@ -284,6 +287,31 @@ export function HistoryPage() {
     navigate(`/events/${eventId}`);
   };
 
+  // Statuts de chute déjà terminaux (pas d'action "Terminer" proposée)
+  const TERMINAL_FALL_STATUSES = ['finished', 'fall_exit', 'canceled'];
+
+  const handleMarkFinished = async () => {
+    if (!finishEvent) return;
+    setFinishing(true);
+    try {
+      await eventsAPI.update(finishEvent.id, { fall_status: 'finished' });
+      // Mise à jour locale immédiate (évite un rechargement complet)
+      setEvents(prev => prev.map(e =>
+        e.id === finishEvent.id ? { ...e, fall_status: 'finished' } : e
+      ));
+      toast.success('Statut chute mis à jour : Terminé');
+      setFinishEvent(null);
+    } catch (error) {
+      if (error.response?.status === 403) {
+        toast.error('Action non autorisée');
+      } else {
+        toast.error(t('errors.generic'));
+      }
+    } finally {
+      setFinishing(false);
+    }
+  };
+
   const totalPages = Math.ceil(totalCount / limit);
 
   return (
@@ -346,6 +374,47 @@ export function HistoryPage() {
                 <>
                   <Trash2 className="h-4 w-4 mr-2" />
                   Confirmer la suppression
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de confirmation : marquer la chute comme terminée */}
+      <Dialog open={!!finishEvent} onOpenChange={(open) => { if (!open) setFinishEvent(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <CheckCircle2 className="h-5 w-5" />
+              Marquer comme terminé
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Confirmez-vous le passage du statut chute à <strong>Terminé</strong> ?
+              {finishEvent?.location_path && (
+                <span className="block mt-2 text-primary font-medium">{finishEvent.location_path}</span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setFinishEvent(null)} disabled={finishing}>
+              Annuler
+            </Button>
+            <Button
+              onClick={handleMarkFinished}
+              disabled={finishing}
+              className="bg-green-600 hover:bg-green-700 text-white"
+              data-testid="confirm-finish-btn"
+            >
+              {finishing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Mise à jour...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Confirmer
                 </>
               )}
             </Button>
@@ -626,14 +695,28 @@ export function HistoryPage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleViewDetails(event.id)}
-                          data-testid={`view-btn-${event.id}`}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          {fallStatus && !TERMINAL_FALL_STATUSES.includes(fallStatus) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => setFinishEvent(event)}
+                              data-testid={`finish-btn-${event.id}`}
+                              title="Marquer comme terminé"
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewDetails(event.id)}
+                            data-testid={`view-btn-${event.id}`}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

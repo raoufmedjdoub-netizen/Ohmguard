@@ -385,11 +385,18 @@ class EventCreate(EventBase):
 
 class EventUpdate(BaseModel):
     status: Optional[EventStatus] = None
+    fall_status: Optional[str] = None  # Manual override of the fall status (e.g. "finished")
     assigned_to: Optional[str] = None
     assigned_to_name: Optional[str] = None
     notes: Optional[str] = None
     comment: Optional[str] = None  # Comment text for the action
     cc_admin: Optional[bool] = None  # CC site admin on assignment email
+
+# Valid fall status values (mirror of the radar/sensitive-fall lifecycle)
+ALLOWED_FALL_STATUSES = {
+    "fall_detected", "fall_confirmed", "calling", "on_call",
+    "finished", "fall_exit", "canceled",
+}
 
 class BulkEventUpdate(BaseModel):
     event_ids: List[str]
@@ -2428,11 +2435,30 @@ async def update_event(event_id: str, update: EventUpdate, current_user: UserInD
         update_data["assigned_to_name"] = update.assigned_to_name
     if update.notes is not None:
         update_data["notes"] = update.notes
-    
+
+    # Manual fall status override (e.g. mark a fall as "finished" / Terminé)
+    fall_status_history_entry = None
+    if update.fall_status is not None:
+        if update.fall_status not in ALLOWED_FALL_STATUSES:
+            raise HTTPException(status_code=400, detail="Statut chute invalide")
+        now_iso = datetime.now(timezone.utc).isoformat()
+        update_data["fall_status"] = update.fall_status
+        update_data["fall_status_updated_at"] = now_iso
+        fall_status_history_entry = {
+            "status": update.fall_status,
+            "updated_at": now_iso,
+            "source": "manual",
+            "user_id": current_user.id,
+            "user_name": current_user.full_name,
+        }
+
     # Build comment entry if provided
     comment_entry = None
     if update.comment:
-        action = update.status or ("ASSIGNED" if update.assigned_to else "COMMENT")
+        action = update.status or (
+            f"FALL_{update.fall_status.upper()}" if update.fall_status
+            else ("ASSIGNED" if update.assigned_to else "COMMENT")
+        )
         comment_entry = {
             "id": str(uuid.uuid4()),
             "user_id": current_user.id,
@@ -2442,14 +2468,19 @@ async def update_event(event_id: str, update: EventUpdate, current_user: UserInD
             "action": action,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
-    
+
     # Apply updates
     mongo_update = {}
     if update_data:
         mongo_update["$set"] = update_data
+    push_ops = {}
     if comment_entry:
-        mongo_update["$push"] = {"comments": comment_entry}
-    
+        push_ops["comments"] = comment_entry
+    if fall_status_history_entry:
+        push_ops["fall_status_history"] = fall_status_history_entry
+    if push_ops:
+        mongo_update["$push"] = push_ops
+
     if mongo_update:
         await db.events.update_one({"id": event_id}, mongo_update)
         await log_audit(current_user.id, event['tenant_id'], f"update_{update_data.get('status', 'event')}", "event", event_id, update_data)
