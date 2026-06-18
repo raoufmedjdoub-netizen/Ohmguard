@@ -695,7 +695,16 @@ class ClientsBuildingsService:
                 location.room_number = room.get("room_number")
         
         if radar.get("room_space_id"):
-            space = await self.db.room_spaces.find_one({"id": radar["room_space_id"]}, {"space_type": 1, "name": 1})
+            # Spaces are embedded in the room document's "spaces" array (not a separate collection).
+            room_doc = await self.db.rooms.find_one(
+                {"spaces.id": radar["room_space_id"]}, {"_id": 0, "spaces": 1}
+            )
+            space = None
+            if room_doc:
+                space = next(
+                    (s for s in room_doc.get("spaces", []) if s.get("id") == radar["room_space_id"]),
+                    None,
+                )
             if space:
                 location.room_space_id = radar["room_space_id"]
                 location.space_type = space.get("space_type")

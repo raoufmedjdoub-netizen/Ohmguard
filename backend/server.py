@@ -1741,11 +1741,14 @@ async def clear_ai_events(current_user: UserInDB = Depends(get_current_user)):
 # ==================== RADAR ASSIGNMENT ENDPOINTS ====================
 
 class RadarAssignment(BaseModel):
-    client_id: str
+    # client_id/building_id/floor_id are derived from the target room/space when not
+    # provided, so the frontend only needs to send room_space_id or room_id.
+    client_id: Optional[str] = None
     building_id: Optional[str] = None
     floor_id: Optional[str] = None
     room_id: Optional[str] = None
     room_space_id: Optional[str] = None
+    reason: Optional[str] = None  # Free-text reason from the UI (kept for audit)
 
 @api_router.post("/radars/{radar_id}/assign")
 async def assign_radar(radar_id: str, assignment: RadarAssignment, current_user: UserInDB = Depends(get_current_user)):
@@ -1755,19 +1758,46 @@ async def assign_radar(radar_id: str, assignment: RadarAssignment, current_user:
     sensor = await db.sensors.find_one({"id": radar_id}, {"_id": 0})
     if not sensor:
         raise HTTPException(status_code=404, detail="Radar not found")
-    
+
     if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != sensor['tenant_id']:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
+    # Resolve the target location from the most specific field provided.
+    # Spaces are embedded in the room document's "spaces" array (not a separate collection),
+    # so client/building/floor/room are derived from the room that owns the space/room_id.
+    room = None
+    if assignment.room_space_id:
+        room = await db.rooms.find_one({"spaces.id": assignment.room_space_id}, {"_id": 0})
+        if not room:
+            raise HTTPException(status_code=404, detail="Espace introuvable")
+    elif assignment.room_id:
+        room = await db.rooms.find_one({"id": assignment.room_id}, {"_id": 0})
+        if not room:
+            raise HTTPException(status_code=404, detail="Chambre introuvable")
+
+    if room:
+        client_id = room.get("client_id")
+        building_id = room.get("building_id")
+        floor_id = room.get("floor_id")
+        room_id = room["id"]
+    else:
+        # Fallback: explicit client/building/floor assignment (no room target)
+        client_id = assignment.client_id
+        building_id = assignment.building_id
+        floor_id = assignment.floor_id
+        room_id = assignment.room_id
+
+    if not client_id:
+        raise HTTPException(status_code=400, detail="Impossible de déterminer le client de destination")
+
     # Verify client exists
-    client = await db.clients.find_one({"id": assignment.client_id}, {"_id": 0})
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
     # Resolve human-readable names for location caching
-    building = await db.buildings.find_one({"id": assignment.building_id}, {"name": 1}) if assignment.building_id else None
-    floor = await db.floors.find_one({"id": assignment.floor_id}, {"name": 1}) if assignment.floor_id else None
-    room = await db.rooms.find_one({"id": assignment.room_id}, {"room_number": 1, "name": 1}) if assignment.room_id else None
+    building = await db.buildings.find_one({"id": building_id}, {"name": 1}) if building_id else None
+    floor = await db.floors.find_one({"id": floor_id}, {"name": 1}) if floor_id else None
 
     # Build location_path string
     path_parts = []
@@ -1785,14 +1815,13 @@ async def assign_radar(radar_id: str, assignment: RadarAssignment, current_user:
 
     # Update sensor with assignment (IDs + cached names for fast location_path)
     update_data = {
-        "client_id": assignment.client_id,
+        "client_id": client_id,
         "client_name": client.get("name"),
-        "building_id": assignment.building_id,
+        "building_id": building_id,
         "building_name": building.get("name") if building else None,
-        "floor_id": assignment.floor_id,
+        "floor_id": floor_id,
         "floor_name": floor.get("name") if floor else None,
-        "room_id": assignment.room_id,
-        "room_number": room.get("room_number") if room else None,
+        "room_id": room_id,
         "room_name": room.get("name") if room else None,
         "room_space_id": assignment.room_space_id,
         "assignment_status": "ASSIGNED",
@@ -1800,9 +1829,12 @@ async def assign_radar(radar_id: str, assignment: RadarAssignment, current_user:
     }
 
     await db.sensors.update_one({"id": radar_id}, {"$set": update_data})
-    
-    await log_audit(current_user.id, sensor['tenant_id'], "assign", "sensor", radar_id)
-    
+
+    from cache_service import get_cache_service
+    get_cache_service().invalidate_sensors(sensor['tenant_id'])
+
+    await log_audit(current_user.id, sensor['tenant_id'], "assign", "sensor", radar_id, update_data)
+
     updated = await db.sensors.find_one({"id": radar_id}, {"_id": 0})
     return {"status": "success", "message": "Radar assigned successfully", "sensor": updated}
 
@@ -1818,26 +1850,29 @@ async def unassign_radar(radar_id: str, current_user: UserInDB = Depends(get_cur
     if current_user.role != "SUPER_ADMIN" and current_user.tenant_id != sensor['tenant_id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
-    # Clear assignment
+    # Clear placement only — keep the radar attached to its client/organisation so it
+    # stays visible in the client's "unassigned radars" list and keeps its history view.
     update_data = {
-        "client_id": None,
-        "client_name": None,
         "building_id": None,
         "building_name": None,
         "floor_id": None,
         "floor_name": None,
         "room_id": None,
-        "room_number": None,
         "room_name": None,
+        "room_number": None,
         "room_space_id": None,
+        "zone_id": None,
         "location_path": None,
         "assignment_status": "PENDING"
     }
-    
+
     await db.sensors.update_one({"id": radar_id}, {"$set": update_data})
-    
+
+    from cache_service import get_cache_service
+    get_cache_service().invalidate_sensors(sensor['tenant_id'])
+
     await log_audit(current_user.id, sensor['tenant_id'], "unassign", "sensor", radar_id)
-    
+
     return {"status": "success", "message": "Radar unassigned successfully"}
 
 @api_router.delete("/sensors/{sensor_id}")
