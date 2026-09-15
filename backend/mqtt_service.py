@@ -483,7 +483,15 @@ class MQTTService:
                     "presence_updated_at": datetime.now(timezone.utc).isoformat()
                 }}
             )
-            
+
+            # Live positions of people in the room (throttled, sensor_{id} room only).
+            # Published for every known radar, assigned or not: the config page needs
+            # them to set up a fresh radar before it is attached to a room.
+            live_positions = get_live_positions_service()
+            tracker_targets = event_payload.get('trackerTargets', [])
+            live_positions.log_raw_sample(device_id, tracker_targets)
+            await live_positions.publish(sensor, tracker_targets, presence_detected, self.broadcast_callback)
+
             # Handle presence session lifecycle (only for assigned radars)
             if is_assigned:
                 try:
@@ -530,12 +538,6 @@ class MQTTService:
                     
                 except Exception as e:
                     logger.error(f"Failed to handle presence session: {e}")
-
-                # Live positions of people in the room (throttled, sensor_{id} room only)
-                live_positions = get_live_positions_service()
-                tracker_targets = event_payload.get('trackerTargets', [])
-                live_positions.log_raw_sample(device_id, tracker_targets)
-                await live_positions.publish(sensor, tracker_targets, presence_detected, self.broadcast_callback)
 
                 # Broadcast presence update to frontend
                 if self.broadcast_callback:

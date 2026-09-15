@@ -579,8 +579,9 @@ export function RadarConfigPage() {
 
             {/* Visual Room Editor Tab */}
             <TabsContent value="visual" className="mt-0">
-              <RoomVisualEditor 
+              <RoomVisualEditor
                 config={watch()}
+                sensorId={deviceId}
                 onConfigChange={(newConfig) => {
                   if (newConfig.walabotConfig) {
                     setValue('walabotConfig.xMin', newConfig.walabotConfig.xMin);

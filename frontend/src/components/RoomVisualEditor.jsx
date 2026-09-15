@@ -25,7 +25,9 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { useTargetPositions } from '@/hooks/useTargetPositions';
 import {
+  Activity,
   Bed,
   DoorOpen,
   Grid3X3,
@@ -107,6 +109,15 @@ const SUBREGION_TYPES = {
     isDoor: false
   }
 };
+
+// Live target postures (from trackerTargets)
+const LIVE_POSTURES = {
+  STANDING: { label: 'Debout', color: '#16a34a' },
+  SITTING: { label: 'Assis', color: '#2563eb' },
+  LYING: { label: 'Allongé', color: '#ea580c' },
+  FALLING: { label: 'Chute', color: '#dc2626' },
+};
+const LIVE_UNKNOWN_POSTURE = { label: 'Présence', color: '#7c3aed' };
 
 // Predefined room templates
 const PREDEFINED_TEMPLATES = [
@@ -239,7 +250,8 @@ function RoomCanvas({
   showGrid,
   showDetectionZone,
   showDistances,
-  showCoordinates
+  showCoordinates,
+  liveTargets = []
 }) {
   const svgRef = useRef(null);
   const [dragging, setDragging] = useState(null);
@@ -855,6 +867,31 @@ function RoomCanvas({
           </g>
         )}
         
+        {/* Live targets (people detected by the radar), positions relative to the radar */}
+        {liveTargets.map((target, i) => {
+          const posture = LIVE_POSTURES[target.posture_label] || LIVE_UNKNOWN_POSTURE;
+          const sx = radarScreenPos.x + mToPixels(target.x);
+          const sy = radarScreenPos.y + mToPixels(target.y);
+          return (
+            <g
+              key={`live-${target.id ?? i}`}
+              className="pointer-events-none"
+              style={{ transform: `translate(${sx}px, ${sy}px)`, transition: 'transform 0.45s ease-out' }}
+            >
+              <circle r={26} fill={posture.color} opacity={0.18} />
+              <circle r={13} fill={posture.color} stroke="white" strokeWidth={3} />
+              <text y={-20} textAnchor="middle" className="text-[11px] font-bold" fill={posture.color}>
+                {posture.label}
+              </text>
+              {showCoordinates && (
+                <text y={32} textAnchor="middle" className="text-[10px] font-mono" fill={posture.color}>
+                  {target.x.toFixed(2)}, {target.y.toFixed(2)}{target.z != null ? `, z${target.z.toFixed(2)}` : ''}
+                </text>
+              )}
+            </g>
+          );
+        })}
+
         {/* Distance lines from radar to selected region */}
         {showDistances && selectedRegionId && (() => {
           const region = subRegions.find(r => r.id === selectedRegionId);
@@ -913,11 +950,17 @@ function RoomCanvas({
           </div>
           {Object.entries(SUBREGION_TYPES).map(([key, type]) => (
             <div key={key} className="flex items-center gap-2">
-              <div 
-                className="w-3 h-3 rounded border-2" 
+              <div
+                className="w-3 h-3 rounded border-2"
                 style={{ borderColor: type.color, backgroundColor: `${type.color}30` }}
               />
               <span>{type.label}</span>
+            </div>
+          ))}
+          {liveTargets.length > 0 && Object.values(LIVE_POSTURES).map((p) => (
+            <div key={p.label} className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full border border-white" style={{ backgroundColor: p.color }} />
+              <span>{p.label}</span>
             </div>
           ))}
         </div>
@@ -1066,7 +1109,7 @@ function CalculatedParamsTab({ config, radarHeight, mountConfig, subRegions }) {
 /**
  * Main RoomVisualEditor Component
  */
-export function RoomVisualEditor({ config, onConfigChange }) {
+export function RoomVisualEditor({ config, onConfigChange, sensorId }) {
   // Room dimensions (max 5m × 5m)
   const [roomWidth, setRoomWidth] = useState(4.0);
   const [roomDepth, setRoomDepth] = useState(4.0);
@@ -1094,7 +1137,12 @@ export function RoomVisualEditor({ config, onConfigChange }) {
   const [showDetectionZone, setShowDetectionZone] = useState(true);
   const [showDistances, setShowDistances] = useState(true);
   const [showCoordinates, setShowCoordinates] = useState(true);
-  
+  const [showLive, setShowLive] = useState(true);
+
+  // Live positions of people detected by this radar (Socket.IO), only while enabled
+  const { positions: livePositions, connected: liveConnected } = useTargetPositions(showLive ? sensorId : null);
+  const liveTargets = showLive && livePositions?.targets ? livePositions.targets : [];
+
   // Templates
   const [customTemplates, setCustomTemplates] = useState([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -1613,6 +1661,12 @@ export function RoomVisualEditor({ config, onConfigChange }) {
                       <Switch checked={showCoordinates} onCheckedChange={setShowCoordinates} id="fs-coords" />
                       <Label htmlFor="fs-coords" className="text-base cursor-pointer">Coords</Label>
                     </div>
+                    {sensorId && (
+                      <div className="flex items-center gap-2">
+                        <Switch checked={showLive} onCheckedChange={setShowLive} id="fs-live" />
+                        <Label htmlFor="fs-live" className="text-base cursor-pointer">Direct</Label>
+                      </div>
+                    )}
                   </div>
                 </div>
                 
@@ -1738,6 +1792,7 @@ export function RoomVisualEditor({ config, onConfigChange }) {
                 showDetectionZone={showDetectionZone}
                 showDistances={showDistances}
                 showCoordinates={showCoordinates}
+                liveTargets={liveTargets}
               />
             </div>
           </div>
@@ -2061,6 +2116,12 @@ export function RoomVisualEditor({ config, onConfigChange }) {
                       <Switch checked={showCoordinates} onCheckedChange={setShowCoordinates} id="coords" />
                       <Label htmlFor="coords" className="text-sm cursor-pointer">Coords</Label>
                     </div>
+                    {sensorId && (
+                      <div className="flex items-center gap-2">
+                        <Switch checked={showLive} onCheckedChange={setShowLive} id="live" />
+                        <Label htmlFor="live" className="text-sm cursor-pointer">Direct</Label>
+                      </div>
+                    )}
                   </div>
                 </div>
                 
@@ -2205,9 +2266,21 @@ export function RoomVisualEditor({ config, onConfigChange }) {
                       <span className="text-green-600">Y: [{isCeiling ? (-radarPositionY).toFixed(2) : "-0.30"}, {+(isCeiling ? (roomDepth - radarPositionY) : (roomDepth - radarPositionY)).toFixed(2)}]</span>
                     </CardDescription>
                   </div>
-                  <Badge variant="outline" className="text-base px-3 py-1">
-                    {roomWidth.toFixed(1)}m × {roomDepth.toFixed(1)}m
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {sensorId && showLive && (
+                      <Badge
+                        variant="outline"
+                        className={cn('gap-1.5', liveTargets.length > 0 ? 'border-green-500 text-green-600' : 'text-muted-foreground')}
+                        title={livePositions?.timestamp ? `Mis à jour ${new Date(livePositions.timestamp).toLocaleTimeString('fr-FR')}` : 'En attente de données radar'}
+                      >
+                        <Activity className={cn('h-3.5 w-3.5', liveConnected ? 'text-green-500' : 'text-muted-foreground')} />
+                        {livePositions ? `${liveTargets.length} personne${liveTargets.length > 1 ? 's' : ''}` : 'Direct : en attente'}
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className="text-base px-3 py-1">
+                      {roomWidth.toFixed(1)}m × {roomDepth.toFixed(1)}m
+                    </Badge>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="flex items-center justify-center p-6">
@@ -2228,6 +2301,7 @@ export function RoomVisualEditor({ config, onConfigChange }) {
                   showDetectionZone={showDetectionZone}
                   showDistances={showDistances}
                   showCoordinates={showCoordinates}
+                  liveTargets={liveTargets}
                 />
               </CardContent>
             </Card>

@@ -285,6 +285,9 @@ def _session_can_see_sensor(session: Dict, sensor: Dict) -> bool:
     rooms = set(session.get('rooms', []))
     if 'admin_all' in rooms:
         return True
+    # Unassigned radar (no building yet): visible to its organisation, like on the sensors page
+    if not sensor.get('building_id') and session.get('tenant_id') in (sensor.get('tenant_id'), sensor.get('client_id')):
+        return True
     candidates = {
         f"tenant_{sensor.get('tenant_id')}",
         f"tenant_{sensor.get('client_id')}",
