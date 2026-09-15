@@ -31,6 +31,9 @@ from cache_service import get_cache_service
 # Import presence session service for aggregated presence tracking
 from presence_session_service import get_presence_session_service
 
+# Live positions of tracked people (trackerTargets) for real-time room display
+from live_positions_service import get_live_positions_service
+
 logger = logging.getLogger(__name__)
 
 # Vayyar event type mapping (updated based on actual Vayyar API)
@@ -39,14 +42,6 @@ VAYYAR_EVENT_TYPES = {
     5: "FALL",          # Standard fall detected (HIGH)
     8: "SENSITIVE_FALL", # Suspected fall - confidence based (HIGH)
     10: "BED_EXIT",     # Person exiting bed (MED)
-}
-
-# Posture mapping from trackerTargets
-POSTURE_MAP = {
-    0: "STANDING",
-    1: "SITTING", 
-    2: "LYING",
-    3: "FALLING",
 }
 
 # Device status mapping
@@ -535,7 +530,13 @@ class MQTTService:
                     
                 except Exception as e:
                     logger.error(f"Failed to handle presence session: {e}")
-                
+
+                # Live positions of people in the room (throttled, sensor_{id} room only)
+                live_positions = get_live_positions_service()
+                tracker_targets = event_payload.get('trackerTargets', [])
+                live_positions.log_raw_sample(device_id, tracker_targets)
+                await live_positions.publish(sensor, tracker_targets, presence_detected, self.broadcast_callback)
+
                 # Broadcast presence update to frontend
                 if self.broadcast_callback:
                     await self.broadcast_callback(sensor['tenant_id'], {

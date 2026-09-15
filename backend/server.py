@@ -78,6 +78,7 @@ else:
 
 # MQTT Service import
 from mqtt_service import init_mqtt_service, stop_mqtt_service
+from live_positions_service import get_live_positions_service
 
 # Socket.IO Service import
 from socketio_service import (
@@ -85,6 +86,7 @@ from socketio_service import (
     broadcast_new_event, broadcast_presence_update,
     broadcast_sensor_status, broadcast_sensor_registered,
     broadcast_fall_event_update, broadcast_ai_event,
+    broadcast_target_positions, set_database as set_socketio_database,
     get_connected_clients_info
 )
 
@@ -94,7 +96,7 @@ from vayyar_config_service import (
     get_vayyar_config_service, VayyarConfigService
 )
 from vayyar_config_schema import (
-    VayyarConfig, MqttPublishOptions, ConfigVersionResponse,
+    VayyarConfig, WalabotConfig, MqttPublishOptions, ConfigVersionResponse,
     get_default_config_dict
 )
 
@@ -1431,6 +1433,59 @@ async def get_sensor(sensor_id: str, current_user: UserInDB = Depends(get_curren
             raise HTTPException(status_code=403, detail="Access denied")
 
     return sensor
+
+@api_router.get("/sensors/{sensor_id}/live-positions")
+async def get_sensor_live_positions(sensor_id: str, current_user: UserInDB = Depends(get_current_user)):
+    """Room geometry (from the latest radar config) + last known positions of tracked people."""
+    sensor = await db.sensors.find_one({"id": sensor_id}, {"_id": 0})
+    if not sensor:
+        raise HTTPException(status_code=404, detail="Sensor not found")
+
+    if current_user.role != "SUPER_ADMIN":
+        if sensor.get("building_id"):
+            allowed = await check_building_access(current_user, sensor["building_id"])
+        else:
+            allowed = current_user.tenant_id in (sensor.get("tenant_id"), sensor.get("client_id"))
+        if not allowed:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+    # Prefer the config acknowledged by the device, fall back to the latest sent one
+    version = await db.config_versions.find_one(
+        {"sensorId": sensor_id, "status": "ACKED"}, {"_id": 0}, sort=[("versionNumber", -1)]
+    ) or await db.config_versions.find_one(
+        {"sensorId": sensor_id}, {"_id": 0}, sort=[("versionNumber", -1)]
+    )
+    walabot = ((version or {}).get("config") or {}).get("walabotConfig") or {}
+    defaults = WalabotConfig()
+
+    def geo(key):
+        value = walabot.get(key)
+        return value if isinstance(value, (int, float)) else getattr(defaults, key)
+
+    geometry = {
+        **{key: geo(key) for key in ("xMin", "xMax", "yMin", "yMax", "zMin", "zMax", "sensorHeight")},
+        "sensorMounting": walabot.get("sensorMounting", defaults.sensorMounting),
+        "subRegions": [
+            {
+                "name": region.get("name"),
+                "xMin": region.get("xMin"), "xMax": region.get("xMax"),
+                "yMin": region.get("yMin"), "yMax": region.get("yMax"),
+                "isDoor": region.get("isDoor", False),
+            }
+            for region in (walabot.get("trackerSubRegions") or []) if isinstance(region, dict)
+        ],
+        "config_version": (version or {}).get("versionNumber"),
+        "config_status": (version or {}).get("status"),
+        "is_default": not walabot,
+    }
+
+    return {
+        "sensor_id": sensor_id,
+        "sensor_name": sensor.get("name"),
+        "status": sensor.get("status"),
+        "geometry": geometry,
+        "positions": get_live_positions_service().get_latest(sensor_id),
+    }
 
 @api_router.patch("/sensors/{sensor_id}", response_model=Sensor)
 async def update_sensor(sensor_id: str, update: SensorUpdate, current_user: UserInDB = Depends(get_current_user)):
@@ -5286,6 +5341,8 @@ async def startup_event():
     await rbac_service.init_permissions_catalog()
     logger.info("RBAC service initialized with permissions catalog")
     
+    set_socketio_database(db)
+
     # Socket.IO broadcast callback for MQTT service
     async def socketio_broadcast(tenant_id: str, message: dict):
         """Broadcast message via Socket.IO with room-based routing"""
@@ -5305,6 +5362,8 @@ async def startup_event():
                 await broadcast_new_event(client_id, event_data)
         elif msg_type == 'new_ai_event':
             await broadcast_ai_event(event_data)
+        elif msg_type == 'target_positions':
+            await broadcast_target_positions(message)
         elif msg_type == 'presence_update':
             await broadcast_presence_update(tenant_id, message)
             if client_id and client_id != tenant_id:

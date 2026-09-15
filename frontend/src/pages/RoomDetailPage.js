@@ -15,10 +15,11 @@ import { toast } from 'sonner';
 import api from '@/lib/api';
 import { roomContactsAPI } from '@/lib/api';
 import { LocationBreadcrumb } from '@/components/LocationBreadcrumb';
+import { LiveRoomView } from '@/components/live/LiveRoomView';
 import {
   DoorOpen, Plus, ArrowLeft, Radio, Trash2, Bath, UtensilsCrossed, Bed, Sofa,
   MoreHorizontal, Loader2, Link, Unlink, Users, Phone, Mail, MessageCircle,
-  ChevronUp, ChevronDown, UserPlus, AlertTriangle, Send, Edit2
+  ChevronUp, ChevronDown, UserPlus, AlertTriangle, Send, Edit2, Activity
 } from 'lucide-react';
 
 const RELATIONSHIP_LABELS = {
@@ -382,7 +383,33 @@ export function RoomDetailPage() {
             Contacts d'urgence
             <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{contacts.length}</Badge>
           </TabsTrigger>
+          <TabsTrigger value="live" className="gap-2">
+            <Activity className="h-4 w-4" />
+            En direct
+          </TabsTrigger>
         </TabsList>
+
+        {/* ==================== LIVE TAB ==================== */}
+        <TabsContent value="live">
+          {spaces.some(space => space.has_radar && space.radar) ? (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              {spaces.filter(space => space.has_radar && space.radar).map(space => (
+                <LiveRoomView
+                  key={space.radar.id}
+                  sensorId={space.radar.id}
+                  title={`${space.name || getSpaceLabel(space.space_type)} · ${space.radar.name || space.radar.device_id?.substring(0, 15)}`}
+                />
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                <Radio className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Aucun radar affecté à cette chambre</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
 
         {/* ==================== SPACES TAB ==================== */}
         <TabsContent value="spaces">

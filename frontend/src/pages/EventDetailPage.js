@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EventActionDialog } from '@/components/EventActionDialog';
+import { LiveRoomView } from '@/components/live/LiveRoomView';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn, formatDate, getEventTypeColor, getSeverityColor, getStatusColor } from '@/lib/utils';
 
@@ -474,6 +475,19 @@ export function EventDetailPage() {
         <div className="space-y-4">
           {/* Fall location */}
           {isFallEvent && <FallLocationCard event={event} />}
+
+          {/* Live positions in the room + fall location marker */}
+          {event.sensor_id && (
+            <LiveRoomView
+              sensorId={event.sensor_id}
+              title="Chambre en direct"
+              fallLocation={
+                event.fall_loc_x_cm != null && event.fall_loc_y_cm != null
+                  ? { x: event.fall_loc_x_cm / 100, y: event.fall_loc_y_cm / 100 }
+                  : null
+              }
+            />
+          )}
 
           {/* Fall timeline */}
           {isFallEvent && <FallStatusTimeline history={event.fall_status_history} />}

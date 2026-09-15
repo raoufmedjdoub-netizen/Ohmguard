@@ -21,6 +21,9 @@ export function WebSocketProvider({ children }) {
   const socketRef = useRef(null);
   const listenersRef = useRef(new Map());
   const reconnectAttemptRef = useRef(0);
+  // Radars dont les positions en direct sont affichées : sensorId -> nombre d'abonnés
+  const watchedSensorsRef = useRef(new Map());
+  const joinedRef = useRef(false);
 
   // Notify all listeners of a message
   const notifyListeners = useCallback((data) => {
@@ -66,11 +69,8 @@ export function WebSocketProvider({ children }) {
       setConnected(true);
       reconnectAttemptRef.current = 0;
 
-      // Join tenant room after connection
-      socket.emit('join_tenant', {
-        tenant_id: user.tenant_id,
-        token: token
-      });
+      // Join rooms after connection (the server derives the tenant from the token)
+      socket.emit('join_tenant', { token });
     });
 
     // Log transport upgrades
@@ -80,6 +80,7 @@ export function WebSocketProvider({ children }) {
 
     socket.on('disconnect', (reason) => {
       console.log('Socket.IO disconnected:', reason);
+      joinedRef.current = false;
       setConnected(false);
     });
 
@@ -93,6 +94,19 @@ export function WebSocketProvider({ children }) {
     socket.on('joined', (data) => {
       console.log('Joined rooms:', data.rooms, 'role:', data.role);
       setRooms(data.rooms || []);
+      joinedRef.current = true;
+      // (Ré)abonnement aux radars suivis : les rooms sont perdues à chaque reconnexion
+      watchedSensorsRef.current.forEach((_, sensorId) => {
+        socket.emit('watch_sensor', { sensor_id: sensorId });
+      });
+    });
+
+    // Live positions of people tracked by a watched radar
+    socket.on('target_positions', (data) => {
+      notifyListeners({
+        type: 'target_positions',
+        ...data
+      });
     });
 
     // Listen for new events
@@ -152,7 +166,7 @@ export function WebSocketProvider({ children }) {
     // Cleanup on unmount
     return () => {
       console.log('Disconnecting Socket.IO...');
-      socket.emit('leave_tenant', { tenant_id: user.tenant_id });
+      socket.emit('leave_tenant', {});
       socket.disconnect();
       socketRef.current = null;
     };
@@ -163,6 +177,29 @@ export function WebSocketProvider({ children }) {
     listenersRef.current.set(id, callback);
     return () => {
       listenersRef.current.delete(id);
+    };
+  }, []);
+
+  // Start receiving live positions for a radar; returns the unwatch function
+  const watchSensor = useCallback((sensorId) => {
+    if (!sensorId) return () => {};
+    const watched = watchedSensorsRef.current;
+    const count = watched.get(sensorId) || 0;
+    watched.set(sensorId, count + 1);
+    if (count === 0 && joinedRef.current) {
+      socketRef.current?.emit('watch_sensor', { sensor_id: sensorId });
+    }
+
+    return () => {
+      const remaining = (watched.get(sensorId) || 1) - 1;
+      if (remaining > 0) {
+        watched.set(sensorId, remaining);
+        return;
+      }
+      watched.delete(sensorId);
+      if (joinedRef.current) {
+        socketRef.current?.emit('unwatch_sensor', { sensor_id: sensorId });
+      }
     };
   }, []);
 
@@ -200,6 +237,7 @@ export function WebSocketProvider({ children }) {
       rooms,
       lastEvent, 
       subscribe,
+      watchSensor,
       forceRefresh,
       getConnectionInfo
     }}>

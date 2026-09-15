@@ -7,16 +7,19 @@ Room hierarchy:
 - tenant_{tenant_id}: TENANT_ADMIN receives all events for their tenant
 - building_{building_id}: Scoped users receive events for their assigned buildings
 - floor_{floor_id}: Fine-grained filtering by floor
+- sensor_{sensor_id}: Clients currently displaying a sensor's live positions
 
 Events emitted:
 - new_event: New radar event (fall, presence, etc.)
 - presence_update: Presence state change for a sensor
 - sensor_status: Sensor online/offline status change
 - sensor_registered: New sensor auto-registered
+- target_positions: Live positions of people tracked by a sensor (sensor_{id} room only)
 
 Events received:
 - join_rooms: Client joins rooms based on their role and permissions
 - leave_rooms: Client leaves all rooms
+- watch_sensor / unwatch_sensor: Start/stop receiving a sensor's live positions
 """
 import socketio
 import logging
@@ -28,7 +31,8 @@ from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "your-secret-key-change-in-production")
+# Same secret as server.py (which refuses to start without it) — no insecure fallback here
+JWT_SECRET = os.environ.get("JWT_SECRET")
 
 def sanitize_for_json(obj):
     """Recursively convert MongoDB ObjectId to string for JSON serialization."""
@@ -60,15 +64,69 @@ socket_app = socketio.ASGIApp(sio, socketio_path='')
 # Track connected clients: sid -> { user_id, role, tenant_id, rooms }
 client_sessions: Dict[str, Dict] = {}
 
+# Database handle (set at startup) for user/scope/sensor lookups
+_db = None
+
+
+def set_database(db):
+    global _db
+    _db = db
+
 
 def _decode_token(token: str) -> Optional[Dict]:
     """Decode JWT token to get user info."""
+    if not JWT_SECRET:
+        logger.error("JWT_SECRET is not set: refusing Socket.IO authentication")
+        return None
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
         return payload
     except Exception as e:
         logger.warning(f"JWT decode failed: {e}")
         return None
+
+
+async def _authenticate(token: Optional[str]) -> Optional[Dict]:
+    """
+    Authenticate a Socket.IO client the same way REST endpoints do (get_current_user):
+    valid signature + active session (jti) + user still present in the database.
+    Returns {user_id, email, role, tenant_id, jti} from the database, never from client-provided data.
+    """
+    if not token:
+        return None
+    payload = _decode_token(token)
+    if not payload or not payload.get('sub'):
+        return None
+
+    # Session must still be active (revoked / expired sessions cannot join rooms)
+    from session_service import get_session_service
+    session_svc = get_session_service()
+    jti = payload.get('jti')
+    if session_svc:
+        if not jti or not await session_svc.validate_session(jti):
+            logger.info(f"Socket.IO auth refused for {payload.get('sub')}: session invalid or revoked")
+            return None
+
+    identity = {
+        'user_id': payload['sub'],
+        'email': payload.get('email', ''),
+        'role': payload.get('role', 'VIEWER'),
+        'tenant_id': payload.get('tenant_id'),
+        'jti': jti,
+    }
+
+    # Role and tenant come from the database (source of truth), the token only identifies the user
+    if _db is not None:
+        user = await _db.users.find_one(
+            {"id": payload['sub']}, {"_id": 0, "email": 1, "role": 1, "tenant_id": 1}
+        )
+        if not user:
+            return None
+        identity['email'] = user.get('email', identity['email'])
+        identity['role'] = user.get('role', identity['role'])
+        identity['tenant_id'] = user.get('tenant_id')
+
+    return identity
 
 
 @sio.event
@@ -92,7 +150,7 @@ async def disconnect(sid):
 async def join_tenant(sid, data):
     """
     Legacy join_tenant handler - redirects to join_rooms logic.
-    Kept for backward compatibility.
+    Kept for backward compatibility (web and mobile clients still emit it).
     """
     return await join_rooms(sid, data)
 
@@ -101,33 +159,39 @@ async def join_tenant(sid, data):
 async def join_rooms(sid, data):
     """
     Client joins rooms based on their role and location scopes.
-    Expected data: {"tenant_id": "xxx", "token": "jwt_token"}
-    
+    Expected data: {"token": "jwt_token"}
+
+    The tenant is taken from the authenticated user, NEVER from the client payload
+    (a "tenant_id" sent by the client is ignored: it would let any user join another
+    organisation's rooms).
+
     Room assignment:
     - SUPER_ADMIN -> admin_all + tenant_{id}
     - TENANT_ADMIN -> tenant_{id}
     - SUPERVISOR/OPERATOR/VIEWER -> building_{id} rooms from location_scopes
     """
-    token = data.get('token')
-    tenant_id = data.get('tenant_id')
-
-    if not token or not tenant_id:
-        return {"success": False, "error": "token and tenant_id required"}
-
-    # Decode JWT to get user info
-    payload = _decode_token(token)
-    if not payload:
+    identity = await _authenticate((data or {}).get('token'))
+    if not identity:
         return {"success": False, "error": "invalid token"}
 
-    user_id = payload.get('sub')
-    role = payload.get('role', 'VIEWER')
+    user_id = identity['user_id']
+    role = identity['role']
+    tenant_id = identity['tenant_id']
+
+    requested = (data or {}).get('tenant_id')
+    if requested and requested != tenant_id:
+        logger.warning(f"User {user_id} requested rooms of tenant {requested} but belongs to {tenant_id}: ignored")
+
+    if not tenant_id and role != 'SUPER_ADMIN':
+        return {"success": False, "error": "user has no organisation"}
 
     rooms = []
 
     if role == 'SUPER_ADMIN':
         # Super admin sees everything
         rooms.append('admin_all')
-        rooms.append(f'tenant_{tenant_id}')
+        if tenant_id:
+            rooms.append(f'tenant_{tenant_id}')
     elif role == 'TENANT_ADMIN':
         # Tenant admin sees everything in their tenant
         rooms.append(f'tenant_{tenant_id}')
@@ -136,14 +200,11 @@ async def join_rooms(sid, data):
         # location_scopes.client_user_id stores ClientUser.id, not User.id
         # So we must find the ClientUser record first, then query scopes by its id.
         try:
-            from motor.motor_asyncio import AsyncIOMotorClient
-            mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
-            db_name = os.environ.get('DB_NAME', 'test_database')
-            client = AsyncIOMotorClient(mongo_url)
-            db = client[db_name]
+            if _db is None:
+                raise RuntimeError("database not available")
 
             # Step 1: find the ClientUser record for (user_id, client/tenant)
-            client_user = await db.client_users.find_one(
+            client_user = await _db.client_users.find_one(
                 {"user_id": user_id, "client_id": tenant_id, "is_active": True},
                 {"_id": 0, "id": 1}
             )
@@ -151,7 +212,7 @@ async def join_rooms(sid, data):
             scopes = []
             if client_user:
                 # Step 2: query scopes by client_user.id (not user_id!)
-                scopes = await db.location_scopes.find(
+                scopes = await _db.location_scopes.find(
                     {"client_user_id": client_user["id"]},
                     {"_id": 0, "building_id": 1, "floor_id": 1}
                 ).to_list(100)
@@ -171,12 +232,16 @@ async def join_rooms(sid, data):
                 # No specific scopes: fall back to tenant room (see all tenant/client events)
                 rooms.append(f'tenant_{tenant_id}')
                 logger.info(f"User {user_id} ({role}) has no scopes, falling back to tenant room")
-
-            client.close()
         except Exception as e:
             logger.error(f"Error loading location scopes for {user_id}: {e}")
             # Fallback to tenant room on error
             rooms.append(f'tenant_{tenant_id}')
+
+    # Leave rooms from a previous join on this connection (re-join after token refresh)
+    previous = client_sessions.get(sid)
+    if previous:
+        for room in previous.get('rooms', []):
+            await sio.leave_room(sid, room)
 
     # Join all rooms
     for room in rooms:
@@ -185,11 +250,11 @@ async def join_rooms(sid, data):
     # Store session info
     client_sessions[sid] = {
         'user_id': user_id,
-        'email': payload.get('email', ''),
+        'email': identity['email'],
         'role': role,
         'tenant_id': tenant_id,
         'rooms': rooms,
-        'jti': payload.get('jti'),
+        'jti': identity['jti'],
         'joined_at': datetime.now(timezone.utc).isoformat()
     }
 
@@ -215,6 +280,50 @@ async def leave_tenant(sid, data):
     return {"success": True}
 
 
+def _session_can_see_sensor(session: Dict, sensor: Dict) -> bool:
+    """Same visibility as presence_update: the sensor must be routed to one of the session's rooms."""
+    rooms = set(session.get('rooms', []))
+    if 'admin_all' in rooms:
+        return True
+    candidates = {
+        f"tenant_{sensor.get('tenant_id')}",
+        f"tenant_{sensor.get('client_id')}",
+        f"building_{sensor.get('building_id')}",
+        f"floor_{sensor.get('floor_id')}",
+    }
+    return bool(rooms & candidates)
+
+
+@sio.event
+async def watch_sensor(sid, data):
+    """Client starts receiving target_positions for a sensor. Expected data: {"sensor_id": "xxx"}"""
+    session = client_sessions.get(sid)
+    sensor_id = (data or {}).get('sensor_id')
+    if not session or not sensor_id:
+        return {"success": False, "error": "join_rooms first and provide sensor_id"}
+    if _db is None:
+        return {"success": False, "error": "database not available"}
+
+    sensor = await _db.sensors.find_one(
+        {"id": sensor_id},
+        {"_id": 0, "tenant_id": 1, "client_id": 1, "building_id": 1, "floor_id": 1}
+    )
+    if not sensor or not _session_can_see_sensor(session, sensor):
+        return {"success": False, "error": "access denied"}
+
+    await sio.enter_room(sid, f'sensor_{sensor_id}')
+    return {"success": True}
+
+
+@sio.event
+async def unwatch_sensor(sid, data):
+    """Client stops receiving target_positions for a sensor."""
+    sensor_id = (data or {}).get('sensor_id')
+    if sensor_id:
+        await sio.leave_room(sid, f'sensor_{sensor_id}')
+    return {"success": True}
+
+
 # ==================== Broadcast Functions ====================
 
 async def broadcast_new_event(tenant_id: str, event: Dict[str, Any]):
@@ -231,6 +340,14 @@ async def broadcast_presence_update(tenant_id: str, data: Dict[str, Any]):
     payload = {'type': 'presence_update', **clean_data}
 
     await _broadcast_to_rooms(tenant_id, clean_data, 'presence_update', payload)
+
+
+async def broadcast_target_positions(data: Dict[str, Any]):
+    """Broadcast live target positions only to clients watching this sensor."""
+    sensor_id = data.get('sensor_id')
+    if not sensor_id:
+        return
+    await sio.emit('target_positions', sanitize_for_json(data), room=f'sensor_{sensor_id}')
 
 
 async def broadcast_sensor_status(tenant_id: str, sensor_id: str, status: str, last_seen: str, building_id: str = None, floor_id: str = None):

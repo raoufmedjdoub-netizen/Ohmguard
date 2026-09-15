@@ -6,3 +6,4 @@ export { LiveEventCard } from './LiveEventCard';
 export { LiveEventLocation } from './LiveEventLocation';
 export { LiveEventStatus } from './LiveEventStatus';
 export { RadarStatusCard } from './RadarStatusCard';
+export { LiveRoomView } from './LiveRoomView';
