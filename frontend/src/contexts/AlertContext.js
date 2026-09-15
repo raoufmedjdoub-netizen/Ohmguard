@@ -13,7 +13,9 @@ import api from '@/lib/api';
 const AlertContext = createContext(null);
 
 const ALERT_TYPES = ['FALL', 'SENSITIVE_FALL', 'BED_EXIT'];
-const CRITICAL_AI_TYPES = ['Fall_Detected', 'Violence_Detected'];
+// Types IA critiques : noms Seedoo (Fall_Detected, Violence_Detected) + anciens noms MQTT
+const CRITICAL_AI_TYPES = ['Fall_Detected', 'fall', 'Violence_Detected', 'Violence', 'Fire', 'Smoke', 'Intrusion'];
+const isCriticalAiEvent = (event) => CRITICAL_AI_TYPES.includes(event?.warning_type);
 
 /**
  * Joue un chime d'urgence 4 notes descendantes via Web Audio API.
@@ -93,46 +95,50 @@ export function AlertProvider({ children }) {
 
         const allAlerts = [];
         
-        // Load radar alerts (FALL, SENSITIVE_FALL, BED_EXIT) - uniquement NEW
+        // Load radar alerts (FALL, SENSITIVE_FALL, BED_EXIT) - NEW et ACK (prises en charge, non résolues)
         for (const eventType of ALERT_TYPES) {
-          try {
-            const res = await api.get('/events', {
-              params: { event_type: eventType, status: 'NEW', limit: 50 }
-            });
-            if (res.data?.length) {
-              res.data.forEach(e => {
-                // SENSITIVE_FALL : n'alerter que si la chute est confirmée (calling)
-                if (e.type === 'SENSITIVE_FALL' && e.fall_status !== 'calling') {
-                  pendingSensitiveFallsRef.current[e.id] = { ...e, alertSource: 'radar' };
-                  return;
-                }
-                allAlerts.push({
-                  ...e,
-                  alertSource: 'radar',
-                  addedAt: new Date(e.timestamp || e.occurred_at).getTime() || Date.now(),
-                  updatedAt: Date.now()
-                });
+          for (const status of ['NEW', 'ACK']) {
+            try {
+              const res = await api.get('/events', {
+                params: { event_type: eventType, status, limit: 50 }
               });
+              if (res.data?.length) {
+                res.data.forEach(e => {
+                  // SENSITIVE_FALL : n'alerter que si la chute est confirmée (calling)
+                  if (e.type === 'SENSITIVE_FALL' && e.fall_status !== 'calling') {
+                    pendingSensitiveFallsRef.current[e.id] = { ...e, alertSource: 'radar' };
+                    return;
+                  }
+                  allAlerts.push({
+                    ...e,
+                    alertSource: 'radar',
+                    addedAt: new Date(e.timestamp || e.occurred_at).getTime() || Date.now(),
+                    updatedAt: Date.now()
+                  });
+                });
+              }
+            } catch {}
+          }
+        }
+
+        // Load AI alerts - types critiques uniquement, NEW et ACKNOWLEDGED
+        for (const status of ['NEW', 'ACKNOWLEDGED']) {
+          try {
+            const aiRes = await api.get('/ai-events', {
+              params: { status, limit: 50 }
+            });
+            if (aiRes.data?.length) {
+              allAlerts.push(...aiRes.data.filter(isCriticalAiEvent).map(e => ({
+                ...e,
+                type: 'AI_ALERT',
+                alertSource: 'ai_camera',
+                addedAt: new Date(e.timestamp || e.created_at).getTime() || Date.now(),
+                updatedAt: Date.now()
+              })));
             }
           } catch {}
         }
-        
-        // Load AI alerts - uniquement NEW
-        try {
-          const aiRes = await api.get('/ai-events', {
-            params: { status: 'NEW', limit: 50 }
-          });
-          if (aiRes.data?.length) {
-            allAlerts.push(...aiRes.data.map(e => ({
-              ...e,
-              type: 'AI_ALERT',
-              alertSource: 'ai_camera',
-              addedAt: new Date(e.timestamp || e.created_at).getTime() || Date.now(),
-              updatedAt: Date.now()
-            })));
-          }
-        } catch {}
-        
+
         if (allAlerts.length > 0) {
           setActiveAlerts(allAlerts);
         }
@@ -255,7 +261,7 @@ export function AlertProvider({ children }) {
       }
       else if (message.type === 'new_ai_event') {
         const event = message.event;
-        if (event) {
+        if (isCriticalAiEvent(event)) {
           addAlert({ ...event, type: 'AI_ALERT', alertSource: 'ai_camera' });
         }
       }

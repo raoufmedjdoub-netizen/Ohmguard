@@ -262,7 +262,13 @@ function ActiveAlertsSection() {
 
   const handleActionSuccess = (updatedEvent) => {
     if (!updatedEvent) return;
-    dismissAlert(updatedEvent.id);
+    // ACK : l'alerte reste dans le fil (grisée) jusqu'à résolution ; RESOLVED / FALSE_ALARM : retirée
+    if (dialogAction === 'RESOLVED' || dialogAction === 'FALSE_ALARM') {
+      dismissAlert(updatedEvent.id);
+    } else {
+      const { status, assigned_to, assigned_to_name } = updatedEvent;
+      updateAlert(updatedEvent.id, { status, assigned_to, assigned_to_name });
+    }
   };
 
   const handleView = (alert) => {
@@ -315,7 +321,7 @@ function ActiveAlertsSection() {
       const res = await eventsAPI.bulkUpdate(ids, bulkAction, bulkComment.trim() || undefined);
       const { success_count, failed_count } = res.data;
       if (success_count > 0) {
-        ids.forEach(id => dismissAlert(id));
+        ids.forEach(id => bulkAction === 'ACK' ? updateAlert(id, { status: 'ACK' }) : dismissAlert(id));
         toast.success(`${success_count} alerte(s) traitée(s)`);
       }
       if (failed_count > 0) {
